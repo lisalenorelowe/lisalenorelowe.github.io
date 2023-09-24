@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<base target="_top">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
+	<title>Lisa - NC Ride Fall 2022</title>
+	
+	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.1/dist/leaflet.css" integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.1/dist/leaflet.js" integrity="sha256-NDI0K41gVbWqfkkaHj15IzU7PtMoelkzyKp8TOaFQ3s=" crossorigin=""></script>
+
+<link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.8.1/css/all.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"
+    />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+
+
+        <script src="./L.KML.js"></script>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+	<style>
+		html, body {
+			height: 100%;
+			margin: 0;
+		}
+		.leaflet-container {
+			height: 800px;
+			width: 1600px;
+			max-width: 100%;
+			max-height: 100%;
+		}
+	</style>
+
+	
+</head>
+<body>
+
+
+
+<div id="map" style="width: 1600px; height: 800px;"></div>
+<script>
+
+
+var OpenStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+});
+
+
+var Esri_NatGeoWorldMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; National Geographic, Esri, DeLorme, NAVTEQ, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, iPC',
+	maxZoom: 19,
+        maxNativeZoom: 16,
+});
+
+
+
+var baseMaps = {
+"OpenStreetMap": OpenStreetMap,
+"Esri NatGeoWorldMap": Esri_NatGeoWorldMap,
+};
+
+
+
+//Day 1 stops
+var day1 = L.layerGroup();
+var day2 = L.layerGroup();
+var day3 = L.layerGroup();
+var day4 = L.layerGroup();
+var day5 = L.layerGroup();
+var day6 = L.layerGroup();
+
+var overlayMaps = {
+ 'Day 1: Cary to Inman': day1,
+ 'Day 2: Inman to Cherokee': day2,
+ 'Day 3: The Tail and the Foothills': day3,
+ 'Day 4: Blue Ridge Parkway': day4,
+ 'Day 5: Wheels Through Time and Pisgah': day5,
+ 'Day 6: Back to Cary, NC': day6 
+};
+
+
+var corner1 = L.latLng(38.41276971702718, -87.90895796473987);
+corner2 = L.latLng(32.42771902747204, -74.27683157066988),
+bounds = L.latLngBounds(corner1, corner2);
+
+var map = L.map('map',{
+         center: [35.5, -81.2],
+         zoom: 8,
+         minZoom: 7,
+         maxZoom: 17, 
+         maxBounds: bounds,
+         layers: [OpenStreetMap,day1,day2,day3,day4,day5,day6] 
+});
+
+
+
+// Waterfalls marker 
+  var wMarker = L.AwesomeMarkers.icon({
+    icon: 'water',
+    prefix: 'fa',
+    markerColor: 'green',
+    iconColor: 'blue'
+  });
+
+// Stops marker
+  var sMarker = L.AwesomeMarkers.icon({
+    icon: 'bed',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'purple'
+  });
+
+// dragon marker
+  var dMarker = L.AwesomeMarkers.icon({
+    icon: 'dragon',
+    prefix: 'fa',
+    markerColor: 'black',
+    iconColor: 'red'
+  });
+
+// foothills marker
+  var fMarker = L.AwesomeMarkers.icon({
+    icon: 'shoe-prints',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'green'
+  });
+
+// blue ridge marker
+  var blueMarker = L.AwesomeMarkers.icon({
+    icon: 'mountain',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'blue'
+  });
+
+
+// harley marker
+  var hMarker = L.AwesomeMarkers.icon({
+    icon: 'motorcycle',
+    prefix: 'fa',
+    markerColor: 'orange',
+    iconColor: 'black'
+  });
+
+
+// home marker
+  var homeMarker = L.AwesomeMarkers.icon({
+    icon: 'home',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'purple'
+
+  });
+
+// meghan marker
+  var megMarker = L.AwesomeMarkers.icon({
+    icon: 'child',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'purple'
+  });
+
+// food marker
+  var foodMarker = L.AwesomeMarkers.icon({
+    icon: 'utensils',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'orange'
+  });
+
+// ice cream marker
+  var iceMarker = L.AwesomeMarkers.icon({
+    icon: 'ice-cream',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'orange'
+  });
+
+// sites marker
+  var sitesMarker = L.AwesomeMarkers.icon({
+    icon: 'binoculars',
+    prefix: 'fa',
+    markerColor: 'green',
+    iconColor: 'blue'
+  });
+
+// beer marker
+  var beerMarker = L.AwesomeMarkers.icon({
+    icon: 'beer',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'orange'
+  });
+
+// camp marker
+  var campMarker = L.AwesomeMarkers.icon({
+    icon: 'campground',
+    prefix: 'fa',
+    markerColor: 'white',
+    iconColor: 'purple'
+  });
+
+
+
+//Waterfalls
+L.marker([35.068906990927005, -83.23855520316155], {icon: wMarker }).bindPopup('Dry Falls - Highlands, NC').addTo(map).addTo(day2);
+L.marker([35.068906990927005, -83.23855520316155], {icon: wMarker }).bindPopup('Dry Falls - Highlands, NC').addTo(map).addTo(day4);
+
+L.marker([35.33841322969849, -82.90352050219926], {icon: wMarker }).bindPopup('Sunburst Falls - Canton, NC').addTo(map).addTo(day5);
+L.marker([35.29606145725434, -82.76884912391772], {icon: wMarker }).bindPopup('Looking Glass Falls - Brevard, NC').addTo(map).addTo(day5);
+L.marker([35.07218, -83.22895],{icon: wMarker}).bindPopup('Bridal Veil Falls - Highlands, NC').addTo(map).addTo(day4);
+
+//Stops
+L.marker([35.78652,-78.78996], {icon: homeMarker }).bindPopup('Home - Cary, NC').addTo(map).addTo(day1);
+L.marker([35.78652,-78.78996], {icon: homeMarker }).bindPopup('Home - Cary, NC').addTo(map).addTo(day6);
+
+L.marker([35.04709819158299, -82.0900790054704], {icon: megMarker }).bindPopup('Family - Inman, SC').addTo(map).addTo(day1);
+L.marker([35.04709819158299, -82.0900790054704, -82.02291909894925], {icon: megMarker }).bindPopup('Family - Inman, SC').addTo(map).addTo(day2);
+
+L.marker([35.48641612593328, -83.31600662291876], {icon: sMarker }).bindPopup('Rolling Hills Lodge - Cherokee, NC').addTo(map).addTo(day2);
+L.marker([35.48641612593328, -83.31600662291876], {icon: sMarker }).bindPopup('Rolling Hills Lodge - Cherokee, NC').addTo(map).addTo(day3);
+L.marker([35.48641612593328, -83.31600662291876], {icon: sMarker }).bindPopup('Rolling Hills Lodge - Cherokee, NC').addTo(map).addTo(day4);
+
+L.marker([35.45138302081099, -82.99909832186206], {icon: sMarker }).bindPopup('Grandview Lodge - Waynesville, NC').addTo(map).addTo(day4);
+L.marker([35.45138302081099, -82.99909832186206], {icon: sMarker }).bindPopup('Grandview Lodge - Waynesville, NC').addTo(map).addTo(day5);
+L.marker([35.45138302081099, -82.99909832186206], {icon: sMarker }).bindPopup('Grandview Lodge - Waynesville, NC').addTo(map).addTo(day6);
+
+L.marker([35.51726, -83.05855],{icon: campMarker }).bindPopup('The Camp - Maggie Valley, NC').addTo(map).addTo(day2);
+L.marker([35.51726, -83.05855],{icon: campMarker }).bindPopup('The Camp - Maggie Valley, NC').addTo(map).addTo(day4);
+L.marker([35.51726, -83.05855],{icon: campMarker }).bindPopup('The Camp - Maggie Valley, NC').addTo(map).addTo(day5);
+
+//Foot
+L.marker([35.63119452254957, -83.94058081316561],{icon: fMarker }).bindPopup('Foothills Parkway').addTo(map).addTo(day3);
+L.marker([35.713841886992775, -83.71456771088317],{icon: fMarker }).bindPopup('Foothills Parkway').addTo(map).addTo(day3);
+//Dragon
+L.marker([35.50378144614317, -83.97625020006542], {icon: dMarker }).bindPopup('Tail of the Dragon').addTo(map).addTo(day3);
+
+//Blue Ridge
+L.marker([35.37269267815171, -82.99203494340048],{icon: blueMarker }).bindPopup('Blue Ridge Parkway').addTo(map).addTo(day4);
+
+//General
+L.marker([35.754113340837264, -84.02398644012906],{icon: foodMarker}).bindPopup('The Shed - BBQ Restaurant').addTo(map).addTo(day3);
+L.marker([35.369614965164395, -83.25135233892469],{icon: foodMarker}).bindPopup('Kostas Express Restaurant - Dillsboro, NC').addTo(map).addTo(day2);
+L.marker([35.479748768167084, -83.00643952086831],{icon: foodMarker}).bindPopup('Haywood Smokehouse - Waynesville, NC').addTo(map).addTo(day5);
+L.marker([35.27466857523121, -82.70610408295019],{icon: iceMarker}).bindPopup('Dollys Dairy Bar and Gift Shop - Pisgah Forest, NC').addTo(map).addTo(day5);
+L.marker([35.11328008547252, -83.02522709711626],{icon: beerMarker}).bindPopup('Sapphire Mountain Brewing Company - Sapphire, NC').addTo(map).addTo(day4);
+
+
+L.marker([35.75443446473437, -84.02368420220138],{icon: hMarker}).bindPopup('Smoky Mountain Harley-Davidson - Maryville, TN').addTo(map).addTo(day3);
+L.marker([35.51361, -83.07767],{icon: hMarker}).bindPopup('Wheels Through Time Motorcycle Museum - Maggie Valley, NC').addTo(map).addTo(day5);
+
+L.marker([35.45169, -83.80219],{icon: sitesMarker}).bindPopup('Fontana Dam, NC').addTo(map).addTo(day3);
+L.marker([35.73418, -79.42765],{icon: foodMarker}).bindPopup('Smithfields - Siler City,NC').addTo(map).addTo(day6);
+L.marker([35.42789, -82.20483],{icon: sitesMarker}).bindPopup('Lake Lure, NC').addTo(map).addTo(day6);
+
+
+            // Load kml file
+            fetch('./Day1.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const tohome = new L.KML(kml);
+                        tohome.addTo(day1);
+                    map.addLayer(tohome);
+                });
+
+
+            // Load kml file
+            fetch('./Day2.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const day_2 = new L.KML(kml);
+                    day_2.addTo(day2);
+                    map.addLayer(day_2);
+                });
+
+
+            // Load kml file
+            fetch('./Camp.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const camp = new L.KML(kml);
+                    camp.addTo(day2);
+                    map.addLayer(camp);
+                });
+
+
+
+            // Load kml file
+            fetch('./TailoftheDragon.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const dragon = new L.KML(kml);
+		    dragon.addTo(day3);
+                    map.addLayer(dragon);
+
+                    // Adjust map to show the kml
+                    //const bounds = track.getBounds();
+                    ////map.fitBounds(bounds);
+                });
+
+
+            // Load kml file
+            fetch('./FoothillsParkway.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const foot = new L.KML(kml);
+			foot.addTo(day3);
+                    map.addLayer(foot);
+                });
+
+
+            // Load kml file
+            fetch('./Harley.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const harley = new L.KML(kml);
+		    harley.addTo(day3);
+                    map.addLayer(harley);
+                });
+
+
+            // Load kml file
+            fetch('./FontanaDam.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const dam = new L.KML(kml);
+		    dam.addTo(day3);
+                    map.addLayer(dam);
+                });
+
+            // Load kml file
+            fetch('./EndDam.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const enddam = new L.KML(kml);
+                    enddam.addTo(day3);
+                    map.addLayer(enddam);
+                });
+
+            // Load kml file
+            fetch('./Mike1.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const mike1 = new L.KML(kml);
+		    mike1.addTo(day4);
+                    map.addLayer(mike1);
+                });
+
+            // Load kml file
+            fetch('./GrandtoCamp.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const gtoc = new L.KML(kml);
+                    gtoc.addTo(day5);
+                    map.addLayer(gtoc);
+                });
+
+
+            // Load kml file
+            fetch('./Day5.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const day_5 = new L.KML(kml);
+                    day_5.addTo(day5);
+                    map.addLayer(day_5);
+                });
+
+            // Load kml file
+            fetch('./Home.kml')
+                .then(res => res.text())
+                .then(kmltext => {
+                    // Create new kml overlay
+                    const parser = new DOMParser();
+                    const kml = parser.parseFromString(kmltext, 'text/xml');
+                    const home = new L.KML(kml);
+                    home.addTo(day6);
+                    map.addLayer(home);
+                });
+
+
+
+var layerControl = L.control.layers(baseMaps,overlayMaps,{collapsed: false}).addTo(map);
+
+
+//	var popup = L.popup()
+//		.setLatLng([35.46996642365877, -83.92106177514273])
+//		.setContent('Tail')
+//		.openOn(map);
+//
+//
+//	function onMapClick(e) {
+//		popup
+//			.setLatLng(e.latlng)
+//			.setContent(e.latlng.toString())
+//			.openOn(map);
+//	}
+//
+//	map.on('click', onMapClick);
+
+$('.leaflet-control-layers').on('dblclick', () => {
+    layerControl.collapse();
+});
+$('.leaflet-control-layers-toggle').on('dblclick', () => {
+    layerControl.expand();
+});
+
+</script>
+
+
+
+</body>
+</html>
+
