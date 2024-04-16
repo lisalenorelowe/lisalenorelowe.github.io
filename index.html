@@ -7,17 +7,36 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta charset="utf-8">
     <link rel="icon" href="images/favicon.png" type="image/x-icon">
-    <link rel="stylesheet" type="text/css"> 
     <link rel="stylesheet" href="css/style.css"> 
     <script src="js/core.min.js"></script>
     <script src="js/script.js"></script>
+
     <style>
-     li {
-      list-style-type: circle;
+
+ul.circle {
+  list-style-type: circle;
+list-style-position: inside;
+}
+
+     h1 {
+      font-size: 40px;
+      margin: 0.67em 0;
      }
-     li li {
-      list-style-type: square;
-     }
+     h2 {
+     font-size: 25px;
+     margin: 0.67em 0;
+    }
+     h3 {
+     font-size: 20px;
+     margin: 0.67em 0;
+    }
+     h4 {
+     font-size: 15px;
+     margin: 0.67em 0;
+    }
+
+
+
    </style>
   </head>
 
@@ -31,60 +50,82 @@
    <section data-on="false" data-md-on="true" style="background-image: url(images/textured_desktop.png)" class="bg-gray-base bg-image">
     <div class="section-60 section-sm-90 bg-overlay-cello">
      <div class="shell"><div class="range">
-      <div class="cell-xs-12 text-center"><h3>L3 <span class="text-thin">Scientific Applications Consulting LLC</span></h3></div>
+      <div class="cell-xs-12 text-center"><h1>L3 <span class="text-thin">Scientific Applications Consulting LLC</span></h1></div>
      </div></div>
     </div>
    </section>
 
-   <!-- 2 column format section for Contact Info and Blog -->
+
    <section class="section-40 section-sm-75 bg-cape-cod context-dark">
-    <div class="shell"><div class="row">
+    <div class="shell">
+    <div class="row">
+     <div class="col-sm-12">
+      <h2>Services</h2> 
+     </div>
+    </div>
+     <div class="row">
+     <div class="col-sm-4">
+      <h3>Consulting</h3>
+      <h4>Computing Support</h4>
+      <ul class="circle"><li>Determine memory and compute requirements</li>
+          <li>Compare local, national(NSF/DOE), and commercial cloud solutions</li>
+          <li>Set up compute environment, compile/install software</li>
+      </ul>
+      <h4>Code Refactoring and Optimization</h4>
+         <ul class="circle">
+          <li>Refactor/update/port code for different libraries/compilers/OS</li>
+          <li>Offload R or Python calculations to Fortran or C</li>
+          <li>Parallelization of Fortran code with MPI and/or OpenMP</li>
+         </ul>
+      </div>
+
+      <div class="col-sm-4">
+      <h3>Research Software</h3>
+      <em>Scientific software development, computational modeling, numerical methods</em><br>
+      <p>
+      Past and Current Projects
+       <ul class="circle">
+         <li>Multigrid elliptic equation solver with adaptive mesh refinement <a href="https://doi.org/10.1016/j.jcp.2005.03.026">[1]</a></li>
+         <li>Coastal General Ecology Model(CGEM) for SCHISM <a href="https://github.com/oybcst/CGEM/blob/main/README.md">[2]</a></li>
+       </ul>
+      </p>
+      </div>
+
+     <div class="col-sm-4">
+      <h3>Visualization</h3>
+      <em>Images, Animations, and Interactive Analysis</em><br>
+      <p>Past and Current Projects
+         <ul class="circle">
+           <li>JupyterBook Project Portfolio - <a href="https://oybcst.github.io/intro.html">OyBcSt</a></li>
+           <li>R Shiny App <a href="https://lisalenorelowe.shinyapps.io/shiny-le/">Lake Erie, Total Phosphorus Model</a></li>
+        </ul></p>
+     </div>
+     </div></div>
+
+    <div class="shell">
+    <div class="row">
+     <div class="col-sm-12">
+      <h2>About</h2> 
+     </div>
+    </div>
+
+     <div class="row">
      <div class="col-sm-6">
-      <h5>Contact</h5>
-      <h6>Lisa L. Lowe, PhD</h6>
-      <p>email: <a href="mailto:lisa@l3sac.com" class="link-white">lisa@l3sac.com</a><br>
+      <h3>Contact</h3>
+      <p>Lisa L. Lowe, PhD</br>
+         email: <a href="mailto:lisa@l3sac.com" class="link-white">lisa@l3sac.com</a><br>
          LinkedIn: <a href="https://www.linkedin.com/in/lisalenorelowe" class="link-white">https://www.linkedin.com/in/lisalenorelowe</a><br>
          CV: <a href="https://sites.google.com/site/lisallowephd" class="link-white">https://sites.google.com/site/lisallowephd</a><br>
          ORCID: <a href="https://orcid.org/0000-0003-0408-9324" class="link-white">https://orcid.org/0000-0003-0408-9324</a></p>
- 
-      <h5>Rates</h5>
-      <ul>L3 Scientific Applications Consulting LLC is registered with SAM
+     </div>
+     <div class="col-sm-6"> 
+      <h3>Rates</h3>
+      <ul class="circle">L3 Scientific Applications Consulting LLC is registered with SAM
         <li>Unique Entity ID (UID): VPACKM2NH6X6 </li>
         <li>CAGE/NCAGE: 7WDE9 </li>
         <li>NAICS (primary): 541690 - Other Scientific And Technical Consulting Services</li>
       </ul>
       Base hourly rate is 125/hr.  Fixed-firm pricing available.
-     </div>
-	    
-     <div class="col-sm-6">
-      <h5>Services</h5>
-      <h6>Research Software</h6>
-      <p><b>Coastal General Ecology Model(CGEM)</b> for SCHISM: <a href="https://github.com/oybcst/CGEM/blob/main/README.md">CGEM-SCHISM</a>
-      </p>
-      <br>
-      <h6>Code Refactoring and Optimization</h6>
-      <p><b>Including</b>
-         <ul>
-          <li>Refactor and update code to compile with newest libraries and compilers</li>
-          <li>Porting code or script with Windows specific syntax/libraries to work on Linux</li>
-          <li>Offload R or Python calculations to Fortran or C</li>
-          <li>Parallelization of Fortran code with MPI and/or OpenMP</li>
-	 </ul></p>
-      <h6>Visualization</h6>
-      <p><b>Projects</b>
-         <ul>
-           <li>JupyterBook Project Portfolio</b>: <a href="https://oybcst.github.io/intro.html">Oysters, Blue Crabs, and Spotted Seatrout(OyBcSt)</a></li>
-           <li>R Shiny for Lake Erie, Total Phosphorus Model</b>: <a href="https://lisalenorelowe.shinyapps.io/shiny-le/">R Shiny App</a></li>
-           <li>LeafletJS Ride map for western NC</b>: <a href="map.html">The Tail</a></li>
-         </ul></p>
-      <p><b>YouTube Playlists</b>
-         <ul>
-          <li><a href="https://youtube.com/playlist?list=PL_3eGyhpHUkgNRpDfftXX1CG7KP6XR65-&si=ZVP-eaOgv_1_FAyR">Lake Erie Visualizations</a></li>
-          <li><a href="https://www.youtube.com/playlist?list=PL_3eGyhpHUkhGvnVAPYYlaL3_-z6u3NCV">VisIt Tutorials</a></li>
-          <li><a href="https://youtube.com/playlist?list=PL_3eGyhpHUkh1KHgBDg-mzCRXNh67hc0S&si=KIyG_pGzGg1WCUqu">Tropical Storm / Hurricane Visualizations</a>
-          <li><a href="https://youtube.com/playlist?list=PL_3eGyhpHUkg_kvZk-frqOs8b10RkaEhd&si=jg1G7E_562G8jeKa">OyBcSt Project</a></li>
-	</ul>
-      </p>
      </div>
     </div></div>
    </section>
