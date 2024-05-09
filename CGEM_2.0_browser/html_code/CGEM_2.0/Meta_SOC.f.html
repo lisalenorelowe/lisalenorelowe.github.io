@@ -1,0 +1,91 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='META_SOC'><A href='../../html_code/CGEM_2.0/Meta_SOC.f.html#META_SOC' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>Meta_SOC</font>(f,T,S,h,A_C,A_N,Z_C,Z_N) <A href='../../call_to/META_SOC.html' TARGET='index'>1</A>,<A href='../../call_from/META_SOC.html' TARGET='index'>5</A><a name='3'>
+<a name='4'>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Meta_SOC.f.html#META_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_42"><a name='5'>
+      USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/Meta_SOC.f.html#META_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_15"><a name='6'>
+      USE <A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS'>CGEM_Vars</A><A href='../../html_code/CGEM_2.0/Meta_SOC.f.html#META_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CGEM_VARS_9"><a name='7'>
+      USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Meta_SOC.f.html#META_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_27"><a name='8'>
+      USE <A href='../../html_code/CGEM_2.0/Conversions.f.html#CONVERSIONS'>Conversions</A><A href='../../html_code/CGEM_2.0/Meta_SOC.f.html#META_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CONVERSIONS_7"><a name='9'>
+<a name='10'>
+      IMPLICIT NONE<a name='11'>
+<a name='12'>
+      real, intent(inout) :: f(nf)        <font color=#447700>!State variable array, (mmol/m3)<a name='13'></font>
+      real, intent(in)    :: T            <font color=#447700>!Temperature (bottom sigma layer), (C)<a name='14'></font>
+      real, intent(in)    :: S            <font color=#447700>!Salinity (bottom sigma layer)<a name='15'></font>
+      real, intent(in)    :: h            <font color=#447700>!Thickness of bottom sigma layer<a name='16'></font>
+      real, intent(in)    :: A_C, A_N     <font color=#447700>!Carbon and Nitrogen stoichiometry for phytoplankton<a name='17'></font>
+      real, intent(in)    :: Z_C, Z_N     <font color=#447700>!Carbon and Nitrogen stoichiometry for zooplankton<a name='18'></font>
+      real :: F_POM_A, F_POM_Z, F_POM_R, F_POM_BC  <font color=#447700>!Flux of particle organic matter<a name='19'></font>
+      real :: F_POM                       <font color=#447700>!Total flux of particle organic matter<a name='20'></font>
+      real :: O2, NO3, NH4                 <a name='21'>
+      real :: F_O2, F_NO3, F_NH4<a name='22'>
+<a name='23'>
+<font color=#447700>!      real :: DIC, ALK     !Testing Additional Terms<a name='24'></font>
+<font color=#447700>!      real :: F_DIC, F_ALK !Testing Additional Terms<a name='25'></font>
+<a name='26'>
+<font color=#447700>!Calculate organic matter fluxes, "-SDay" converts from -m/s to m/d<a name='27'></font>
+<font color=#447700>!Then convert from C to N<a name='28'></font>
+      F_POM_A = -SDay*ws(iOM1_A)*f(iOM1_A)*A_N/A_C<a name='29'>
+      F_POM_Z = -SDay*ws(iOM1_Z)*f(iOM1_Z)*Z_N/Z_C<a name='30'>
+<font color=#447700>!      F_POM_A = -SDay*ws(iOM1_A)*f(iOM1_A)*16./106.<a name='31'></font>
+<font color=#447700>!      F_POM_Z = -SDay*ws(iOM1_Z)*f(iOM1_Z)*16./106.<a name='32'></font>
+      F_POM_R = -SDay*ws(iOM1_R)*f(iOM1_R)*4.5/51.<a name='33'>
+      F_POM_BC = -SDay*ws(iOM1_BC)*f(iOM1_BC)*16./106.<a name='34'>
+      F_POM = F_POM_A + F_POM_Z + F_POM_R + F_POM_BC  <a name='35'>
+<a name='36'>
+      <font color=#447700>!write(6,*) "F_POM",F_POM<a name='37'></font>
+<a name='38'>
+<font color=#447700>!Rename variables for equation readability<a name='39'></font>
+      O2  = f(iO2)<a name='40'>
+      NO3 = f(iNO3)<a name='41'>
+      NH4 = f(iNH4)<a name='42'>
+<font color=#447700>!Testing Additional Terms<a name='43'></font>
+<font color=#447700>!      DIC = f(iDIC)<a name='44'></font>
+<font color=#447700>!      ALK = f(iALK)<a name='45'></font>
+<a name='46'>
+<font color=#447700>!Calculate fluxes based on meta-model approach<a name='47'></font>
+      F_O2 = 22.1151 +  -1.3381*F_POM + 0.0286*F_POM**2 + -0.0001*F_POM**3 &amp;<a name='48'>
+     &amp; + 0.8138*S + 0.0868*S**2 + -0.0023*S**3 + -7.1247*T + 0.3668*T**2 + &amp;<a name='49'>
+     &amp; -0.0069*T**3 + 0.4592*NH4 + -0.2074*NH4**2 + 0.0112*NH4**3 + -0.8055*NO3 + &amp;<a name='50'>
+     &amp; 0.0229*NO3**2 + -0.0001*NO3**3 + -0.0721*O2 + -0.0001*O2**2<a name='51'>
+      <font color=#447700>!write(6,*) "F_O2",F_O2, F_O2/h*dT/Sday<a name='52'></font>
+<a name='53'>
+<a name='54'>
+      F_NH4 = -10.8192 +  0.0740*F_POM + 0.0023*F_POM**2 + &amp;<a name='55'>
+     &amp; -0.0001*F_POM**3 + -0.0833*S + -0.0064*S**2 + 0.0002*S**3 + 2.0967*T + &amp;<a name='56'>
+     &amp; -0.0996*T**2 + 0.0016*T**3 + -0.2221*NH4 + 0.0500*NH4**2 + -0.0023*NH4**3 + &amp;<a name='57'>
+     &amp; 0.0836*NO3 + -0.0024*NO3**2 + -0.0283*O2 + 0.0002*O2**2 <a name='58'>
+      <font color=#447700>!write(6,*) "F_NH4",F_NH4, F_NH4/h*dT/Sday<a name='59'></font>
+<a name='60'>
+<a name='61'>
+      F_NO3 = 3.6115 +  -0.0071*F_POM + -0.0014*F_POM**2 &amp;<a name='62'>
+     &amp; + 0.0463*S + -0.0035*S**2 + 0.0001*S**3 + -0.5613*T + 0.0238*T**2 + &amp;<a name='63'>
+     &amp; -0.0003*T**3 + 0.1142*NH4 + -0.0209*NH4**2 + 0.0008*NH4**3 + -0.0134*NO3 + &amp;<a name='64'>
+     &amp; 0.0001*NO3**2 + 0.0144*O2 + -0.0001*O2**2 <a name='65'>
+<a name='66'>
+<font color=#447700>!Testing Additional Terms<a name='67'></font>
+<font color=#447700>!      F_DIC = -F_O2 + 1.25*F_NO3<a name='68'></font>
+<font color=#447700>!      F_ALK = -F_NH4 + F_NO3<a name='69'></font>
+<a name='70'>
+<font color=#447700>!Update state variables with flux values<a name='71'></font>
+     <font color=#447700>!O2, NH4, NO3<a name='72'></font>
+      f(iO2) =  AMAX1(f(iO2)  + F_O2/h*dT/Sday,0.)<a name='73'>
+      f(iNH4) = AMAX1(f(iNH4) + F_NH4/h*dT/Sday,0.)<a name='74'>
+      f(iNO3) = AMAX1(f(iNO3) + F_NO3/h*dT/Sday,0.)<a name='75'>
+<font color=#447700>!Testing additional terms<a name='76'></font>
+<font color=#447700>!      f(iDIC) = AMAX1(f(iDIC) + F_DIC/h*dT/Sday,0.)<a name='77'></font>
+<font color=#447700>!      f(iALK) = AMAX1(f(iALK) + F_ALK/h*dT/Sday,0.)<a name='78'></font>
+<a name='79'>
+<font color=#447700>!Subtract OM flux, with conversion back to C from N<a name='80'></font>
+      f(iOM1_A) = AMAX1(f(iOM1_A)  - (A_C/A_N)*F_POM_A/h*dT/Sday,0.)<a name='81'>
+      f(iOM1_Z) = AMAX1(f(iOM1_Z)  - (Z_C/Z_N)*F_POM_Z/h*dT/Sday,0.)<a name='82'>
+<font color=#447700>!      f(iOM1_A) = AMAX1(f(iOM1_A)  - (106./16.)*F_POM_A/h*dT/Sday,0.)<a name='83'></font>
+<font color=#447700>!      f(iOM1_Z) = AMAX1(f(iOM1_Z)  - (106./16.)*F_POM_Z/h*dT/Sday,0.)<a name='84'></font>
+      f(iOM1_R) = AMAX1(f(iOM1_R)  - (51./4.5)*F_POM_R/h*dT/Sday,0.)<a name='85'>
+      f(iOM1_BC) = AMAX1(f(iOM1_BC)  - (106./16.)*F_POM_BC/h*dT/Sday,0.)<a name='86'>
+<a name='87'>
+      RETURN<a name='88'>
+<a name='89'>
+      END Subroutine Meta_SOC <a name='90'>
+</pre></body></html>

@@ -1,0 +1,23 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!***********************************************************************<a name='2'></font>
+<A NAME='RNITRATE'><A href='../../html_code/CGEM_2.0/rnitrate.f.html#RNITRATE' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='3'>
+  <font color=#993300>FUNCTION </font><font color=#cc0000>rnitrate</font>( O2, KO2 ) RESULT( RES )  <A href='../../call_to/RNITRATE.html' TARGET='index'>1</A><a name='4'>
+<a name='5'>
+  <font color=#447700>!--------------------------------------------------------------------  <a name='6'></font>
+  <font color=#447700>! Monod type function and feedbacks for NO3 - as an electron acceptor.<a name='7'></font>
+  <font color=#447700>!--------------------------------------------------------------------   <a name='8'></font>
+    IMPLICIT NONE<a name='9'>
+    <a name='10'>
+    REAL,INTENT(IN) :: O2  <font color=#447700>! Oxygen concentration<a name='11'></font>
+    REAL,INTENT(IN) :: KO2 <font color=#447700>! Inhibition constant<a name='12'></font>
+    REAL            :: RES<a name='13'>
+    REAL:: PO2<a name='14'>
+<a name='15'>
+    PO2  = MAX( 0.0, O2 )<a name='16'>
+<a name='17'>
+    RES  = KO2 / ( KO2 + PO2 )  <a name='18'>
+<a name='19'>
+    RETURN<a name='20'>
+  END FUNCTION rnitrate  <a name='21'>
+<font color=#447700>!***********************************************************************<a name='22'></font>
+</pre></body></html>

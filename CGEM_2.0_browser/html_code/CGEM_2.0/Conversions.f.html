@@ -1,0 +1,17 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='CONVERSIONS'><A href='../../html_code/CGEM_2.0/Conversions.f.html#CONVERSIONS' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='2'>
+<font color=#993300>Module </font><font color=#cc0000>Conversions</font>  <A href='../../call_to/CONVERSIONS.html' TARGET='index'>11</A><a name='3'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='4'></font>
+<font color=#447700>!-- Conversion factors between mg Chla and phytoplankton number density<a name='5'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='6'></font>
+      real, parameter :: C2_chla_mg       = 3.00203293024339E-09 <a name='7'>
+      real, parameter :: C2_chla_mg_inv   = 1./C2_chla_mg<a name='8'>
+<font color=#447700>!-- Number of sec in 24 hr day<a name='9'></font>
+      real, parameter :: SDay = 86400.0 <a name='10'>
+<font color=#447700>!-- Convert quanta/cm2/s to mol photons/m2/d<a name='11'></font>
+<font color=#447700>!   N_Av=6.0221413E+23<a name='12'></font>
+<font color=#447700>!   quanta/cm2/s * 1 mol/N_av quanta * 10,000cm2/m2 * 86400s/d = mol/m2/d<a name='13'></font>
+      real, parameter :: convert_I   = 1. / 6.0221413 * 8.64 * 1.e-15 <a name='14'>
+<a name='15'>
+END Module Conversions<a name='16'>
+</pre></body></html>

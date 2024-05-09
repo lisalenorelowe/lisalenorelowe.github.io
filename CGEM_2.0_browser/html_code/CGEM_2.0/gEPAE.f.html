@@ -1,0 +1,422 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='GEPAE'><A href='../../html_code/CGEM_2.0/gEPAE.f.html#GEPAE' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+     <font color=#993300>Subroutine </font><font color=#cc0000>gEPAE</font>(type, iYr, iMon, iDay, iHr, F, istatus)  <A href='../../call_to/GEPAE.html' TARGET='index'>3</A>,<A href='../../call_from/GEPAE.html' TARGET='index'>3</A><a name='3'>
+<a name='4'>
+<font color=#447700>!--------------------------------------------------------------------<a name='5'></font>
+<font color=#447700>! NB: Use this subroutine to read and bring back ssh (E).<a name='6'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='7'></font>
+<a name='8'>
+<font color=#447700>!-----------------------------------------------------------------<a name='9'></font>
+<font color=#447700>!            Written  by D.S.Ko/NRL<a name='10'></font>
+<font color=#447700>!            Modified by B.E. Herchenroder/EMVL, April/June 2010<a name='11'></font>
+<font color=#447700>!                                                June       2011<a name='12'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='13'></font>
+<font color=#447700>!     To get (find &amp; read) hydrodynamic input files of compact form.<a name='14'></font>
+<font color=#447700>!<a name='15'></font>
+<font color=#447700>!   Input to subroutine:<a name='16'></font>
+<font color=#447700>!<a name='17'></font>
+<font color=#447700>!   Disregard the above two comment lines. They now read:<a name='18'></font>
+<font color=#447700>!     type: hydrodynamic input file type - ssh<a name='19'></font>
+<font color=#447700>!<a name='20'></font>
+<font color=#447700>!   iYr,iMon,iDay,iHr  - date in year, month, day, hour (GMT)<a name='21'></font>
+<font color=#447700>!<a name='22'></font>
+<font color=#447700>!   Output from subroutine:<a name='23'></font>
+<font color=#447700>!     F - full 2D/3D fields (including land)<a name='24'></font>
+<font color=#447700>!     istatus = 1 - ok; = 0 - error<a name='25'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='26'></font>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/gEPAE.f.html#GEPAE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_23"><a name='27'>
+<a name='28'>
+      IMPLICIT NONE<a name='29'>
+<a name='30'>
+<font color=#447700>!-----------------------------------------------------<a name='31'></font>
+<font color=#447700>! Declare variables in subroutine Inteface<a name='32'></font>
+<font color=#447700>!------------------------------------------<a name='33'></font>
+<font color=#447700>! --- Input to subroutine:<a name='34'></font>
+<a name='35'>
+      character, INTENT(IN)  ::  type*3<a name='36'>
+      <a name='37'>
+      integer  , INTENT(IN)  ::  iYr,iMon,iDay,iHr<a name='38'>
+      <a name='39'>
+<font color=#447700>! --- Output from subroutine:<a name='40'></font>
+      real     , INTENT(OUT) ::   F(im,jm,*)  <font color=#447700>! The * should be 1 for ssh <a name='41'></font>
+            <a name='42'>
+      integer  , INTENT(OUT) ::   istatus     <font color=#447700>! = 1 : ok; = 0 : bad<a name='43'></font>
+<font color=#447700>!------------------------------------------------------------------------      <a name='44'></font>
+<a name='45'>
+<font color=#447700>!------------------------------<a name='46'></font>
+<font color=#447700>! integer parameter statements<a name='47'></font>
+<font color=#447700>!------------------------------<a name='48'></font>
+      INTEGER, PARAMETER :: ntypes=12<a name='49'>
+<a name='50'>
+<font color=#447700>!---------------------------<a name='51'></font>
+<font color=#447700>! integer scalar variables:<a name='52'></font>
+<font color=#447700>!---------------------------<a name='53'></font>
+      INTEGER    i<a name='54'>
+      INTEGER    ij<a name='55'>
+      <a name='56'>
+      integer    init<a name='57'>
+      data       init/1/ <a name='58'>
+      save       init<a name='59'>
+      <a name='60'>
+      integer    ista<a name='61'>
+      INTEGER    ity  <a name='62'>
+      <a name='63'>
+      INTEGER    LOC          <a name='64'>
+      INTEGER    lf      <a name='65'>
+      <a name='66'>
+      integer    nd          <a name='67'>
+      save       nd      <a name='68'>
+<a name='69'>
+<font color=#447700>!---------------------------<a name='70'></font>
+<font color=#447700>! integer array variables:<a name='71'></font>
+<font color=#447700>!--------------------------- <a name='72'></font>
+      integer    ld(20)      <a name='73'>
+      save       ld<a name='74'>
+<a name='75'>
+<font color=#447700>!---------------------------<a name='76'></font>
+<font color=#447700>! real array variables:<a name='77'></font>
+<font color=#447700>!---------------------------<a name='78'></font>
+      real       SSH(no)                      <a name='79'>
+      save       SSH<a name='80'>
+            <a name='81'>
+<font color=#447700>!---------------------------<a name='82'></font>
+<font color=#447700>! character variables:<a name='83'></font>
+<font color=#447700>!---------------------------<a name='84'></font>
+      character  blank120*120<a name='85'>
+      character  cmd*128<a name='86'>
+      <a name='87'>
+      character  date*14  <a name='88'>
+      <a name='89'>
+      character  fn*120      <a name='90'>
+<a name='91'>
+      character  ind(20)*120<a name='92'>
+      save       ind   <a name='93'>
+         <a name='94'>
+      character  fnb(ntypes+1)*120       <a name='95'>
+      save       fnb<a name='96'>
+                       <a name='97'>
+      character  types(ntypes)*3 <a name='98'>
+           <a name='99'>
+      data       types/'ssh','sst','sss' ,'ssu' ,'ssv' ,'ssf',         &amp;<a name='100'>
+      &amp;                't3d','s3d','ux3d','vx3d','wx3d','zkh'  /      <a name='101'>
+      save       types<a name='102'>
+<a name='103'>
+<font color=#447700>! ---------------------------------------------------------------<a name='104'></font>
+      istatus = 0<a name='105'>
+      <a name='106'>
+      DO i = 1, 120<a name='107'>
+         blank120(i:i) = ' '<a name='108'>
+      ENDDO<a name='109'>
+<a name='110'>
+<font color=#447700>! ---------------------------------------------------------------<a name='111'></font>
+      if (init.eq.1) then<a name='112'>
+      <a name='113'>
+<font color=#447700>! ------ Get hydrodynamic input dir -----------------------------------<a name='114'></font>
+<font color=#447700>! ----- get output dirs, i.e. really the directory for hydrodynamic <a name='115'></font>
+<font color=#447700>!                             INPUT to EPACOM_GEM_3D so a new subroutine<a name='116'></font>
+<font color=#447700>!                             was written, ghydro_inputdir, to better<a name='117'></font>
+<font color=#447700>!                             reflect, that we are getting input to<a name='118'></font>
+<font color=#447700>!                             EPACOM_GEM<a name='119'></font>
+<font color=#447700>!<a name='120'></font>
+<font color=#447700>!        Before do so, set all elements in the ind character<a name='121'></font>
+<font color=#447700>!        array to blanks to make sure that no garbage gets <a name='122'></font>
+<font color=#447700>!        incorporated into the arrays. <a name='123'></font>
+<font color=#447700>!---------------------------------------------------------------------- <a name='124'></font>
+         DO i = 1, 20<a name='125'>
+            ind(i)  = blank120   	     <a name='126'>
+	 ENDDO<a name='127'>
+	 <a name='128'>
+<font color=#447700>!---------------------------------------------------------------------------<a name='129'></font>
+<font color=#447700>! In the subtroutine call below for ghydro_inputdir:<a name='130'></font>
+<font color=#447700>!<a name='131'></font>
+<font color=#447700>!        ind: on input , an array of 20 blank strings of length 120 chars<a name='132'></font>
+<font color=#447700>!<a name='133'></font>
+<font color=#447700>!             on output, ind(i) =  path, including an ending /, of the <a name='134'></font>
+<font color=#447700>!                                  ith directory, 1 &lt;= i &lt;= nd, nd &lt;= 20,<a name='135'></font>
+<font color=#447700>!                                  holding hydrodynamic input generated by<a name='136'></font>
+<font color=#447700>!                                  EPACOM v5 for the present run of<a name='137'></font>
+<font color=#447700>!                                  NCOM_GEM_3_3D. <a name='138'></font>
+<font color=#447700>!--------------------------------------------------------------------------- <a name='139'></font>
+         call <A href='../../html_code/CGEM_2.0/ghydro_inputdir.f.html#GHYDRO_INPUTDIR'>ghydro_inputdir</A><A href='../../html_code/CGEM_2.0/gEPAE.f.html#GEPAE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GHYDRO_INPUTDIR_1"> (ind , ld, nd)   <font color=#447700>! ind is in/out<a name='140'></font>
+	                                         <font color=#447700>! ld is in/out<a name='141'></font>
+					         <font color=#447700>! nd is out<a name='142'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='143'></font>
+<font color=#447700>! Note that the array fnb below is a "flag array." It is set to: <a name='144'></font>
+<font color=#447700>!      "file in directory has not been opened" <a name='145'></font>
+<font color=#447700>! (without the quotes) when the file fn has not been opened yet and <a name='146'></font>
+<font color=#447700>! set to the file name fn when the file has been opened.<a name='147'></font>
+<font color=#447700>!------------------------------------------------------------------- <a name='148'></font>
+         do i = 1, ntypes+1<a name='149'>
+            fnb(i) = 'file in directory has not been opened'   <a name='150'>
+	 end do<a name='151'>
+<a name='152'>
+         init = 0<a name='153'>
+      end if    <font color=#447700>! End of "if (init.eq.1)" block if<a name='154'></font>
+<font color=#447700>!----------------------------------------------------------       <a name='155'></font>
+<a name='156'>
+      ity = 0      <a name='157'>
+      do i = 1, ntypes<a name='158'>
+	if (type.eq.types(i)) ity = i<a name='159'>
+      end do<a name='160'>
+      <a name='161'>
+      IF (ity.eq.0) THEN      <a name='162'>
+         WRITE(6, "(' ')")<a name='163'>
+         WRITE(6, "('An Error found in subroutine gEPAE')") <a name='164'>
+         WRITE(6, "('when called with the following input data:')") <a name='165'>
+         WRITE(6, "(' ')") <a name='166'>
+         WRITE(6, "('type = ', A3)") type  <a name='167'>
+         WRITE(6, "('iYr  = ', I4)") iYr<a name='168'>
+         WRITE(6, "('iMon = ', I2)") iMon<a name='169'>
+         WRITE(6, "('iHr  = ', I2)") iHr <a name='170'>
+         WRITE(6, "(' ')") <a name='171'>
+         WRITE(6, "('None of the allowed data types matched')")	<a name='172'>
+         WRITE(6, "('the type input to the subroutine, namely: ')") <a name='173'>
+	 WRITE(6, "(' ')") <a name='174'>
+         WRITE(6, "('   type = ',A3)") type<a name='175'>
+	 WRITE(6, "(' ')")<a name='176'>
+	 WRITE(6, "('The allowed type is: ')")<a name='177'>
+	 WRITE(6, "('ssh ' )")	 <a name='178'>
+	 WRITE(6, "(' ')") 	 	   <a name='179'>
+         WRITE(6, "('Abort Run.')") <a name='180'>
+         WRITE(6, "(' ')")        <a name='181'>
+         STOP <a name='182'>
+      ENDIF <a name='183'>
+      <a name='184'>
+<font color=#447700>!-----------------------------------------      <a name='185'></font>
+<font color=#447700>!     The write below is an internal write. <a name='186'></font>
+<font color=#447700>!-----------------------------------------      <a name='187'></font>
+      write (date,'(i4.4,3i2.2)') iYr,iMon,iDay,iHr  <a name='188'>
+      <a name='189'>
+<font color=#447700>!-------------------------------------------------------------------<a name='190'></font>
+<font color=#447700>! Loop thru the nd directory paths that are stored in the character<a name='191'></font>
+<font color=#447700>! array "ind" (without the quotes). <a name='192'></font>
+<font color=#447700>!<a name='193'></font>
+<font color=#447700>! For a given directory, say ind(i), construct the path that data <a name='194'></font>
+<font color=#447700>! files of type 'ssh', <a name='195'></font>
+<font color=#447700>! would have if they were included in directory ind(i). Then try <a name='196'></font>
+<font color=#447700>! to open the data file. <a name='197'></font>
+<font color=#447700>!<a name='198'></font>
+<font color=#447700>! If an error occurs when trying to open the file, i.e. it doesn't <a name='199'></font>
+<font color=#447700>! exist in the directory ind(i), go back and read the next directory <a name='200'></font>
+<font color=#447700>! path (i.e. ind(i+1)) in the array, construct the path of the file <a name='201'></font>
+<font color=#447700>! if it is located in directory ind(i+1), and try to open the file. <a name='202'></font>
+<font color=#447700>!<a name='203'></font>
+<font color=#447700>! Keep doing these steps for each directory stored in the array ind <a name='204'></font>
+<font color=#447700>! until the file is found and opened successfully. If the file is <a name='205'></font>
+<font color=#447700>! never found, print an error message and abort run.<a name='206'></font>
+<font color=#447700>!------------------------------------------------------------------- <a name='207'></font>
+      <a name='208'>
+<font color=#447700>!--------------------------------------------------------------------      <a name='209'></font>
+<font color=#447700>!  Note that the notation <a name='210'></font>
+<font color=#447700>!     ind(i)(:ld(i)) <a name='211'></font>
+<font color=#447700>!  below is the same as<a name='212'></font>
+<font color=#447700>!     ind(i)(1:ld(i)) == characters 1-&gt; ld(i) of the ith string<a name='213'></font>
+<font color=#447700>!     in the character array variable ind which has a dimension of 20<a name='214'></font>
+<font color=#447700>!<a name='215'></font>
+<font color=#447700>!  Note also that the notation<a name='216'></font>
+<font color=#447700>!     ind(i)(ld(i):) <a name='217'></font>
+<font color=#447700>!  is the same as           <a name='218'></font>
+<font color=#447700>!     ind(i)(ld(i),20) == characters ld(i) -&gt; 20 of the ith string<a name='219'></font>
+<font color=#447700>!     in the character array variable ind which has a dimension of 20<a name='220'></font>
+<font color=#447700>!--------------------------------------------------------------------      <a name='221'></font>
+      i = 1<a name='222'>
+7     fn = ind(i)(:ld(i))//type//'.'//TRIM(date)<a name='223'>
+      lf = index(fn,' ')-1<a name='224'>
+<a name='225'>
+      CALL <A href='../../html_code/CGEM_2.0/ickfile.f.html#ICKFILE'>ickfile</A><A href='../../html_code/CGEM_2.0/gEPAE.f.html#GEPAE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="ICKFILE_1">(fn,ista)   <font color=#447700>! ista =  0, file fn does not exist<a name='226'></font>
+                              <font color=#447700>! ista =  1, file fn exists &amp; is uncompressed<a name='227'></font>
+			      <font color=#447700>! ista = -1, file fn exists &amp; is compressed<a name='228'></font>
+<a name='229'>
+<font color=#447700>! ***<a name='230'></font>
+      if (ista.ne.0) goto 8<a name='231'>
+         <font color=#447700>!---------------------------------------------------------------<a name='232'></font>
+         <font color=#447700>! If we get here, ista=0 and the file fn for directory ind(i) <a name='233'></font>
+         <font color=#447700>! does not exist. Try the next directory path ind(i+1) and see <a name='234'></font>
+	 <font color=#447700>! if the hydrodynamics input file with the same type and date <a name='235'></font>
+	 <font color=#447700>! exists in that directory<a name='236'></font>
+         <font color=#447700>!---------------------------------------------------------------  <a name='237'></font>
+             <a name='238'>
+      i = i + 1<a name='239'>
+<a name='240'>
+         IF (i.le.nd) THEN<a name='241'>
+	     goto 7<a name='242'>
+	 ELSE<a name='243'>
+	    <font color=#447700>!-------------------------------------------------------<a name='244'></font>
+	    <font color=#447700>! If we get here, i &gt; nd and there are no more directory<a name='245'></font>
+	    <font color=#447700>! paths to check for the hydrodynamics input file with <a name='246'></font>
+	    <font color=#447700>! type and date at the end, i.e. the file could not be <a name='247'></font>
+	    <font color=#447700>! found in any of the directories with paths stored in<a name='248'></font>
+	    <font color=#447700>! the ind array. Print an error message and abort run.<a name='249'></font>
+	    <font color=#447700>!-------------------------------------------------------<a name='250'></font>
+            WRITE (6, "(' ')") 	    <a name='251'>
+            WRITE (6,*) '* In sub.gEPAE, can not find a hydrodynamics '<a name='252'>
+            WRITE (6,*) '* input file with ',  type,'.',date    <a name='253'>
+            WRITE (6,*) '* in its name. Below are all the directories'   <a name='254'>
+            WRITE (6,*) '* that were unsuccessfuly checked for the'<a name='255'>
+            WRITE (6,*) '* file: '	    <a name='256'>
+            WRITE (6, "(' ')")	    	        <a name='257'>
+            do i = 1, nd<a name='258'>
+               write (6,*)'  in ', ind(i)(:ld(i))	<a name='259'>
+            end do<a name='260'>
+            WRITE (6, "(' ')") <a name='261'>
+            WRITE (6, "('* Find and fix the problem. Now abort the  ')") <a name='262'>
+            WRITE (6, "('* present run ')") <a name='263'>
+            WRITE (6, "(' ')")	    	 <a name='264'>
+	    <a name='265'>
+	    STOP<a name='266'>
+	ENDIF   <font color=#447700>! End of "IF (i.le.nd)" block IF  <a name='267'></font>
+        <a name='268'>
+8     CONTINUE<a name='269'>
+<a name='270'>
+      if (fn.eq.fnb(ity)) goto 9<a name='271'>
+      <a name='272'>
+         if (ista.eq.-1) then	<a name='273'>
+         <font color=#447700>! compressed<a name='274'></font>
+<a name='275'>
+           call system                                                   &amp;<a name='276'>
+	 &amp;    ('if(-e hydro_input.tmp) /bin/rm -f hydro_input.tmp')	   <a name='277'>
+           write (cmd,'(''/bin/zcat '',a,''&gt;  hydro_input.tmp'')') fn<a name='278'>
+<a name='279'>
+           call system (cmd)<a name='280'>
+           open (40,err=30,file='hydro_input.tmp' ,                    &amp;<a name='281'>
+           &amp;        form='unformatted',status='old')	<a name='282'>
+         else <a name='283'>
+         <font color=#447700>! uncompressed     <a name='284'></font>
+           open (40,err=30,file=fn, form='unformatted',status='old')<a name='285'>
+<a name='286'>
+         end if  <font color=#447700>! End of "if (ista.eq.-1)" block IF<a name='287'></font>
+	 <a name='288'>
+      rewind(40)<a name='289'>
+<a name='290'>
+<a name='291'>
+<font color=#447700>!---------------------------------------------------------------<a name='292'></font>
+<font color=#447700>! Read the data on unit 40 for the timelevel associated with the<a name='293'></font>
+<font color=#447700>! variable "date" (without the quotes), i.e. for iYr ,iMon,iDay,<a name='294'></font>
+<font color=#447700>!                                                iHr <a name='295'></font>
+<font color=#447700>!<a name='296'></font>
+<font color=#447700>! Only the ity value of 1 (for ssh) is acceptable here. If ity<a name='297'></font>
+<font color=#447700>! is other than 1, print error message and abort run<a name='298'></font>
+<font color=#447700>!--------------------------------------------------------------- <a name='299'></font>
+<a name='300'>
+11    CONTINUE<a name='301'>
+<a name='302'>
+    <font color=#447700>!-----------------------------------------------------------<a name='303'></font>
+    <font color=#447700>! ity should only be 1. If it is other than 1, print error <a name='304'></font>
+    <font color=#447700>! message and abort run.<a name='305'></font>
+    <font color=#447700>!-----------------------------------------------------------  <a name='306'></font>
+      <a name='307'>
+      IF (ity /= 1) THEN<a name='308'>
+         LOC = 1<a name='309'>
+         WRITE(6, "(' ')")<a name='310'>
+         WRITE(6, "('In subroutine gEPAE at LOC = ',I2)") LOC<a name='311'>
+         WRITE(6, "('ity was found to be ity = ', I3      )") ity<a name='312'>
+         WRITE(6, "('Only an ity value of 1 for ssh (E) ')")  <a name='313'>
+         WRITE(6, "('is recognized. ')") <a name='314'>
+         WRITE(6, "('That means that an attempt was made to  ')") <a name='315'>
+         WRITE(6, "('read data other than ssh (E). Find   ')")                          <a name='316'>
+         WRITE(6, "('the problem and fix it. Abort run.      ')")   <a name='317'>
+         WRITE(6, "(' ')")                    <a name='318'>
+         STOP                        <a name='319'>
+      ENDIF      <a name='320'>
+<a name='321'>
+      read (40,err=40) SSH<a name='322'>
+      <a name='323'>
+59    close(40)<a name='324'>
+<a name='325'>
+      fnb(ity) = fn<a name='326'>
+<a name='327'>
+      if (ista.eq.-1)  call system                                     &amp;<a name='328'>
+      &amp; ('if(-e hydro_input.tmp) /bin/rm -f hydro_input.tmp')            <a name='329'>
+<a name='330'>
+9     CONTINUE<a name='331'>
+<a name='332'>
+<a name='333'>
+41   CONTINUE<a name='334'>
+<a name='335'>
+    <font color=#447700>!-----------------------------------------------------------<a name='336'></font>
+    <font color=#447700>! ity should only be 1. If it is other than 1, print error <a name='337'></font>
+    <font color=#447700>! message and abort run.<a name='338'></font>
+    <font color=#447700>!-----------------------------------------------------------  <a name='339'></font>
+      IF (ity /= 1) THEN<a name='340'>
+         LOC = 2<a name='341'>
+         WRITE(6, "(' ')")<a name='342'>
+         WRITE(6, "('In subroutine gEPAE at LOC = ',I2)") LOC<a name='343'>
+         WRITE(6, "('ity was found to be ity = ', I3      )") ity<a name='344'>
+         WRITE(6, "('Only an ity value of 1 for ssh (E) ')")  <a name='345'>
+         WRITE(6, "('is recognized. ')") <a name='346'>
+         WRITE(6, "('That means that an attempt was made to  ')") <a name='347'>
+         WRITE(6, "('read data other than ssh (E). Find   ')")               <a name='348'>
+         WRITE(6, "('the problem and fix it. Abort run.      ')")   <a name='349'>
+         WRITE(6, "(' ')")                    <a name='350'>
+         STOP                        <a name='351'>
+      ENDIF<a name='352'>
+           <a name='353'>
+      F(:,:,1) = -9999.0<a name='354'>
+<a name='355'>
+      do ij = 1, no<a name='356'>
+         F(io(ij),jo(ij),1)       = SSH(ij)	<a name='357'>
+      end do<a name='358'>
+      <a name='359'>
+      istatus = 1<a name='360'>
+<a name='361'>
+#ifdef DEBUG<a name='362'>
+      WRITE (6, "(' ')")<a name='363'>
+      WRITE (6, "('In subroutine gEPAE for type = ', A)") type<a name='364'>
+      WRITE (6, "(' ')")      <a name='365'>
+      WRITE (6, "('iYr = ', I4, ' iMon = ', I2, ' iDay = ', I2,        &amp;<a name='366'>
+      &amp; ' iHr = ', I2 )") iYr,iMon,IDay,iHr <a name='367'>
+      WRITE (6, "(' ')")     <a name='368'>
+      WRITE (6, "('the following file was successfully found: ')")      <a name='369'>
+      WRITE (6, "(' ')")                     <a name='370'>
+      write (6,*) fn(:lf)<a name='371'>
+      WRITE (6, "(' ')") <a name='372'>
+      WRITE (6, "('and read. ')") <a name='373'>
+      WRITE (6, "(' ')")       <a name='374'>
+      WRITE (6, "('Leaving subroutine gEPAE. ')")                   <a name='375'>
+      WRITE (6, "(' ')")       <a name='376'>
+#endif<a name='377'>
+      RETURN<a name='378'>
+      <a name='379'>
+69    CONTINUE<a name='380'>
+  <a name='381'>
+      istatus = 1<a name='382'>
+      <a name='383'>
+#ifdef DEBUG<a name='384'>
+      WRITE (6, "(' ')")<a name='385'>
+      WRITE (6, "('In subroutine gEPAE for type = ', A)") type<a name='386'>
+      WRITE (6, "(' ')")            <a name='387'>
+      WRITE (6, "('the following file was successfully found: ')")      <a name='388'>
+      WRITE (6, "(' ')")                     <a name='389'>
+      write (6,*) fn(:lf)<a name='390'>
+      WRITE (6, "(' ')") <a name='391'>
+      WRITE (6, "('and read. Leaving subroutine gEPAE.')") <a name='392'>
+      WRITE (6, "(' ')")             <a name='393'>
+#endif<a name='394'>
+      RETURN<a name='395'>
+      <a name='396'>
+      <a name='397'>
+<a name='398'>
+30    CONTINUE<a name='399'>
+      write (6,*)'* In subroutine gEPAE, can not open: ',fn(:lf)<a name='400'>
+      WRITE (6, "('* Find &amp; fix the problem &amp; rerun. Now abort ')") <a name='401'>
+      WRITE (6, "('* present run. ')")<a name='402'>
+      WRITE (6, "(' ')")        <a name='403'>
+      STOP                  <a name='404'>
+ <a name='405'>
+40    CONTINUE <a name='406'>
+      write (6,*)'* In subroutine gEPAE, Read Error  : ',fn(:lf)<a name='407'>
+      WRITE (6, "('* Find &amp; fix the problem &amp; rerun. Now abort ')") <a name='408'>
+      WRITE (6, "('* present run. ')")<a name='409'>
+      WRITE (6, "(' ')")        <a name='410'>
+      STOP                                    <a name='411'>
+      <a name='412'>
+60    CONTINUE<a name='413'>
+<a name='414'>
+#ifdef DEBUG<a name='415'>
+       write (6,*)'* In subroutine gEPAE, Unknown type: ',type<a name='416'>
+#endif<a name='417'>
+      return<a name='418'>
+<a name='419'>
+      END SUBROUTINE gEPAE<a name='420'>
+<font color=#447700>!*****************************************************************************<a name='421'></font>
+</pre></body></html>

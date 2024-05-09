@@ -1,0 +1,164 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='WRITE_INPUTFILE'><A href='../../html_code/CGEM_2.0/Write_InputFile.f.html#WRITE_INPUTFILE' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+<font color=#993300>Subroutine </font><font color=#cc0000>Write_InputFile</font>(filename) <A href='../../call_to/WRITE_INPUTFILE.html' TARGET='index'>4</A>,<A href='../../call_from/WRITE_INPUTFILE.html' TARGET='index'>4</A><a name='3'>
+<a name='4'>
+USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Write_InputFile.f.html#WRITE_INPUTFILE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_38"><a name='5'>
+USE <A href='../../html_code/CGEM_2.0/LIGHT_VARS.f.html#LIGHT_VARS'>LIGHT_VARS</A><A href='../../html_code/CGEM_2.0/Write_InputFile.f.html#WRITE_INPUTFILE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="LIGHT_VARS_4"><a name='6'>
+USE <A href='../../html_code/CGEM_2.0/TEMP_VARS.f.html#TEMP_VARS'>TEMP_VARS</A><A href='../../html_code/CGEM_2.0/Write_InputFile.f.html#WRITE_INPUTFILE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TEMP_VARS_5"><a name='7'>
+USE <A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS'>CGEM_vars</A><A href='../../html_code/CGEM_2.0/Write_InputFile.f.html#WRITE_INPUTFILE' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CGEM_VARS_20"> <a name='8'>
+<a name='9'>
+IMPLICIT NONE<a name='10'>
+<a name='11'>
+character*120 filename<a name='12'>
+<a name='13'>
+<font color=#447700>!--Code Identifier--------------<a name='14'></font>
+open(unit=999,file=filename,form='formatted',status='unknown')<a name='15'>
+write(999,*) "code_ID",code_ID<a name='16'>
+write(999,*)<a name='17'>
+<font color=#447700>!--Simulation specifics------<a name='18'></font>
+write(999,*)<a name='19'>
+write(999,*) "iYrS,iMonS,iDayS,iHrS,iMinS,iSecS",iYrS,iMonS,iDayS,iHrS,iMinS,iSecS<a name='20'>
+write(999,*) "iYrE,iMonE,iDayE,iHrE,iMinE,iSecE",iYrE,iMonE,iDayE,iHrE,iMinE,iSecE<a name='21'>
+write(999,*) "RESTART_FILE_TIMESTEP",RESTART_FILE_TIMESTEP<a name='22'>
+write(999,*) "dT, dT_out", dT, dT_out<a name='23'>
+write(999,*) "icent,jcent",icent,jcent<a name='24'>
+write(999,*)<a name='25'>
+<font color=#447700>!--Switches in GEM---------<a name='26'></font>
+write(999,*)<a name='27'>
+write(999,*) "Which_fluxes",Which_fluxes<a name='28'>
+write(999,*) "Which_temperature",Which_temperature<a name='29'>
+write(999,*) "Which_uptake",Which_uptake<a name='30'>
+write(999,*) "Which_quota",Which_quota<a name='31'>
+write(999,*) "Calibration",Calibration<a name='32'>
+write(999,*) "Out_1D",Out_1D<a name='33'>
+write(999,*) "Which_irradiance",Which_irradiance<a name='34'>
+write(999,*) "Which_chlaC",Which_chlaC<a name='35'>
+write(999,*) "Which_photosynthesis",Which_photosynthesis<a name='36'>
+write(999,*) "Which_growth",Which_growth<a name='37'>
+write(999,*) "SolarRad",SolarRad<a name='38'>
+write(999,*) "InitializeHow",InitializeHow<a name='39'>
+write(999,*) <a name='40'>
+<font color=#447700>!--Optics-----------------------<a name='41'></font>
+write(999,*)<a name='42'>
+write(999,*) "Kw",Kw<a name='43'>
+write(999,*) "Kcdom",Kcdom<a name='44'>
+write(999,*) "Kspm",Kspm<a name='45'>
+write(999,*) "Kchla",Kchla<a name='46'>
+write(999,*) "astar490",astar490<a name='47'>
+write(999,*) "aw490",aw490<a name='48'>
+write(999,*) "astarOMA",astarOMA<a name='49'>
+write(999,*) "astarOMZ",astarOMZ<a name='50'>
+write(999,*) "astarOMR",astarOMR<a name='51'>
+write(999,*) "astarOMBC",astarOMBC<a name='52'>
+write(999,*) "ws(iCDOM)",ws(iCDOM)<a name='53'>
+write(999,*)<a name='54'>
+<font color=#447700>!--Temperature-------------------<a name='55'></font>
+write(999,*)<a name='56'>
+write(999,*) "Tref",Tref<a name='57'>
+write(999,*) "KTg1",KTg1<a name='58'>
+write(999,*) "KTg2",KTg2<a name='59'>
+write(999,*) "Ea_R",Ea_R<a name='60'>
+write(999,*)<a name='61'>
+<font color=#447700>!--Phytoplankton-----------------<a name='62'></font>
+write(999,*)<a name='63'>
+write(999,*) "edibilevector for Z1",ediblevector(1,:)<a name='64'>
+write(999,*) "edibilevector for Z2",ediblevector(2,:)<a name='65'>
+write(999,*) "umax",umax<a name='66'>
+write(999,*) "alpha",alpha<a name='67'>
+write(999,*) "beta",beta<a name='68'>
+write(999,*) "respg",respg<a name='69'>
+write(999,*) "respb",respb<a name='70'>
+write(999,*) "QminN",QminN<a name='71'>
+write(999,*) "QminP",QminP<a name='72'>
+write(999,*) "QmaxN",QmaxN<a name='73'>
+write(999,*) "QmaxP,",QmaxP<a name='74'>
+write(999,*) "Kn",Kn<a name='75'>
+write(999,*) "Kp",Kp<a name='76'>
+write(999,*) "Ksi",Ksi<a name='77'>
+write(999,*) "KQn",KQn<a name='78'>
+write(999,*) "KQp",KQp<a name='79'>
+write(999,*) "nfQs",nfQs<a name='80'>
+write(999,*) "vmaxN",vmaxN<a name='81'>
+write(999,*) "vmaxP",vmaxP<a name='82'>
+write(999,*) "vmaxSi",vmaxSi<a name='83'>
+write(999,*) "aN",aN<a name='84'>
+write(999,*) "volcell",volcell<a name='85'>
+write(999,*) "Qc",Qc<a name='86'>
+write(999,*) "Athresh",Athresh<a name='87'>
+write(999,*) "ws(iA1:iA6)",ws(iA1:iA6)<a name='88'>
+write(999,*) "mA",mA<a name='89'>
+write(999,*)<a name='90'>
+<font color=#447700>!--Zooplankton---------------------<a name='91'></font>
+write(999,*)<a name='92'>
+write(999,*) "Zeffic",Zeffic<a name='93'>
+write(999,*) "Zslop",Zslop<a name='94'>
+write(999,*) "Zvolcell",Zvolcell<a name='95'>
+write(999,*) "ZQc",ZQc<a name='96'>
+write(999,*) "ZQn",ZQn<a name='97'>
+write(999,*) "ZQp",ZQp<a name='98'>
+write(999,*) "ZKa",ZKa<a name='99'>
+write(999,*) "Zrespg",Zrespg<a name='100'>
+write(999,*) "Zrespb",Zrespb<a name='101'>
+write(999,*) "Zumax",Zumax<a name='102'>
+write(999,*) "Zm",Zm<a name='103'>
+write(999,*)<a name='104'>
+<font color=#447700>!--Organic Matter--------------------<a name='105'></font>
+write(999,*) <a name='106'>
+write(999,*) "KG1",KG1<a name='107'>
+write(999,*) "KG2",KG2<a name='108'>
+write(999,*) "KG1_R",KG1_R<a name='109'>
+write(999,*) "KG2_R",KG2_R<a name='110'>
+write(999,*) "KG1_BC",KG1_BC<a name='111'>
+write(999,*) "KG2_BC",KG2_BC<a name='112'>
+write(999,*) "KNH4",KNH4<a name='113'>
+write(999,*) "nitmax",nitmax<a name='114'>
+write(999,*) "KO2",KO2<a name='115'>
+write(999,*) "KstarO2",KstarO2<a name='116'>
+write(999,*) "KNO3",KNO3<a name='117'>
+write(999,*) "pCO2",pCO2<a name='118'>
+write(999,*) "stoich_x1R",stoich_x1R<a name='119'>
+write(999,*) "stoich_y1R",stoich_y1R<a name='120'>
+write(999,*) "stoich_x2R",stoich_x2R<a name='121'>
+write(999,*) "stoich_y2R",stoich_y2R<a name='122'>
+write(999,*) "stoich_x1BC",stoich_x1BC<a name='123'>
+write(999,*) "stoich_y1BC",stoich_y1BC<a name='124'>
+write(999,*) "stoich_x2BC",stoich_x2BC<a name='125'>
+write(999,*) "stoich_y2BC",stoich_y2BC<a name='126'>
+write(999,*) "ws(iOM1_A)",ws(iOM1_A)<a name='127'>
+write(999,*) "ws(iOM2_A)",ws(iOM2_A)<a name='128'>
+write(999,*) "ws(iOM1_Z)",ws(iOM1_Z)<a name='129'>
+write(999,*) "ws(iOM2_Z)",ws(iOM2_Z)<a name='130'>
+write(999,*) "ws(iOM1_R)",ws(iOM1_R)<a name='131'>
+write(999,*) "ws(iOM2_R)",ws(iOM2_R)<a name='132'>
+write(999,*) "ws(iOM1_BC)",ws(iOM1_BC)<a name='133'>
+write(999,*) "ws(iOM2_BC)",ws(iOM2_BC)<a name='134'>
+write(999,*) "KGcdom", KGcdom<a name='135'>
+write(999,*) "CF_SPM", CF_SPM<a name='136'>
+write(999,*)<a name='137'>
+<font color=#447700>!----River Params-----------------------------------<a name='138'></font>
+write(999,*)<a name='139'>
+write(999,*) "rcNO3",rcNO3<a name='140'>
+write(999,*) "rcNH4",rcNH4<a name='141'>
+write(999,*) "rcPO4",rcPO4<a name='142'>
+write(999,*) "rcSi",rcSi<a name='143'>
+write(999,*)<a name='144'>
+<font color=#447700>!----Other Params-----------------------------------<a name='145'></font>
+write(999,*)<a name='146'>
+write(999,*) "Which_VMix",Which_VMix     <a name='147'>
+write(999,*) "KH_coeff",KH_coeff         <a name='148'>
+write(999,*) "Which_Outer_BC",Which_Outer_BC<a name='149'>
+write(999,*) "wt_l, wt_o",wt_l,wt_o<a name='150'>
+write(999,*) "m_OM_init,m_OM_BC,m_OM_sh",m_OM_init,m_OM_BC,m_OM_sh<a name='151'>
+write(999,*) "Stoich_x1A_init,Stoich_y1A_init",Stoich_x1A_init,Stoich_y1A_init<a name='152'>
+write(999,*) "Stoich_x2A_init,Stoich_y2A_init",Stoich_x2A_init,Stoich_y2A_init<a name='153'>
+write(999,*) "Stoich_x1Z_init,Stoich_y1Z_init",Stoich_x1Z_init,Stoich_y1Z_init<a name='154'>
+write(999,*) "Stoich_x2Z_init,Stoich_y2Z_init",Stoich_x2Z_init,Stoich_y2Z_init<a name='155'>
+write(999,*) "KG_bot",KG_bot<a name='156'>
+write(999,*)<a name='157'>
+write(999,*) "stoich_z1R,stoich_z1R",stoich_z1R,stoich_z1R<a name='158'>
+write(999,*) "stoich_z2BC,stoich_z2BC",stoich_z2BC,stoich_z2BC<a name='159'>
+<font color=#447700>!---------------------------------------------------<a name='160'></font>
+close(999)<a name='161'>
+return<a name='162'>
+END SUBROUTINE Write_InputFile <a name='163'>
+</pre></body></html>

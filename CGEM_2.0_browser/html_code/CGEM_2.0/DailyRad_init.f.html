@@ -1,0 +1,105 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>! This routine initializes the previous day's irradiance for use by the<a name='2'></font>
+<font color=#447700>! Cloern Chl:C algorithm.<a name='3'></font>
+<A NAME='DAILYRAD_INIT'><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='4'>
+<font color=#993300>Subroutine </font><font color=#cc0000>DailyRad_init</font>(TC_8, lat, lon, d_k, zl, zz, A_k, CDOM_k, &amp; <A href='../../call_to/DAILYRAD_INIT.html' TARGET='index'>1</A>,<A href='../../call_from/DAILYRAD_INIT.html' TARGET='index'>8</A><a name='5'>
+           &amp; OM1A_k, OM1G_k, OM1R_k, OM1BC_k, aDailyRad_k)<a name='6'>
+<a name='7'>
+  USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_14"> <font color=#447700>! For iYr0, etc.<a name='8'></font>
+  USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_4"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='9'></font>
+  use <A href='../../html_code/CGEM_2.0/Conversions.f.html#CONVERSIONS'>Conversions</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CONVERSIONS_5"> <a name='10'>
+  use <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_11"><a name='11'>
+<a name='12'>
+  implicit none<a name='13'>
+<a name='14'>
+  <font color=#447700>! Input variables<a name='15'></font>
+  integer(kind=8), intent(in) :: TC_8 <font color=#447700>! model time in seconds after iYr0.<a name='16'></font>
+  real, intent(in) :: lat, lon <font color=#447700>! latitude and longitude of current grid cell<a name='17'></font>
+  real, intent(in) :: d_k <font color=#447700>! depth + elevation<a name='18'></font>
+  real, intent(in) :: zl(kb)   <font color=#447700>! sigma value of top of layer k<a name='19'></font>
+  real, intent(in) :: zz(nsl) <font color=#447700>! zz(k) = elevation, i.e. depth, of the middle of layer k<a name='20'></font>
+  real, intent(in) :: A_k(nospA, nsl) <font color=#447700>!phytoplankton density in cells/m3<a name='21'></font>
+  real, intent(in) :: CDOM_k(nsl)<a name='22'>
+  real, intent(in) :: OM1A_k(nsl)<a name='23'>
+  real, intent(in) :: OM1G_k(nsl)<a name='24'>
+  real, intent(in) :: OM1R_k(nsl)<a name='25'>
+  real, intent(in) :: OM1BC_k(nsl)<a name='26'>
+<a name='27'>
+  <font color=#447700>! Output variables<a name='28'></font>
+  real, intent(out) :: aDailyRad_k(nsl)<a name='29'>
+<a name='30'>
+<a name='31'>
+  <font color=#447700>! Local variables<a name='32'></font>
+  integer :: iYr<a name='33'>
+  integer :: iMon<a name='34'>
+  integer :: iDay<a name='35'>
+  integer :: iSec<a name='36'>
+  integer :: iHr, iMin <font color=#447700>! Not used but needed for call<a name='37'></font>
+  integer :: k, isp<a name='38'>
+  logical :: leapyr<a name='39'>
+  integer :: jul_day<a name='40'>
+  integer :: JY <font color=#447700>! function<a name='41'></font>
+  integer :: mdate_julian<a name='42'>
+  real :: rhr <font color=#447700>! decimal hour with fraction thereof<a name='43'></font>
+  real :: bottom_depth(nsl)<a name='44'>
+  real :: d_sfc(nsl)<a name='45'>
+  real :: calc_solar_zenith <font color=#447700>! Function, calculates solar beam zenith angle<a name='46'></font>
+  real :: Zenith<a name='47'>
+  real :: SfcRad <font color=#447700>! solar irradiance just below the surface<a name='48'></font>
+  <font color=#447700>! The avg. clear-sky solar energy is 1200 W/m2. Convert it to photons/cm2/sec<a name='49'></font>
+  real, parameter :: solconst = 1200.00 * 2.77e14  <font color=#447700>! Morel and Smith (1974) <a name='50'></font>
+  real, parameter :: RADCONV = 1./6.0221413*1.e-19 <font color=#447700>! Convert quanta/cm2/s to mol quanta/m2/s<a name='51'></font>
+                                             <font color=#447700>! mol/m2/s = quanta/cm2/s * 1 mol/Avogadro# * 10,000cm2/m2<a name='52'></font>
+                                             <font color=#447700>!          =  (1/6.022e23) * 1.0e4 = (1/6.022)e-23 * 1.0e4<a name='53'></font>
+                                             <font color=#447700>!          = (1/6.0221413)e-19<a name='54'></font>
+  real :: Chla_tot_k(nsl)<font color=#447700>! Total Chl-a concentration (mg/m3) <a name='55'></font>
+  real :: aIOPpar(nsl), aRadBot <font color=#447700>! Unused but needed for call<a name='56'></font>
+  real :: aRadMid(nsl) <font color=#447700>! Holds desired output from Call_IOP_Par<a name='57'></font>
+  real :: aRadSum(nsl)<a name='58'>
+<a name='59'>
+  <font color=#447700>! Use simple regression to estimate chlorophyll a concentration<a name='60'></font>
+  do k = 1, nz<a name='61'>
+     Chla_tot_k(k) = 0.0<a name='62'>
+     do isp = 1, nospA<a name='63'>
+        Chla_tot_k(k) =  Chla_tot_k(k)  + A_k(isp,k)*C2_chla_mg <font color=#447700>!C2_chla_mg defined in Conversions module <a name='64'></font>
+     enddo <a name='65'>
+     <font color=#447700>! Init for later<a name='66'></font>
+     aRadSum(k) = 0.0<a name='67'>
+     bottom_depth(k) = d_k * zl(k+1) <font color=#447700>! Depth from Surface to bottom of cell<a name='68'></font>
+     d_sfc(k) = d_k * zz(k) <font color=#447700>! Depth from Surface to center of cell<a name='69'></font>
+  enddo <a name='70'>
+<a name='71'>
+  <font color=#447700>! Convert time counter into date so we can get the<a name='72'></font>
+  <font color=#447700>! day to calculate the correct solar path.<a name='73'></font>
+<a name='74'>
+  CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_5">( iYr0, TC_8, iYr, iMon, iDay, iHr, iMin, iSec )<a name='75'>
+<a name='76'>
+  if (<A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_1">(iYr) == 1) then<a name='77'>
+     leapyr = .FALSE.<a name='78'>
+  else <a name='79'>
+     leapyr = .TRUE.<a name='80'>
+  endif <a name='81'>
+<a name='82'>
+  <font color=#447700>! Assume that the day is from midnight to midnight<a name='83'></font>
+  jul_day = <A href='../../html_code/CGEM_2.0/mdate_julian.f.html#MDATE_JULIAN'>mdate_julian</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MDATE_JULIAN_1">(iMon, iDay, leapyr)<a name='84'>
+<a name='85'>
+  do iSec = 1, SDay, dT<a name='86'>
+     rhr = REAL(iSec) / REAL(3600)<a name='87'>
+     Zenith = <A href='../../html_code/CGEM_2.0/calc_solar_zenith.f.html#CALC_SOLAR_ZENITH'>calc_solar_zenith</A><A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CALC_SOLAR_ZENITH_1">(lat,lon,rhr,jul_day,leapyr) <a name='88'>
+     SfcRad = solconst * AMAX1( COS(Zenith), 0.0)    <font color=#447700>! COS(Z)&lt;= 0 means night<a name='89'></font>
+<a name='90'>
+     if(SfcRad .gt. 0.) then<a name='91'>
+        Call Call_IOP_PAR(SfcRad, Zenith, CDOM_k, Chla_tot_k, &amp;<a name='92'>
+             &amp; OM1A_k, OM1G_k, OM1R_k, OM1BC_k, bottom_depth, nz, d_sfc, aIOPpar, &amp;<a name='93'>
+             &amp; aRadBot, aRadMid)<a name='94'>
+        <font color=#447700>! Add to running total<a name='95'></font>
+        aRadSum(:) = aRadSum(:) + aRadMid(:)<a name='96'>
+     endif<a name='97'>
+  enddo<a name='98'>
+<a name='99'>
+  <font color=#447700>! Copy result to return variable<a name='100'></font>
+  <font color=#447700>! Need to onvert from quanta/cm2/s to mole quanta/m2/s<a name='101'></font>
+  aDailyRad_k(:) = aRadSum(:) * RADCONV<a name='102'>
+<a name='103'>
+END Subroutine DailyRad_init<a name='104'>
+</pre></body></html>

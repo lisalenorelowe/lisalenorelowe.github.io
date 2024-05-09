@@ -1,0 +1,559 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!******************************************************************************<a name='2'></font>
+<font color=#447700>! PURPOSE: AVE_NETCDF.F90 - Routines for outputing averaged CGEM data to a<a name='3'></font>
+<font color=#447700>!          NetCDF file.<a name='4'></font>
+<font color=#447700>! NOTES:   Non-ADT module.<a name='5'></font>
+<font color=#447700>! HISTORY: 2010/04/26, Todd Plessel, plessel.todd@epa.gov, Created.<a name='6'></font>
+<font color=#447700>!******************************************************************************<a name='7'></font>
+<a name='8'>
+<A NAME='AVE_NETCDF'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#AVE_NETCDF' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='9'>
+<font color=#993300>MODULE </font><font color=#cc0000>AVE_NETCDF</font> <A href='../../call_to/AVE_NETCDF.html' TARGET='index'>1</A>,<A href='../../call_from/AVE_NETCDF.html' TARGET='index'>2</A><a name='10'>
+  USE pnetcdf <font color=#447700>! For NFMPI_*<a name='11'></font>
+  USE <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#NETCDF_UTILITIES'>NETCDF_UTILITIES</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#AVE_NETCDF' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="NETCDF_UTILITIES_1"> <font color=#447700>! For CHKERR, DEFDIM, DEFVI1, CONVERT_LONGITUDES, etc.<a name='12'></font>
+  USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#AVE_NETCDF' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_1"> <font color=#447700>! For TOTAL_SECONDS<a name='13'></font>
+<a name='14'>
+  IMPLICIT NONE<a name='15'>
+  INCLUDE '<A href='../../html_code/include/mpif.h.html'>mpif.h</A>' <A NAME="mpif.h_1"><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#AVE_NETCDF' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><font color=#447700>! For MPI_*<a name='16'></font>
+<a name='17'>
+  <font color=#447700>! Private<a name='18'></font>
+<a name='19'>
+  INTEGER,PARAMETER:: VAR_3D = 7<a name='20'>
+  INTEGER,PARAMETER:: VAR_2D = 7<a name='21'>
+  INTEGER,PARAMETER:: VARS = VAR_3D + VAR_2D<a name='22'>
+  CHARACTER(LEN=*),PARAMETER,DIMENSION(VARS):: VAR_NAMES = (/ &amp;<a name='23'>
+    'Photosyn       ', &amp;<a name='24'>
+    'PAR            ', &amp;<a name='25'>
+    'ChlA           ', &amp;<a name='26'>
+    'Resp           ', &amp;<a name='27'>
+    'ArespTotC      ', &amp;<a name='28'>
+    'decay          ', &amp;<a name='29'>
+    'respG_CarcellG ', &amp;<a name='30'>
+    'Int_Photosyn   ', &amp;<a name='31'>
+    'Int_PAR        ', &amp;<a name='32'>
+    'Int_ChlA       ', &amp;<a name='33'>
+    'Int_Resp       ', &amp;<a name='34'>
+    'Int_ArespTotC  ', &amp;<a name='35'>
+    'Int_decay      ', &amp;<a name='36'>
+    'Int_respG_CarcellG ' &amp;<a name='37'>
+  /)<a name='38'>
+<a name='39'>
+  CHARACTER(LEN=*),PARAMETER,DIMENSION(VARS):: VAR_DESCRIPTIONS = (/&amp;<a name='40'>
+    'Photosynthesis- Primary production                                ', &amp;<a name='41'>
+    'Irradiance at mid cell                                            ', &amp;<a name='42'>
+    'Chlorophyll A                                                     ', &amp;<a name='43'>
+    'Total respiration                                                 ', &amp;<a name='44'>
+    'O2 from phytoplankton respiration                                 ', &amp;<a name='45'>
+    'O2 loss from decay                                                ', &amp;<a name='46'>
+    'Total zooplankton respiration                                     ', &amp;<a name='47'>
+    'Photosynthesis integrated through water column                    ', &amp;<a name='48'>
+    'Irradiance at mid cell integrated through water column            ', &amp;<a name='49'>
+    'Chlorophyll A integrated through water column                     ', &amp;<a name='50'>
+    'Total respiration integrated through water column                 ', &amp;<a name='51'>
+    'O2 from phytoplankton respiration integrated through water column ', &amp;<a name='52'>
+    'O2 loss from decay integrated through water column                ', &amp;<a name='53'>
+    'Total zooplankton respiration integrated through water column     '  &amp;<a name='54'>
+  /)<a name='55'>
+<a name='56'>
+  CHARACTER(LEN=*),PARAMETER,DIMENSION(VARS):: VAR_UNITS = (/ &amp;<a name='57'>
+    'mmol-O2/m3                      ', &amp;<a name='58'>
+    'photons/cm2                     ', &amp;<a name='59'>
+    'mg-Chla/m3                      ', &amp;<a name='60'>
+    'mmol-O2/m3                      ', &amp;<a name='61'>
+    'mmol-O2/m3                      ', &amp;<a name='62'>
+    'mmol-O2/m3                      ', &amp;<a name='63'>
+    'mmol-O2/m3                      ', &amp;<a name='64'>
+    'mmol-O2/m2                      ', &amp;<a name='65'>
+    'photons/cm?                     ', &amp;<a name='66'>
+    'mg/m2                           ', &amp;<a name='67'>
+    'mmol-O2/m2                      ', &amp;<a name='68'>
+    'mmol-O2/m2                      ', &amp;<a name='69'>
+    'mmol-O2/m2                      ', &amp;<a name='70'>
+    'mmol-O2/m2                      '  &amp;<a name='71'>
+  /)<a name='72'>
+<a name='73'>
+  INTEGER,DIMENSION(VARS):: VAR <font color=#447700>! NetCDF IDs for each variable.<a name='74'></font>
+  INTEGER TIME_VAR <font color=#447700>! NetCDF ID for time array variable.<a name='75'></font>
+  INTEGER FILE_ID <font color=#447700>! NetCDF ID for file.<a name='76'></font>
+  INTEGER SECONDS_PER_TIMESTEP <font color=#447700>! Model timestep size in seconds.<a name='77'></font>
+  INTEGER(8) SECONDS0 <font color=#447700>! Run start time in seconds since Model_dim::iYr0.<a name='78'></font>
+<a name='79'>
+PUBLIC CREATE_FILE_AV, OPEN_FILE_AV, &amp;<a name='80'>
+       WRITE_DATA_AV, CLOSE_FILE_AV, FLUSH_FILE_AV, &amp;<a name='81'>
+       LAST_AVE_NETCDF_TIMESTEP<a name='82'>
+<a name='83'>
+PRIVATE<a name='84'>
+CONTAINS<a name='85'>
+<a name='86'>
+  <font color=#447700>! Public<a name='87'></font>
+<a name='88'>
+  <font color=#447700>! Commands:<a name='89'></font>
+<a name='90'>
+  <font color=#447700>! CREATE_FILE_AV: Create output NetCDF file with given header data.<a name='91'></font>
+  <font color=#447700>! In a concurrent program, only one process should call this routine<a name='92'></font>
+  <font color=#447700>! then call CLOSE_FILE_AV then<a name='93'></font>
+  <font color=#447700>! worker processes should call OPEN_FILE_AV, WRITE_DATA_AV, CLOSE_FILE_AV.<a name='94'></font>
+  <font color=#447700>!<a name='95'></font>
+<A NAME='CREATE_FILE_AV'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='96'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>CREATE_FILE_AV</font>( NAME, IM, JM, NZ, NSTEP,  &amp; <A href='../../call_to/CREATE_FILE_AV.html' TARGET='index'>1</A>,<A href='../../call_from/CREATE_FILE_AV.html' TARGET='index'>52</A><a name='97'>
+                             IYR0,                     &amp;<a name='98'>
+                             IYRS, IMONS, IDAYS, IHRS, IMINS, ISECS, &amp;<a name='99'>
+                             IYRE, IMONE, IDAYE, IHRE, IMINE, ISECE, &amp;<a name='100'>
+                             DT, RLON, RLAT, FM, CODE_ID )<a name='101'>
+    IMPLICIT NONE<a name='102'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='103'>
+    INTEGER,INTENT(IN):: IM, JM, NZ<a name='104'>
+    INTEGER,INTENT(IN):: NSTEP<a name='105'>
+    INTEGER,INTENT(IN):: IYR0 <font color=#447700>! Reference year (before start of model run).<a name='106'></font>
+    INTEGER,INTENT(IN):: IYRS, IMONS, IDAYS, IHRS, IMINS, ISECS  <font color=#447700>! Start of model run.<a name='107'></font>
+    INTEGER,INTENT(IN):: IYRE, IMONE, IDAYE, IHRE, IMINE, ISECE  <font color=#447700>! End of model run.<a name='108'></font>
+    INTEGER,INTENT(IN):: DT   <font color=#447700>! Model timestep size in seconds.<a name='109'></font>
+    REAL,DIMENSION(IM):: RLON<a name='110'>
+    REAL,DIMENSION(JM):: RLAT<a name='111'>
+    INTEGER,DIMENSION(IM, JM),INTENT(IN):: FM<a name='112'>
+    <font color=#447700>! Locals:<a name='113'></font>
+    INTEGER,DIMENSION(IM, JM):: TEMP_IM_JM <font color=#447700>! VLA<a name='114'></font>
+    INTEGER IM_DIM, JM_DIM, NZ_DIM, NSTEPP1_DIM<a name='115'>
+    INTEGER RLON_VAR, RLAT_VAR, FM_VAR<a name='116'>
+    INTEGER ERR, VARIABLE, DIM_IDS( 4 ), INFO<a name='117'>
+    REAL,DIMENSION(IM):: RLON_COPY<a name='118'>
+    CHARACTER(LEN=40):: TIME_UNITS<a name='119'>
+    CHARACTER(LEN=150):: CODE_ID <a name='120'>
+    FILE_ID = -2<a name='121'>
+<a name='122'>
+    <font color=#447700>! Create/overwrite NetCDF output file:<a name='123'></font>
+<a name='124'>
+    CALL MPI_INFO_CREATE( INFO, ERR )<a name='125'>
+    CALL MPI_INFO_SET( INFO, 'ind_wr_buffer_size', '16777216', ERR )<a name='126'>
+    ERR = NFMPI_CREATE( MPI_COMM_SELF, NAME, &amp;<a name='127'>
+                        IOR( NF_CLOBBER, NF_64BIT_OFFSET ), INFO, FILE_ID )<a name='128'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_1">( ERR, 'create NetCDF output file ' // NAME )<a name='129'>
+    CALL MPI_INFO_FREE( INFO, ERR ) <a name='130'>
+<a name='131'>
+    <font color=#447700>! Create dimensions:<a name='132'></font>
+<a name='133'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFDIM'>DEFDIM</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFDIM_1">( FILE_ID, IM_DIM, 'longitude', IM )<a name='134'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFDIM'>DEFDIM</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFDIM_2">( FILE_ID, JM_DIM, 'latitude', JM )<a name='135'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFDIM'>DEFDIM</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFDIM_3">( FILE_ID, NZ_DIM, 'nz', NZ )<a name='136'>
+<font color=#447700>!!  CALL DEFDIM( FILE_ID, NSTEPP1_DIM, 'time', NSTEP )<a name='137'></font>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFDIM'>DEFDIM</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFDIM_4">( FILE_ID, NSTEPP1_DIM, 'time', 0 ) <font color=#447700>! 0 Means UNLIMITED size.<a name='138'></font>
+<a name='139'>
+    <font color=#447700>! Write global scalar attributes:<a name='140'></font>
+<a name='141'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_1">( FILE_ID, 'Run_Identifier', TRIM(CODE_ID) )<a name='142'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_1">( FILE_ID, 'nstep', NSTEP )<a name='143'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_2">( FILE_ID, 'iYr0', IYR0 )<a name='144'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_3">( FILE_ID, 'iYrS', IYRS )<a name='145'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_4">( FILE_ID, 'iMonS', IMONS )<a name='146'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_5">( FILE_ID, 'iDayS', IDAYS )<a name='147'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_6">( FILE_ID, 'iHrS', IHRS )<a name='148'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_7">( FILE_ID, 'iMinS', IMINS )<a name='149'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_8">( FILE_ID, 'iSecS', ISECS )<a name='150'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_9">( FILE_ID, 'iYrE', IYRE )<a name='151'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_10">( FILE_ID, 'iMonE', IMONE )<a name='152'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_11">( FILE_ID, 'iDayE', IDAYE )<a name='153'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_12">( FILE_ID, 'iHrE', IHRE )<a name='154'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_13">( FILE_ID, 'iMinE', IMINE )<a name='155'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_14">( FILE_ID, 'iSecE', ISECE )<a name='156'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT'>DEFIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFIAT_15">( FILE_ID, 'dT', DT )<a name='157'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_2">( FILE_ID, 'description1', &amp;<a name='158'>
+      'Output from NCOM_GEM ' // &amp;<a name='159'>
+      '(US Naval Coastal Ocean Model Gulf Ecology Model)' )<a name='160'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_3">( FILE_ID, 'description2', &amp;<a name='161'>
+      'Dimension longitude: Number of cells in the longitudinal direction.' )<a name='162'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_4">( FILE_ID, 'description3', &amp;<a name='163'>
+      'Dimension latitude: Number of cells in the latitudinal direction.' )<a name='164'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_5">( FILE_ID, 'description4', &amp;<a name='165'>
+      'Dimension nsl: Number of depth sigma layer interfaces.' )<a name='166'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_6">( FILE_ID, 'description5', &amp;<a name='167'>
+      'Dimension time: Number of timesteps' )<a name='168'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_7">( FILE_ID, 'description6', &amp;<a name='169'>
+      'Run Identifier: Optional code run name specified in input file.' )<a name='170'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_8">( FILE_ID, 'description7', &amp;<a name='171'>
+      'Attribute nstep: Number of model output timesteps excluding initial time.' )<a name='172'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_9">( FILE_ID, 'description8', &amp;<a name='173'>
+      'Attribute iYr0: Reference year (YYYY) all timestamps are relative to.' )<a name='174'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_10">( FILE_ID, 'description9', &amp;<a name='175'>
+      'Attribute iYrS: GMT year (YYYY) of start of simulation.' )<a name='176'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_11">( FILE_ID, 'description10', &amp;<a name='177'>
+      'Attribute iMonS: GMT month (1-12) of start of simulation.' )<a name='178'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_12">( FILE_ID, 'description11', &amp;<a name='179'>
+      'Attribute iDayS: GMT day of month (1-31) of start of simulation.' )<a name='180'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_13">( FILE_ID, 'description12', &amp;<a name='181'>
+      'Attribute iHrS: GMT hour (0-23) of start of simulation.' )<a name='182'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_14">( FILE_ID, 'description13', &amp;<a name='183'>
+      'Attribute iMinS: GMT minite (0-59) of start of simulation.' )<a name='184'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_15">( FILE_ID, 'description14', &amp;<a name='185'>
+      'Attribute iSecS: GMT second (0-59) of start of simulation.' )<a name='186'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_16">( FILE_ID, 'description15', &amp;<a name='187'>
+      'Attribute iYrE: GMT year (YYYY) of end of simulation.' )<a name='188'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_17">( FILE_ID, 'description16', &amp;<a name='189'>
+      'Attribute iMonE: GMT month (1-12) of end of simulation.' )<a name='190'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_18">( FILE_ID, 'description17', &amp;<a name='191'>
+      'Attribute iDayE: GMT day of month (1-31) of end of simulation.' )<a name='192'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_19">( FILE_ID, 'description18', &amp;<a name='193'>
+      'Attribute iHrE: GMT hour (0-23) of end of simulation.' )<a name='194'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT'>DEFTAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFTAT_20">( FILE_ID, 'description19', &amp;<a name='195'>
+      'Attribute dT: Number of seconds per model timestep.' )<a name='196'>
+<a name='197'>
+    <font color=#447700>! Define non-time-varying array variables:<a name='198'></font>
+<a name='199'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR1'>DEFVR1</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVR1_1">( FILE_ID, IM_DIM, RLON_VAR, 'longitude', &amp;<a name='200'>
+                 'Cell center longitude [-180, 180].', 'deg' )<a name='201'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR1'>DEFVR1</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVR1_2">( FILE_ID, JM_DIM, RLAT_VAR, 'latitude', &amp;<a name='202'>
+                 'Cell center latitude [-90, 90].', 'deg' )<a name='203'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI2'>DEFVI2</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVI2_1">( FILE_ID, IM_DIM, JM_DIM, FM_VAR, 'fm', &amp;<a name='204'>
+                 'Mask: 0 = land, 1 = water.', 'none' )<a name='205'>
+<a name='206'>
+    <font color=#447700>! Define time array variable as each output data's seconds since IYR0:<a name='207'></font>
+<a name='208'>
+    WRITE ( TIME_UNITS, '(A,I4.4,A)' ) &amp;<a name='209'>
+            'Seconds since ', iYr0, '-01-01 00:00:00Z'<a name='210'>
+<a name='211'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVD1'>DEFVD1</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVD1_1">( FILE_ID, NSTEPP1_DIM, TIME_VAR, 'time', &amp;<a name='212'>
+                 TRIM( TIME_UNITS ), TRIM( TIME_UNITS ) )<a name='213'>
+<a name='214'>
+    <font color=#447700>! Define time-varying array variables:<a name='215'></font>
+<a name='216'>
+    DIM_IDS( 1 ) = IM_DIM<a name='217'>
+    DIM_IDS( 2 ) = JM_DIM<a name='218'>
+    DIM_IDS( 3 ) = NZ_DIM<a name='219'>
+    DIM_IDS( 4 ) = NSTEPP1_DIM<a name='220'>
+<a name='221'>
+    DO VARIABLE = 1, VAR_3D<a name='222'>
+<a name='223'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR4'>DEFVR4</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVR4_1">( FILE_ID, DIM_IDS, VAR( VARIABLE ), &amp;<a name='224'>
+                   TRIM( VAR_NAMES( VARIABLE ) ), &amp;<a name='225'>
+                   TRIM( VAR_DESCRIPTIONS( VARIABLE ) ), &amp;<a name='226'>
+                   TRIM( VAR_UNITS( VARIABLE ) ) )<a name='227'>
+    END DO<a name='228'>
+<a name='229'>
+    DO VARIABLE = VAR_3D+1, VARS<a name='230'>
+<a name='231'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR3'>DEFVR3</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVR3_1">( FILE_ID, IM_DIM, JM_DIM, NSTEPP1_DIM, VAR( VARIABLE ), &amp;<a name='232'>
+                   TRIM( VAR_NAMES( VARIABLE ) ), &amp;<a name='233'>
+                   TRIM( VAR_DESCRIPTIONS( VARIABLE ) ), &amp;<a name='234'>
+                   TRIM( VAR_UNITS( VARIABLE ) ) )<a name='235'>
+    END DO<a name='236'>
+<a name='237'>
+<a name='238'>
+<a name='239'>
+    <font color=#447700>! End of NetCDF header:<a name='240'></font>
+<a name='241'>
+    ERR = NFMPI_ENDDEF( FILE_ID )<a name='242'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_2">( ERR, 'create NetCDF output header' )<a name='243'>
+    ERR = NFMPI_BEGIN_INDEP_DATA( FILE_ID )<a name='244'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_3">( ERR, 'begin independent data access mode' )<a name='245'>
+<a name='246'>
+    <font color=#447700>! Write non-time-varying array variables:<a name='247'></font>
+<a name='248'>
+    RLON_COPY = RLON<a name='249'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CONVERT_LONGITUDES'>CONVERT_LONGITUDES</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CONVERT_LONGITUDES_1">( IM, RLON_COPY )<a name='250'>
+    ERR = NFMPI_PUT_VAR_REAL( FILE_ID, RLON_VAR, RLON_COPY )<a name='251'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_4">( ERR, 'write output variable rlon' )<a name='252'>
+    ERR = NFMPI_PUT_VAR_REAL( FILE_ID, RLAT_VAR, RLAT )<a name='253'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_5">( ERR, 'write output variable rlat' )<a name='254'>
+    TEMP_IM_JM = FM <font color=#447700>! Must copy for NetCDF call.<a name='255'></font>
+    ERR = NFMPI_PUT_VAR_INT( FILE_ID, FM_VAR, TEMP_IM_JM )<a name='256'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_6">( ERR, 'write output variable fm' )<a name='257'>
+    ERR = NFMPI_SYNC( FILE_ID )<a name='258'>
+<a name='259'>
+    RETURN<a name='260'>
+  END SUBROUTINE CREATE_FILE_AV<a name='261'>
+<a name='262'>
+<a name='263'>
+<a name='264'>
+  <font color=#447700>! OPEN_FILE: Open existing output NetCDF file for shared writing.<a name='265'></font>
+  <font color=#447700>! In a concurrent program, each worker process should call<a name='266'></font>
+  <font color=#447700>! OPEN_FILE, WRITE_DATA, CLOSE_FILE.<a name='267'></font>
+  <font color=#447700>!<a name='268'></font>
+<A NAME='OPEN_FILE_AV'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='269'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>OPEN_FILE_AV</font>( NAME ) <A href='../../call_to/OPEN_FILE_AV.html' TARGET='index'>1</A>,<A href='../../call_from/OPEN_FILE_AV.html' TARGET='index'>12</A><a name='270'>
+    IMPLICIT NONE<a name='271'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='272'>
+    <font color=#447700>! Locals:<a name='273'></font>
+    INTEGER ERR, VARIABLE, INFO<a name='274'>
+    INTEGER DT<a name='275'>
+    INTEGER IYR0 <font color=#447700>! Reference year (before start of model run).<a name='276'></font>
+    INTEGER IYRS, IMONS, IDAYS, IHRS, IMINS, ISECS <font color=#447700>! Run start.<a name='277'></font>
+    INTEGER(8) SECONDS_FROM_YEAR0 <font color=#447700>! Run start time in seconds since iYr0.<a name='278'></font>
+<a name='279'>
+    CALL MPI_INFO_CREATE( INFO, ERR )<a name='280'>
+    CALL MPI_INFO_SET( INFO, 'ind_wr_buffer_size', '16777216', ERR )<a name='281'>
+<a name='282'>
+    <font color=#447700>! Open existing shared 64-bit NetCDF output file for writing:<a name='283'></font>
+<a name='284'>
+    ERR = NFMPI_OPEN( MPI_COMM_WORLD, NAME, &amp;<a name='285'>
+                      IOR( NF_WRITE, NF_64BIT_OFFSET ), INFO, FILE_ID )<a name='286'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_7">( ERR, 'open existing shared writable output file ' // NAME )<a name='287'>
+    CALL MPI_INFO_FREE( INFO, ERR ) <a name='288'>
+<a name='289'>
+    <font color=#447700>! Get time variable id:<a name='290'></font>
+<a name='291'>
+    ERR = NFMPI_INQ_VARID( FILE_ID, 'time', TIME_VAR )<a name='292'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_8">( ERR, 'inquire NetCDF variable ID ' )<a name='293'>
+<a name='294'>
+    <font color=#447700>! Read time attributes to compute SECONDS0:<a name='295'></font>
+<a name='296'>
+    DT = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_1">( FILE_ID, 'dT' )<a name='297'>
+    IYR0   = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_2">( FILE_ID, 'iYr0' )<a name='298'>
+    IYRS   = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_3">( FILE_ID, 'iYrS' )<a name='299'>
+    IMONS  = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_4">( FILE_ID, 'iMonS' )<a name='300'>
+    IDAYS  = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_5">( FILE_ID, 'iDayS' )<a name='301'>
+    IHRS   = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_6">( FILE_ID, 'iHrS' )<a name='302'>
+    IMINS  = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_7">( FILE_ID, 'iMinS' )<a name='303'>
+    ISECS  = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_8">( FILE_ID, 'iSecS' )<a name='304'>
+    SECONDS_FROM_YEAR0 = &amp;<a name='305'>
+      <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_1">( IYR0, IYRS, IMONS, IDAYS, IHRS, IMINS, ISECS )<a name='306'>
+<a name='307'>
+    <font color=#447700>! SECONDS0 is the run start time in seconds<a name='308'></font>
+<a name='309'>
+    SECONDS_PER_TIMESTEP = DT<a name='310'>
+    SECONDS0 = SECONDS_FROM_YEAR0<a name='311'>
+<a name='312'>
+    <font color=#447700>! Get time-varying array variable ids:<a name='313'></font>
+<a name='314'>
+    DO VARIABLE = 1, VARS<a name='315'>
+      ERR = NFMPI_INQ_VARID( FILE_ID, VAR_NAMES( VARIABLE ), VAR( VARIABLE ) )<a name='316'>
+      CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_9">( ERR, 'inquire NetCDF variable ID ' )<a name='317'>
+    END DO<a name='318'>
+<a name='319'>
+    RETURN<a name='320'>
+  END SUBROUTINE OPEN_FILE_AV<a name='321'>
+<a name='322'>
+<a name='323'>
+<a name='324'>
+  <font color=#447700>! CLOSE_FILE: Close output file.<a name='325'></font>
+  <font color=#447700>!<a name='326'></font>
+<A NAME='CLOSE_FILE_AV'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CLOSE_FILE_AV' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='327'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>CLOSE_FILE_AV</font>() <A href='../../call_to/CLOSE_FILE_AV.html' TARGET='index'>2</A>,<A href='../../call_from/CLOSE_FILE_AV.html' TARGET='index'>1</A><a name='328'>
+    IMPLICIT NONE<a name='329'>
+    INTEGER ERR<a name='330'>
+<a name='331'>
+    ERR = NFMPI_CLOSE( FILE_ID )<a name='332'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CLOSE_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_10">( ERR, 'close NetCDF output file ' )<a name='333'>
+    FILE_ID = -1<a name='334'>
+<a name='335'>
+    RETURN<a name='336'>
+  END SUBROUTINE CLOSE_FILE_AV<a name='337'>
+<a name='338'>
+<a name='339'>
+<a name='340'>
+  <font color=#447700>! WRITE_DATA: Write current timestep data to output file.<a name='341'></font>
+  <font color=#447700>! Called by concurrent programs to write all data per timestep<a name='342'></font>
+  <font color=#447700>! though only one process (PROCESS_ID 0) will write the extra data.<a name='343'></font>
+  <font color=#447700>!<a name='344'></font>
+<A NAME='WRITE_DATA_AV'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='345'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>WRITE_DATA_AV</font>( ISTART, IM, JSTART, JM, ZSTART, NZ, OUTSTEP, ISTEP, &amp; <A href='../../call_to/WRITE_DATA_AV.html' TARGET='index'>1</A>,<A href='../../call_from/WRITE_DATA_AV.html' TARGET='index'>17</A><a name='346'>
+                            PHOTOSYN, IRRADIANCE, &amp;<a name='347'>
+                            CHLA_MG_TOT, RESP, ARESPTOTC, DECAY, RESPG_CARCELLG,&amp;<a name='348'>
+                            INT_PHOTOSYN, INT_IRRADIANCE, INT_CHLA_MG_TOT, INT_RESP,&amp;<a name='349'>
+                            INT_ARESPTOTC, INT_DECAY, INT_RESPG_CARCELLG )<a name='350'>
+    IMPLICIT NONE<a name='351'>
+    INTEGER,INTENT(IN):: ISTART, JSTART, ZSTART<a name='352'>
+    INTEGER,INTENT(IN):: IM, JM, NZ, OUTSTEP, ISTEP<a name='353'>
+    REAL,DIMENSION(IM, JM, NZ):: PHOTOSYN<a name='354'>
+    REAL,DIMENSION(IM, JM, NZ):: IRRADIANCE<a name='355'>
+    REAL,DIMENSION(IM, JM, NZ):: CHLA_MG_TOT<a name='356'>
+    REAL,DIMENSION(IM, JM, NZ):: RESP, ARESPTOTC<a name='357'>
+    REAL,DIMENSION(IM, JM, NZ):: DECAY, RESPG_CARCELLG<a name='358'>
+    REAL,DIMENSION(IM, JM):: INT_PHOTOSYN<a name='359'>
+    REAL,DIMENSION(IM, JM):: INT_IRRADIANCE<a name='360'>
+    REAL,DIMENSION(IM, JM):: INT_CHLA_MG_TOT<a name='361'>
+    REAL,DIMENSION(IM, JM):: INT_RESP, INT_ARESPTOTC<a name='362'>
+    REAL,DIMENSION(IM, JM):: INT_DECAY, INT_RESPG_CARCELLG<a name='363'>
+    <font color=#447700>! Locals:<a name='364'></font>
+    REAL(8):: SECONDS(1)<a name='365'>
+    INTEGER(MPI_OFFSET_KIND):: STARTS( 4 ), COUNTS( 4 )<a name='366'>
+    INTEGER ERR, FILE_TIMESTEP, MODEL_TIMESTEP<a name='367'>
+    INTEGER,DIMENSION(VARS+1):: REQUESTS, STATUSES<a name='368'>
+    INTEGER REQUEST_COUNT, REQUEST<a name='369'>
+<a name='370'>
+    FILE_TIMESTEP = OUTSTEP<a name='371'>
+    MODEL_TIMESTEP = ISTEP<a name='372'>
+<a name='373'>
+    <font color=#447700>! Write time variable as an 8-byte real since NetCDF lacks 8-byte integer:<a name='374'></font>
+<a name='375'>
+    STARTS( 1 ) = FILE_TIMESTEP + 1<a name='376'>
+    COUNTS( 1 ) = 1<a name='377'>
+    SECONDS( 1 ) = SECONDS0 + MODEL_TIMESTEP * SECONDS_PER_TIMESTEP<a name='378'>
+    ERR = NFMPI_IPUT_VARA_DOUBLE( FILE_ID, TIME_VAR, STARTS, COUNTS, &amp;<a name='379'>
+                                  SECONDS, REQUESTS( 1 ) )<a name='380'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_11">( ERR, 'write output variable time' )<a name='381'>
+<a name='382'>
+    REQUEST_COUNT = 1<a name='383'>
+<a name='384'>
+    <font color=#447700>! Write time-varying data variables:<a name='385'></font>
+<a name='386'>
+    STARTS( 1 ) = ISTART<a name='387'>
+    STARTS( 2 ) = JSTART<a name='388'>
+    STARTS( 3 ) = ZSTART<a name='389'>
+    STARTS( 4 ) = FILE_TIMESTEP + 1 <font color=#447700>! NetCDF follows FORTRAN 1-based convention.<a name='390'></font>
+    COUNTS( 1 ) = IM<a name='391'>
+    COUNTS( 2 ) = JM<a name='392'>
+    COUNTS( 3 ) = NZ<a name='393'>
+    COUNTS( 4 ) = 1<a name='394'>
+<a name='395'>
+<font color=#447700>! PHOTOSYN<a name='396'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='397'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 1 ), STARTS, COUNTS, &amp;<a name='398'>
+                                   PHOTOSYN( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ))<a name='399'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_12">( ERR, 'write output variable  ' // VAR_NAMES(1))<a name='400'>
+<a name='401'>
+<font color=#447700>! IRRADIANCE<a name='402'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='403'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 2 ), STARTS, COUNTS, &amp;<a name='404'>
+                                   IRRADIANCE( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='405'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_13">( ERR, 'write output variable  ' // VAR_NAMES(2))<a name='406'>
+<a name='407'>
+<font color=#447700>! CHLA_MG_TOT<a name='408'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='409'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 3 ), STARTS, COUNTS, &amp;<a name='410'>
+                                   CHLA_MG_TOT( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='411'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_14">( ERR, 'write output variable  ' // VAR_NAMES(3))<a name='412'>
+<a name='413'>
+<font color=#447700>! RESP<a name='414'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='415'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 4 ), STARTS, COUNTS, &amp;<a name='416'>
+                                   RESP( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='417'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_15">( ERR, 'write output variable  ' // VAR_NAMES(4))<a name='418'>
+<a name='419'>
+<font color=#447700>! ARESPTOTC<a name='420'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='421'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 5 ), STARTS, COUNTS, &amp;<a name='422'>
+                                   ARESPTOTC( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='423'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_16">( ERR, 'write output variable  ' // VAR_NAMES(5))<a name='424'>
+<a name='425'>
+<font color=#447700>! DECAY<a name='426'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='427'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 6 ), STARTS, COUNTS, &amp;<a name='428'>
+                                   DECAY( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='429'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_17">( ERR, 'write output variable  ' // VAR_NAMES(6))<a name='430'>
+<a name='431'>
+<font color=#447700>! RESPG_CARCELLG<a name='432'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='433'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 7 ), STARTS, COUNTS, &amp;<a name='434'>
+                                     RESPG_CARCELLG( 1, 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='435'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_18">( ERR, 'write output variable  ' // VAR_NAMES(7))<a name='436'>
+<a name='437'>
+    STARTS( 1 ) = ISTART<a name='438'>
+    STARTS( 2 ) = JSTART<a name='439'>
+    STARTS( 3 ) = FILE_TIMESTEP + 1 <font color=#447700>! NetCDF follows FORTRAN 1-based convention.<a name='440'></font>
+    COUNTS( 1 ) = IM<a name='441'>
+    COUNTS( 2 ) = JM<a name='442'>
+    COUNTS( 3 ) = 1<a name='443'>
+<a name='444'>
+<font color=#447700>! INT_PHOTOSYN<a name='445'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='446'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 8 ), STARTS, COUNTS, &amp;<a name='447'>
+                          INT_PHOTOSYN( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='448'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_19">( ERR, 'write output variable  ' // VAR_NAMES(8))<a name='449'>
+<a name='450'>
+<font color=#447700>! INT_IRRADIANCE<a name='451'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='452'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 9 ), STARTS, COUNTS, &amp;<a name='453'>
+                          INT_IRRADIANCE( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='454'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_20">( ERR, 'write output variable  ' // VAR_NAMES(9))<a name='455'>
+<a name='456'>
+<font color=#447700>! INT_CHLA_MG_TOT<a name='457'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='458'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 10 ), STARTS, COUNTS, &amp;<a name='459'>
+                          INT_CHLA_MG_TOT( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='460'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_21">( ERR, 'write output variable  ' // VAR_NAMES(10))<a name='461'>
+<a name='462'>
+<font color=#447700>! INT_RESP<a name='463'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='464'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 11 ), STARTS, COUNTS, &amp;<a name='465'>
+                          INT_RESP( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='466'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_22">( ERR, 'write output variable  ' // VAR_NAMES(11))<a name='467'>
+<a name='468'>
+<font color=#447700>! INT_ARESPTOTC<a name='469'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='470'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 12 ), STARTS, COUNTS, &amp;<a name='471'>
+                                   INT_ARESPTOTC( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='472'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_23">( ERR, 'write output variable  ' // VAR_NAMES(12))<a name='473'>
+<a name='474'>
+<font color=#447700>! INT_DECAY<a name='475'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='476'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 13 ), STARTS, COUNTS, &amp;<a name='477'>
+                                   INT_DECAY( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='478'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_24">( ERR, 'write output variable  ' // VAR_NAMES(13))<a name='479'>
+<a name='480'>
+<font color=#447700>! INT_RESPG_CARCELLG<a name='481'></font>
+        REQUEST_COUNT = REQUEST_COUNT + 1<a name='482'>
+        ERR = NFMPI_IPUT_VARA_REAL( FILE_ID, VAR( 14 ), STARTS, COUNTS, &amp;<a name='483'>
+                                     INT_RESPG_CARCELLG( 1, 1 ), REQUESTS( REQUEST_COUNT ) )<a name='484'>
+        CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_25">( ERR, 'write output variable  ' // VAR_NAMES(14))<a name='485'>
+<a name='486'>
+      ERR = NFMPI_WAIT_ALL( FILE_ID, REQUEST_COUNT, REQUESTS, STATUSES )<a name='487'>
+          CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_26">( ERR, 'inplement non-blocking interface' )<a name='488'>
+<a name='489'>
+          <font color=#447700>! check status of each nonblocking call<a name='490'></font>
+<a name='491'>
+          DO REQUEST = 1, REQUEST_COUNT<a name='492'>
+            CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_27"> (STATUSES( REQUEST ), 'nonblocking call ' )<a name='493'>
+          END DO<a name='494'>
+<a name='495'>
+      ERR = NFMPI_SYNC( FILE_ID ) <font color=#447700>! Flush buffers to disk in case of crash.<a name='496'></font>
+<a name='497'>
+    RETURN<a name='498'>
+  END SUBROUTINE WRITE_DATA_AV<a name='499'>
+<a name='500'>
+<a name='501'>
+<a name='502'>
+  <font color=#447700>! LAST_AVE_NETCDF_TIMESTEP: Return 1-based last timestep of named NetCDF file<a name='503'></font>
+<a name='504'>
+<A NAME='LAST_AVE_NETCDF_TIMESTEP'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#LAST_AVE_NETCDF_TIMESTEP' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='505'>
+  <font color=#993300>FUNCTION </font><font color=#cc0000>LAST_AVE_NETCDF_TIMESTEP</font>( NAME )     &amp; <A href='../../call_to/LAST_AVE_NETCDF_TIMESTEP.html' TARGET='index'>1</A>,<A href='../../call_from/LAST_AVE_NETCDF_TIMESTEP.html' TARGET='index'>3</A><a name='506'>
+                                   RESULT( RES )<a name='507'>
+    IMPLICIT NONE<a name='508'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='509'>
+    INTEGER:: RES <font color=#447700>! 1-based NetCDF file last timestep.<a name='510'></font>
+    <font color=#447700>! Locals:<a name='511'></font>
+    INTEGER(MPI_OFFSET_KIND):: TIMESTEPS<a name='512'>
+    INTEGER INFO, ERR, ID, DIM_ID<a name='513'>
+<a name='514'>
+    RES = 0<a name='515'>
+<a name='516'>
+    <font color=#447700>! Open existing 64-bit NetCDF file for reading:<a name='517'></font>
+<a name='518'>
+    CALL MPI_INFO_CREATE( INFO, ERR )<a name='519'>
+    ERR = NFMPI_OPEN( MPI_COMM_WORLD, trim(NAME), &amp;<a name='520'>
+    IOR( NF_NOWRITE, NF_64BIT_OFFSET ), INFO, ID )<a name='521'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#LAST_AVE_NETCDF_TIMESTEP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_28">( ERR, 'open existing file ' // NAME )<a name='522'>
+    CALL MPI_INFO_FREE( INFO, ERR )<a name='523'>
+<a name='524'>
+   <font color=#447700>! Get number of timesteps written to named NetCDF file:<a name='525'></font>
+<a name='526'>
+    ERR = NFMPI_INQ_UNLIMDIM( ID, DIM_ID )<a name='527'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#LAST_AVE_NETCDF_TIMESTEP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_29">( ERR, 'get unlimited dimension id in NetCDF file ' )<a name='528'>
+    ERR = NFMPI_INQ_DIMLEN( ID, DIM_ID, TIMESTEPS )<a name='529'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#LAST_AVE_NETCDF_TIMESTEP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_30">( ERR, 'get unlimited dimension length in NetCDF file ' )<a name='530'>
+<a name='531'>
+    RES = TIMESTEPS<a name='532'>
+<a name='533'>
+    RETURN<a name='534'>
+  END FUNCTION LAST_AVE_NETCDF_TIMESTEP<a name='535'>
+<a name='536'>
+<a name='537'>
+<a name='538'>
+<a name='539'>
+<a name='540'>
+  <font color=#447700>! FLUSH_FILE: Flush buffers to disk in case of crash.<a name='541'></font>
+  <font color=#447700>!<a name='542'></font>
+<A NAME='FLUSH_FILE_AV'><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#FLUSH_FILE_AV' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='543'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>FLUSH_FILE_AV</font>(),<A href='../../call_from/FLUSH_FILE_AV.html' TARGET='index'>1</A><a name='544'>
+    IMPLICIT NONE<a name='545'>
+    INTEGER ERR<a name='546'>
+<a name='547'>
+    ERR = NFMPI_SYNC( FILE_ID )<a name='548'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#FLUSH_FILE_AV' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_31">( ERR, 'flush buffers to disk ' )<a name='549'>
+<a name='550'>
+    RETURN<a name='551'>
+  END SUBROUTINE FLUSH_FILE_AV<a name='552'>
+<a name='553'>
+<a name='554'>
+  <font color=#447700>! Private<a name='555'></font>
+<a name='556'>
+<a name='557'>
+END MODULE AVE_NETCDF<a name='558'>
+</pre></body></html>

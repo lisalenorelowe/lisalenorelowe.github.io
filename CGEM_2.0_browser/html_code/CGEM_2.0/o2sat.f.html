@@ -1,0 +1,45 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!---------------------------------------------------------------------<a name='2'></font>
+<A NAME='O2SAT'><A href='../../html_code/CGEM_2.0/o2sat.f.html#O2SAT' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='3'>
+   FUNCTION   <A href='../../html_code/CGEM_2.0/o2sat.f.html#O2SAT'>o2sat</A><A href='../../html_code/CGEM_2.0/o2sat.f.html#o2sat.f' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="O2SAT_2">(S, T)               RESULT(OSAT)<a name='4'>
+  <a name='5'>
+<font color=#447700>!--------------------------------------------------------------------- <a name='6'></font>
+<font color=#447700>! Oxygen concentration at saturation at one atmosphere (umol/kg).<a name='7'></font>
+<font color=#447700>! Source: "The Solubility Of Nitrogen, Oxygen And Argon In Water And<a name='8'></font>
+<font color=#447700>!         Seawater" - Weiss (1970) _Deep Sea Research_ V17(4): 721-735.<a name='9'></font>
+<font color=#447700>! Based on MATLAB code by Edward T Peltzer, MBARI, revised: 1998-01-2   <a name='10'></font>
+<font color=#447700>!---------------------------------------------------------------------    <a name='11'></font>
+   <a name='12'>
+    IMPLICIT NONE<a name='13'>
+<a name='14'>
+    REAL        , INTENT(IN) :: S  <font color=#447700>! Salinity <a name='15'></font>
+    REAL        , INTENT(IN) :: T  <font color=#447700>! Temperature (degrees C) <a name='16'></font>
+        <a name='17'>
+    <font color=#447700>! Declare Locals:<a name='18'></font>
+<font color=#447700>!----------------------------------------------------------------------    <a name='19'></font>
+    REAL, PARAMETER:: CONSTANT1  =  273.15      <a name='20'>
+    REAL, PARAMETER:: CONSTANT2  =    0.01     <a name='21'>
+    REAL, PARAMETER:: CONSTANT3  = -177.7888  <a name='22'>
+    REAL, PARAMETER:: CONSTANT4  =  255.5907 <a name='23'>
+    REAL, PARAMETER:: CONSTANT5  =  146.4813<a name='24'>
+    REAL, PARAMETER:: CONSTANT6  =   22.204     <a name='25'>
+    REAL, PARAMETER:: CONSTANT7  =   -0.037362 <a name='26'>
+    REAL, PARAMETER:: CONSTANT8  =    0.016504<a name='27'>
+    REAL, PARAMETER:: CONSTANT9  =    0.0020564 <a name='28'>
+    REAL, PARAMETER:: ML_PER_UM  =   44.658    <a name='29'>
+    REAL          :: T1     <a name='30'>
+    REAL          :: OSAT <font color=#447700>! Oxygen (umol/kg) --function RESULT <a name='31'></font>
+<font color=#447700>!----------------------------------------------------------------------       <a name='32'></font>
+<a name='33'>
+    T1 = ( T + CONSTANT1 ) * CONSTANT2<a name='34'>
+    <a name='35'>
+    OSAT = CONSTANT3 + CONSTANT4 /                                     &amp;<a name='36'>
+    &amp;      T1 + CONSTANT5 * LOG( T1 ) - CONSTANT6 * T1<a name='37'>
+    <a name='38'>
+    OSAT = OSAT + S * (CONSTANT7 + T1 * (CONSTANT8 - CONSTANT9 * T1))<a name='39'>
+    OSAT = EXP( OSAT )<a name='40'>
+    OSAT = OSAT * ML_PER_UM <font color=#447700>! Oxygen (umol/kg)<a name='41'></font>
+<a name='42'>
+    RETURN<a name='43'>
+  END FUNCTION o2sat  <a name='44'>
+</pre></body></html>

@@ -1,0 +1,66 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='SET_BC_SMALL_GRADIENT'><A href='../../html_code/CGEM_2.0/Set_BC_small_gradient.f.html#SET_BC_SMALL_GRADIENT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+       <font color=#993300>subroutine </font><font color=#cc0000>Set_BC_small_gradient</font>(f,wsm,Vol,wt_l,wt_o,my_imstart,my_imend,my_im) <A href='../../call_to/SET_BC_SMALL_GRADIENT.html' TARGET='index'>1</A>,<A href='../../call_from/SET_BC_SMALL_GRADIENT.html' TARGET='index'>2</A><a name='3'>
+<a name='4'>
+       USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/Set_BC_small_gradient.f.html#SET_BC_SMALL_GRADIENT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_18"><a name='5'>
+       USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Set_BC_small_gradient.f.html#SET_BC_SMALL_GRADIENT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_53"><a name='6'>
+<a name='7'>
+       IMPLICIT NONE <a name='8'>
+<a name='9'>
+       real, intent(inout) :: f(myimp2,jm,nsl,nf)<a name='10'>
+       real, intent(in) :: Vol(im,jm,nsl)<a name='11'>
+       real, intent(in) :: wt_l, wt_o <font color=#447700>!Weights for lateral and open ocean<a name='12'></font>
+       real, intent(in) :: wsm(im,jm) <font color=#447700>!Flag, 1==open ocean, 0==shelf<a name='13'></font>
+       integer, intent(in) :: my_imstart,my_imend,my_im<a name='14'>
+       integer :: myi,i,j,k<a name='15'>
+<a name='16'>
+<a name='17'>
+<font color=#447700>! This assumes that Salinity Boundary conditions have already been<a name='18'></font>
+<font color=#447700>! called.  It mixes the nearest neighbor value of the state variable<a name='19'></font>
+<font color=#447700>! with the value from the regression.<a name='20'></font>
+<a name='21'>
+<font color=#447700>!Lateral<a name='22'></font>
+      do k = 1,nz<a name='23'>
+      do j = 1,jm<a name='24'>
+<font color=#447700>!      Set Left and Right Lateral Boundaries<a name='25'></font>
+       if(my_imstart.eq.1) then<a name='26'>
+         f(2,j,k,:) = ( wt_l*f(2,j,k,:)*Vol(2,j,k) +  &amp;<a name='27'>
+     &amp;             (1.-wt_l)*f(3,j,k,:)*Vol(3,j,k) ) / Vol(2,j,k)<a name='28'>
+       endif<a name='29'>
+       if(my_imend.eq.im) then<a name='30'>
+        f(my_im+1,j,k,:) = ( wt_l*f(my_im+1,j,k,:)*Vol(my_im+1,j,k) + &amp;<a name='31'>
+     &amp;                  (1.-wt_l)*f(my_im,j,k,:)*Vol(my_im,j,k) ) / Vol(my_im+1,j,k)<a name='32'>
+       endif<a name='33'>
+      enddo<a name='34'>
+      enddo<a name='35'>
+<a name='36'>
+      do k = 1,nz<a name='37'>
+      myi = 2<a name='38'>
+      do i = my_imstart, my_imend<a name='39'>
+<font color=#447700>!      Set Bottom and Top Lateral Boundaries<a name='40'></font>
+       f(myi,1,k,:) = ( wt_l*f(myi,1,k,:)*Vol(i,1,k) +  &amp;<a name='41'>
+     &amp;           (1.-wt_l)*f(myi,2,k,:)*Vol(i,2,k) ) / Vol(i,1,k) <a name='42'>
+       f(myi,jm,k,:) = ( wt_l*f(myi,jm,k,:)*Vol(i,jm,k) + &amp;<a name='43'>
+     &amp;            (1.-wt_l)*f(myi,jm-1,k,:)*Vol(i,jm-1,k) ) / Vol(i,jm,k)<a name='44'>
+      myi = myi +1<a name='45'>
+      enddo<a name='46'>
+      enddo<a name='47'>
+<a name='48'>
+<a name='49'>
+<font color=#447700>!Open Ocean<a name='50'></font>
+      do j = 1,jm<a name='51'>
+      myi = 2<a name='52'>
+      do i = my_imstart, my_imend<a name='53'>
+<a name='54'>
+      if(wsm(i,j).eq.1.) then <font color=#447700>!If Open Ocean BC then<a name='55'></font>
+        f( myi, j, nsl, : )   = ( wt_o*f(myi,j,nsl,:)*Vol(i,j,nsl) +  &amp;<a name='56'>
+     &amp;                        (1.-wt_o)*f(myi,j,nz,:)*Vol(i,j,nz) ) / Vol(i,j,nsl) <a name='57'>
+      endif<a name='58'>
+<a name='59'>
+      myi = myi +1<a name='60'>
+      enddo<a name='61'>
+      enddo<a name='62'>
+<a name='63'>
+<a name='64'>
+      end subroutine Set_BC_small_gradient<a name='65'>
+</pre></body></html>

@@ -1,0 +1,78 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!------------------------------------------------------------------<a name='2'></font>
+<A NAME='RPOINTER'><A href='../../html_code/CGEM_2.0/rPointer.f.html#RPOINTER' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+       <font color=#993300>Subroutine  </font><font color=#cc0000>rPointer</font>( nko, no, io, jo, ko ) <A href='../../call_to/RPOINTER.html' TARGET='index'>2</A><a name='4'>
+<font color=#447700>!    Written by  ::   D.S.Ko  July 1, 1997<a name='5'></font>
+<font color=#447700>!    Modified by ::   Barry Herchenroder/EMVL, April 2010<a name='6'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='7'></font>
+      IMPLICIT NONE  <a name='8'>
+<font color=#447700>!-----------------------------------------------<a name='9'></font>
+<font color=#447700>! Declare variables <a name='10'></font>
+<font color=#447700>!-----------------------------------------------<a name='11'></font>
+<font color=#447700>!---------------------------------------------------<a name='12'></font>
+<font color=#447700>! Variables coming through the subroutine interface.<a name='13'></font>
+<font color=#447700>!---------------------------------------------------<a name='14'></font>
+      INTEGER,                INTENT(IN)  :: nko <a name='15'>
+          <a name='16'>
+      INTEGER,                INTENT(IN)  :: no       <a name='17'>
+<a name='18'>
+      INTEGER, DIMENSION(no), INTENT(OUT) :: io, jo, ko<a name='19'>
+<a name='20'>
+<font color=#447700>!---------------------------<a name='21'></font>
+<font color=#447700>! local integer scalar variables:<a name='22'></font>
+<font color=#447700>!---------------------------<a name='23'></font>
+      INTEGER  imr<a name='24'>
+      INTEGER  jmr<a name='25'>
+      INTEGER  nkor <a name='26'>
+      INTEGER  nor           <a name='27'>
+<a name='28'>
+<font color=#447700>!---------------------------<a name='29'></font>
+<font color=#447700>! character variables:<a name='30'></font>
+<font color=#447700>!---------------------------     <a name='31'></font>
+      <a name='32'>
+      character  fn*72<a name='33'>
+<font color=#447700>!-----------------------------------------------          <a name='34'></font>
+<font color=#447700>!     --------------<a name='35'></font>
+<font color=#447700>!     Input Pointers<a name='36'></font>
+<font color=#447700>!     --------------<a name='37'></font>
+      fn = TRIM(HYDRODIR//'Pointer.dat')      <a name='38'>
+      <a name='39'>
+      open (30,err=8,file=fn,status='old')<a name='40'>
+      read (30,*    ,err=9) nor,imr,jmr,nkor      <a name='41'>
+      read (30,*    ,err=9) io,jo,ko    <a name='42'>
+                                       <a name='43'>
+      close(30)<a name='44'>
+<a name='45'>
+#ifdef DEBUG<a name='46'>
+      write(6,100) no,nor,nko,nkor<a name='47'>
+      WRITE(6, "(' ')")<a name='48'>
+      WRITE(6, "(' In subroutine rPointer: ')")<a name='49'>
+      WRITE(6, "(' ')")       <a name='50'>
+      WRITE(6, "('no   = ' I8 )") no  <a name='51'>
+      WRITE(6, "('nor  = ' I8 )") nor <a name='52'>
+      WRITE(6, "('nko  = ' I8 )") nko<a name='53'>
+      WRITE(6, "('nkor = ' I8 )") nkor                            <a name='54'>
+      WRITE(6, "(' ')")      <a name='55'>
+100   format(2i8,2i10)<a name='56'>
+#endif<a name='57'>
+<a name='58'>
+      if (nor.ne.no.or.nkor.ne.nko) then<a name='59'>
+	write (6,*)'* wrong dimensions in Pointer.dat'<a name='60'>
+        WRITE (6, "(' ')")<a name='61'>
+        WRITE (6, "('Abort Run. ')")	 	<a name='62'>
+	stop<a name='63'>
+      end if<a name='64'>
+      return<a name='65'>
+<a name='66'>
+8     write(6,*) '*** In subroutine rPointer, cannot find Pointer.dat'<a name='67'>
+      WRITE (6, "(' ')")<a name='68'>
+      WRITE (6, "('Abort Run. ')")<a name='69'>
+      stop<a name='70'>
+<a name='71'>
+9     write(6,*) '*** In subroutine rPointer, read error at Pointer.dat'<a name='72'>
+      WRITE (6, "(' ')")<a name='73'>
+      WRITE (6, "('Abort Run. ')")<a name='74'>
+      stop<a name='75'>
+<a name='76'>
+      END SUBROUTINE rPointer<a name='77'>
+</pre></body></html>

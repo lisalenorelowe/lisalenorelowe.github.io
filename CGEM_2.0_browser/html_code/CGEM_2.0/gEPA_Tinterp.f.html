@@ -1,0 +1,194 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!----------------------------------------------------------------<a name='2'></font>
+<A NAME='GEPA_TINTERP'><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+  <font color=#993300>Subroutine </font><font color=#cc0000>gEPA_Tinterp</font> (TC_8, T, S, KH, istatus)  <A href='../../call_to/GEPA_TINTERP.html' TARGET='index'>2</A>,<A href='../../call_from/GEPA_TINTERP.html' TARGET='index'>15</A><a name='4'>
+<font color=#447700>!                  D.S.Ko/NRL<a name='5'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='6'></font>
+<font color=#447700>!     to get (find &amp; read) EPANFS outputs<a name='7'></font>
+<font color=#447700>!     type: output file type - t3d<a name='8'></font>
+<font color=#447700>!<a name='9'></font>
+<font color=#447700>!     TC_8 - Model time in seconds since iYr0.<a name='10'></font>
+<font color=#447700>!     F   - 2D/3D nowcast fields<a name='11'></font>
+<font color=#447700>!     istatus = 1 - ok; = 0 - bad (no data)<a name='12'></font>
+<font color=#447700>!<a name='13'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='14'></font>
+<a name='15'>
+<font color=#447700>!----------------------------------------<a name='16'></font>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_28"> <font color=#447700>! For iYr0, etc.<a name='17'></font>
+      USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_8"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='18'></font>
+<a name='19'>
+#IFNDEF _3D<a name='20'>
+      USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_20">, ONLY: icent, jcent<a name='21'>
+#ENDIF<a name='22'>
+<font color=#447700>!----------------------------------------  <a name='23'></font>
+      <a name='24'>
+      IMPLICIT NONE<a name='25'>
+<a name='26'>
+<font color=#447700>! ---  parameter declarations<a name='27'></font>
+      real, parameter        :: OneD24_8 = 1.0_8/24.0_8          <a name='28'>
+<a name='29'>
+<font color=#447700>! --- Input<a name='30'></font>
+      integer(kind=8), INTENT(IN) :: TC_8 <font color=#447700>! Model time in seconds since iYr0.<a name='31'></font>
+<a name='32'>
+<font color=#447700>! --- Output<a name='33'></font>
+      real   , dimension(im,jm,kbm1),INTENT(OUT) :: T, S, KH<a name='34'>
+      integer, INTENT(OUT) :: istatus<a name='35'>
+<a name='36'>
+<font color=#447700>! --- Local:<a name='37'></font>
+      integer(8):: SECONDS<a name='38'>
+      integer      ::  Floor_Day_hr_8<a name='39'>
+      integer      ::  Floor_Day_hr_m1_8 <a name='40'>
+      integer      ::  Floor_Day_hr_m2_8 <a name='41'>
+      integer      ::  Floor_Day_hr_d3_8<a name='42'>
+      integer      ::  Floor_Day_hr_m1_d3_8 <a name='43'>
+      integer      ::  Floor_Day_hr_m2_d3_8            <a name='44'>
+      integer      ::  istatus_1, istatus_2                <a name='45'>
+      integer      ::  iYr  , iMon  , iDay  , iHr  , iMin   , iSec <a name='46'>
+      integer      ::  iYr_1, iMon_1, iDay_1, iHr_1, iMin_1 , iSec_1   <a name='47'>
+      integer      ::  iYr_2, iMon_2, iDay_2, iHr_2, iMin_2 , iSec_2     <a name='48'>
+      integer      ::  ip,jp,ij,k<a name='49'>
+                                        <a name='50'>
+      real(kind=8) ::  Day_hr_8  <a name='51'>
+      real(kind=8) ::  Day_1_hr_8   <a name='52'>
+      real(kind=8) ::  Day_2_hr_8 <a name='53'>
+      real(kind=8) ::  Day_1_8 <a name='54'>
+      real(kind=8) ::  Day_2_8  <a name='55'>
+      real(kind=8) ::  Day_8 <font color=#447700>! Model time in fractional days since iYr0.<a name='56'></font>
+      real             R1, R2<a name='57'>
+      <a name='58'>
+      real, dimension(im,jm,kbm1) :: T_1, S_1, KH_1<a name='59'>
+      real, dimension(im,jm,kbm1) :: T_2, S_2, KH_2<a name='60'>
+<a name='61'>
+#IFNDEF _3D<a name='62'>
+      integer :: i, j <a name='63'>
+#ENDIF<a name='64'>
+<a name='65'>
+#IFNDEF _3D<a name='66'>
+      i = icent<a name='67'>
+      j = jcent <a name='68'>
+#ENDIF<a name='69'>
+<a name='70'>
+<font color=#447700>!-------------------------------------------------------------------      <a name='71'></font>
+<font color=#447700>! Calculate T,S,KH arrays for present date-time<a name='72'></font>
+<font color=#447700>!------------------------------------------------------------------- <a name='73'></font>
+    <font color=#447700>!---------------------------------------------------------------------<a name='74'></font>
+    <font color=#447700>! S,T,KH data only available at 3 hr intervals iHrS = 0,3,6,9,12,15,18)<a name='75'></font>
+    <font color=#447700>! If present time Hr, i.e. iHr is not divisible by 3, do a time <a name='76'></font>
+    <font color=#447700>! interpolation to calculate S, T, AND KH.<a name='77'></font>
+    <font color=#447700>!---------------------------------------------------------------------<a name='78'></font>
+<a name='79'>
+      <font color=#447700>! Compute date-timestamp of current timestep:<a name='80'></font>
+<a name='81'>
+      CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_11">( iYr0, TC_8, iYr, iMon, iDay, iHr, iMin, iSec )<a name='82'>
+      Day_8 = TC_8<a name='83'>
+      Day_8 = Day_8 / SECONDS_PER_DAY<a name='84'>
+<a name='85'>
+      if (mod(iHr,3)==0.and.1==3) then <a name='86'>
+         call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_3">('t3d',iYr,iMon,iDay,iHr,T,istatus)<a name='87'>
+         call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_4">('s3d',iYr,iMon,iDay,iHr,S,istatus)<a name='88'>
+         call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_5">('zkh',iYr,iMon,iDay,iHr,KH,istatus) <a name='89'>
+      else <a name='90'>
+	<font color=#447700>!-----------------------------------------------------------------<a name='91'></font>
+	<font color=#447700>! Work backwards from presentdate time and determine which whole <a name='92'></font>
+	<font color=#447700>! hour is divisible by three and is clostest in time to the<a name='93'></font>
+	<font color=#447700>! present date and time.<a name='94'></font>
+	<font color=#447700>!-----------------------------------------------------------------	<a name='95'></font>
+	<font color=#447700>!-------------------------------------------------------------------<a name='96'></font>
+	<font color=#447700>! Day_8    is present model time (in days ) at (kind=8)<a name='97'></font>
+	<font color=#447700>! Day_hr_8 is present model time (in hours) <a name='98'></font>
+        <font color=#447700>!-------------------------------------------------------------------<a name='99'></font>
+	    <a name='100'>
+	Day_hr_8    =  Day_8*24.0_8	<a name='101'>
+        <a name='102'>
+        Floor_Day_hr_8       = FLOOR(Day_hr_8)<a name='103'>
+        Floor_Day_hr_m1_8    = FLOOR(Day_hr_8) - 1<a name='104'>
+        Floor_Day_hr_m2_8    = FLOOR(Day_hr_8) - 2<a name='105'>
+        <a name='106'>
+        Floor_Day_hr_d3_8    =  Floor_Day_hr_8/3<a name='107'>
+        Floor_Day_hr_m1_d3_8 = (Floor_Day_hr_m1_8)/3<a name='108'>
+        Floor_Day_hr_m2_d3_8 = (Floor_Day_hr_m2_8)/3<a name='109'>
+       <a name='110'>
+        if (Floor_Day_hr_8 == 3*(Floor_Day_hr_d3_8)) then <a name='111'>
+	   Day_1_hr_8  = real(Floor(Day_hr_8,kind=8),kind=8) <a name='112'>
+	   Day_2_hr_8  =  Day_1_hr_8 + 3.00_8   <a name='113'>
+	                                 <font color=#447700>! 3 since data is 3 hrs apart<a name='114'></font>
+        elseif (Floor_Day_hr_m1_8 == 3*Floor_Day_hr_m1_d3_8) then <a name='115'>
+	   Day_1_hr_8  = real(FLOOR((Day_hr_8-1.0_8),kind=8),kind=8) <a name='116'>
+	   Day_2_hr_8  =  Day_1_hr_8 + 3.00_8   <a name='117'>
+	                                 <font color=#447700>! 3 since data is 3 hrs apart<a name='118'></font>
+	elseif (Floor_Day_hr_m2_8 == 3*Floor_Day_hr_m2_d3_8 ) then <a name='119'>
+	   Day_1_hr_8  = real(FLOOR((Day_hr_8-2.0_8),kind=8),kind=8) <a name='120'>
+	   Day_2_hr_8  =  Day_1_hr_8 + 3.00_8   <a name='121'>
+	                                 <font color=#447700>! 3 since data is 3 hrs apart     <a name='122'></font>
+        else<a name='123'>
+	<font color=#447700>! If we get here, Day_1_h_8 occurs 3 or more hours before<a name='124'></font>
+	<font color=#447700>! the starting Day_hr_8. This can't happen if there are no<a name='125'></font>
+	<font color=#447700>! logic or index errors. Print message and abort run.<a name='126'></font>
+           WRITE (6, "(' ')")   	<a name='127'>
+           WRITE (6, "('In sub. gEPA_Tinterp,           ')") <a name='128'>
+           WRITE (6, "('in section where T is calculated for')") <a name='129'>
+           WRITE (6, "('present time-level,                 ')") 	    <a name='130'>
+           WRITE (6, "('an error was found in section       ')")	<a name='131'>
+           WRITE (6, "('which calculates Day_1_hr_8 and     ')") <a name='132'>
+           WRITE (6, "('Day_2_hr_8. Abort run and find      ')")<a name='133'>
+           WRITE (6, "('and fix the bug.                    ')")<a name='134'>
+	   STOP	     	<a name='135'>
+	endif  <a name='136'>
+	<a name='137'>
+	Day_1_8    = Day_1_hr_8 * OneD24_8<a name='138'>
+	Day_2_8    = Day_2_hr_8 * OneD24_8	<a name='139'>
+<a name='140'>
+        SECONDS = NINT( Day_1_8 * SECONDS_PER_DAY, KIND=8 )<a name='141'>
+        CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_12">( iYr0, SECONDS, &amp;<a name='142'>
+                             iYr_1, iMon_1, iDay_1, iHr_1, iMin_1, iSec_1 )<a name='143'>
+<a name='144'>
+        call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_6">("t3d",iYr_1,iMon_1,iDay_1,iHr_1,T_1,istatus_1)   <a name='145'>
+        call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_7">("s3d",iYr_1,iMon_1,iDay_1,iHr_1,S_1,istatus_1) <a name='146'>
+        call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_8">("zkh",iYr_1,iMon_1,iDay_1,iHr_1,KH_1,istatus_1) <a name='147'>
+	<a name='148'>
+        SECONDS = NINT( Day_2_8 * SECONDS_PER_DAY, KIND=8 )<a name='149'>
+        CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_13">( iYr0, SECONDS, &amp;<a name='150'>
+                             iYr_2, iMon_2, iDay_2, iHr_2, iMin_2, iSec_2 )<a name='151'>
+<a name='152'>
+        call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_9">("t3d",iYr_2,iMon_2,iDay_2,iHr_2,T_2,istatus_2) <a name='153'>
+        call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_10">("s3d",iYr_2,iMon_2,iDay_2,iHr_2,S_2,istatus_2) <a name='154'>
+        call <A href='../../html_code/CGEM_2.0/gEPA.f.html#GEPA'>gEPA</A><A href='../../html_code/CGEM_2.0/gEPA_Tinterp.f.html#GEPA_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPA_11">("zkh",iYr_2,iMon_2,iDay_2,iHr_2,KH_2,istatus_2) <a name='155'>
+      <a name='156'>
+	if (Day_2_8 &lt;= Day_1_8) then <a name='157'>
+           WRITE (6,"(' ')")  <a name='158'>
+           WRITE (6,"('In sub. gEPA_Tinterp, ')") <a name='159'>
+           WRITE (6,"('when calculating time interp values of T, ')")  <a name='160'>
+           WRITE (6,"('S, and KH,         Day_2_8 = ',F16.8)") Day_2_8<a name='161'>
+           WRITE (6,"('was found to be &lt;= Day_1_8 = ',F16.8)") Day_1_8 	<a name='162'>
+           WRITE (6,"('Abort run. ')")<a name='163'>
+	   STOP<a name='164'>
+	endif  <a name='165'>
+	<a name='166'>
+	R2  = real((Day_8 - Day_1_8)/(Day_2_8-Day_1_8),kind=4)<a name='167'>
+	R1  = 1.0 - R2<a name='168'>
+<a name='169'>
+#IFNDEF _3D<a name='170'>
+         do k = 1,kbm1<a name='171'>
+              T(i,j,k)  = R1*T_1(i,j,k) + R2*T_2(i,j,k)<a name='172'>
+              S(i,j,k)  = R1*S_1(i,j,k) + R2*S_2(i,j,k)<a name='173'>
+              KH(i,j,k) = R1*KH_1(i,j,k) + R2*KH_2(i,j,k)<a name='174'>
+         enddo<a name='175'>
+#ELSE<a name='176'>
+         do ij = 1, no<a name='177'>
+	     ip = io(ij)<a name='178'>
+	     jp = jo(ij)<a name='179'>
+	     do k = 1, ko(ij)<a name='180'>
+              T(ip,jp,k)  = R1*T_1(ip,jp,k) + R2*T_2(ip,jp,k)<a name='181'>
+              S(ip,jp,k)  = R1*S_1(ip,jp,k) + R2*S_2(ip,jp,k)<a name='182'>
+              KH(ip,jp,k) = R1*KH_1(ip,jp,k) + R2*KH_2(ip,jp,k)<a name='183'>
+	     enddo <a name='184'>
+	 enddo<a name='185'>
+#ENDIF         <a name='186'>
+<a name='187'>
+      endif <a name='188'>
+<font color=#447700>!-------------------------------------------------------------------------<a name='189'></font>
+<a name='190'>
+      return<a name='191'>
+      END Subroutine gEPA_Tinterp<a name='192'>
+<font color=#447700>! ---------------------------------------------------------------- <a name='193'></font>
+</pre></body></html>

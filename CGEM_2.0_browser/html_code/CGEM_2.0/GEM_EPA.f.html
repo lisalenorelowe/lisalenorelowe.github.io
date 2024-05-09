@@ -1,0 +1,1660 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<a name='2'>
+<A NAME='GEM_EPA'><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+    <font color=#993300>Subroutine </font><font color=#cc0000>GEM_EPA</font>( lat, lon, zl, TC_8, f, zz, Rad, T, S, dz, d, &amp; <A href='../../call_to/GEM_EPA.html' TARGET='index'>2</A>,<A href='../../call_from/GEM_EPA.html' TARGET='index'>46</A><a name='4'>
+     &amp; istep, my_imstart, my_imend, wsm, fm, PARbot_ij, CBODW,       &amp;<a name='5'>
+     &amp; print_ave, istep_wait, myid, nstep, istep_start, istep_end,   &amp;<a name='6'>
+     &amp; BASE_NETCDF_OUTPUT_FILE_NAME, iout, istep_out,                &amp;<a name='7'>
+     &amp; RESTART_FILE_NAME, THE_RESTART_FILE_TIMESTEP )<a name='8'>
+<font color=#447700>!======================================================================<a name='9'></font>
+     USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_21"><a name='10'>
+     USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_9"><a name='11'>
+     USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_17"><a name='12'>
+     USE <A href='../../html_code/CGEM_2.0/Which_Flux.f.html#WHICH_FLUX'>Which_Flux</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="WHICH_FLUX_3"><a name='13'>
+     USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_5"><a name='14'>
+     USE <A href='../../html_code/CGEM_2.0/OUTPUT_NETCDF.f.html#OUTPUT_NETCDF'>OUTPUT_NETCDF</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="OUTPUT_NETCDF_3"><a name='15'>
+     USE <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#AVE_NETCDF'>AVE_NETCDF</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="AVE_NETCDF_1"><a name='16'>
+     USE <A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS'>CGEM_vars</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CGEM_VARS_8"> <a name='17'>
+     USE <A href='../../html_code/CGEM_2.0/Calc_Chla.f.html#CALC_CHLA'>Calc_Chla</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CALC_CHLA_1"><a name='18'>
+     USE <A href='../../html_code/CGEM_2.0/MOD_EPACOM_GEM_UTILITIES.f.html#MOD_EPACOM_GEM_UTILITIES'>MOD_EPACOM_GEM_UTILITIES</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MOD_EPACOM_GEM_UTILITIES_2"><a name='19'>
+     USE <A href='../../html_code/CGEM_2.0/vars.f.html#MVARS'>mvars</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MVARS_2"><a name='20'>
+     USE <A href='../../html_code/CGEM_2.0/STOICH_VARS.f.html#STOICH_VARS'>STOICH_VARS</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="STOICH_VARS_3"><a name='21'>
+<a name='22'>
+      IMPLICIT NONE<a name='23'>
+<a name='24'>
+     include '<A href='../../html_code/include/mpif.h.html'>mpif.h</A>'<A NAME="mpif.h_1"><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><a name='25'>
+<a name='26'>
+<font color=#447700>!---------------------------------------------<a name='27'></font>
+<font color=#447700>! Interface variables<a name='28'></font>
+<font color=#447700>!---------------------------------------------------------------------<a name='29'></font>
+    real,    intent(in)  :: lat(jm), lon(im)    <font color=#447700>! Latitude and longitude<a name='30'></font>
+    integer(kind=8), intent(in) :: TC_8         <font color=#447700>! Model time (seconds from beginning of Jan 1, 2002)<a name='31'></font>
+    real, intent(inout)  :: f(myimp2,jm,nsl,nf) <font color=#447700>! Array that holds the nf state variables<a name='32'></font>
+    real,    intent(in)  :: zz(nsl)     <font color=#447700>! zz(k) = elevation, i.e. depth, of the middle of layer k (m)<a name='33'></font>
+    real,    intent(in)  :: Rad(im,jm)  <font color=#447700>! Irradiance just above sea level (quanta/cm2/sec)<a name='34'></font>
+    real,    intent(in)  :: T(im,jm,kbm1), S(im,jm,kbm1) <font color=#447700>!Temperature (Celsius) and salinity <a name='35'></font>
+    real,    intent(in)  :: zl(kb)    <font color=#447700>! Sigma value of top of layer k <a name='36'></font>
+    real,    intent(in)  :: dz(kb)    <font color=#447700>! Sigma thickness of layer k <a name='37'></font>
+    real,    intent(in)  :: d(im,jm)  <font color=#447700>! Depth + elevation of center of layer k (m)<a name='38'></font>
+    integer, intent(in)  :: istep     <font color=#447700>! Current time step<a name='39'></font>
+    integer, intent(in)  :: iout      <font color=#447700>! Output time-interval in timesteps<a name='40'></font>
+    integer, intent(in)  :: istep_out <font color=#447700>! Current output counter     <a name='41'></font>
+    integer, intent(in)  :: myid, my_imstart,my_imend   <font color=#447700>! Processor, Start and end columns for processor<a name='42'></font>
+    integer, intent(in)  :: fm(im,jm)             <font color=#447700>! Land(0)/sea(1) mask<a name='43'></font>
+    real,    intent(in)  :: wsm(im,jm)            <font color=#447700>! Shelf(0)/open ocean(1) mask<a name='44'></font>
+    real,    intent(out) :: PARbot_ij(myimp2,jm)  <font color=#447700>! Irradiance at sea bottom (quanta/cm2/sec)<a name='45'></font>
+    real,    intent(out) :: CBODW(myimp2,jm,nsl)  <font color=#447700>! Chemical Biological Oxygen Demand in the Water <a name='46'></font>
+    integer, intent(in)  :: print_ave, istep_wait   <font color=#447700>! Counters for outputting average variables to netCDF<a name='47'></font>
+    integer, intent(in)  :: nstep                   <font color=#447700>! Total number of timesteps in a run<a name='48'></font>
+    integer, intent(in)  :: istep_start, istep_end  <font color=#447700>! Time loop counters in case of crash restart<a name='49'></font>
+    CHARACTER(LEN=*),INTENT(IN):: BASE_NETCDF_OUTPUT_FILE_NAME <font color=#447700>! Base name for average.nc file<a name='50'></font>
+    CHARACTER(LEN=*),INTENT(IN):: RESTART_FILE_NAME <font color=#447700>! File for case of restart <a name='51'></font>
+    INTEGER,INTENT(IN):: THE_RESTART_FILE_TIMESTEP  <font color=#447700>! 1-based NetCDF timestep.<a name='52'></font>
+<font color=#447700>!---------------------------------------------------------------------------------------<a name='53'></font>
+<font color=#447700>! Local Variables<a name='54'></font>
+<font color=#447700>!-----------------------------------------------------<a name='55'></font>
+    character*256 :: AVE_NETCDF_OUTPUT_FILE_NAME <font color=#447700>! File name outputting average variables to netCDF<a name='56'></font>
+    real ::  ff(myimp2,jm,nsl,nf)        <font color=#447700>! Holds the nf state vectors<a name='57'></font>
+    integer        ::  myi, i, j, k, isp <font color=#447700>! Loop indicies, isp is for phytoplankton species<a name='58'></font>
+    integer, save  ::  init  = 1         <font color=#447700>! Declare some variables only at first subroutine call<a name='59'></font>
+    integer, save  ::  init_ave_netcdf = 1 <font color=#447700>! Initialize average netCDF file only once<a name='60'></font>
+    integer, save  ::  i_out, print_file <font color=#447700>! Counters for netCDF file<a name='61'></font>
+    integer        ::  mpierr            <font color=#447700>! Error handler for MPI<a name='62'></font>
+    integer        ::  Is_Day            <font color=#447700>! Switch for day/night for phytoplankton nutrient uptake only, Is_Day=0 means night<a name='63'></font>
+    integer, parameter  :: riv_icent=258, riv_jcent=89 <font color=#447700>! Needed for 1D output<a name='64'></font>
+<font color=#447700>!------------------------------------ <a name='65'></font>
+<font color=#447700>! Variables to hold netCDF output<a name='66'></font>
+    real    :: PAR_percent_ijk(myimp2,jm,nsl) <font color=#447700>! Percent Irradiance at mid cell (quanta/cm2/sec)<a name='67'></font>
+    real    :: PARdepth_ijk(myimp2,jm,nsl)    <font color=#447700>! Percent Irradiance at mid cell (quanta/cm2/sec) <a name='68'></font>
+    real    :: uN_ijk(myimp2,jm,nsl,nospA)    <font color=#447700>! Nitrogen Limited growth rate (1/d)<a name='69'></font>
+    real    :: uP_ijk(myimp2,jm,nsl,nospA)    <font color=#447700>! Phosphorus limited growth rate (1/d)<a name='70'></font>
+    real    :: uE_ijk(myimp2,jm,nsl,nospA)    <font color=#447700>! Light limited growth rate (1/d)<a name='71'></font>
+    real    :: uSi_ijk(myimp2,jm,nsl,nospA)   <font color=#447700>! Silica limited growth rate (1/d)<a name='72'></font>
+    real    :: uA_ijk(myimp2,jm,nsl,nospA)    <font color=#447700>! Specific growth rate (1/d)<a name='73'></font>
+    real    :: Chla_tot_ijk(myimp2,jm,nsl)    <font color=#447700>! Total Chl-a concentration from all phytoplankton (mg/m3)<a name='74'></font>
+    real    :: Chl_C_ijk(myimp2,jm,nsl,nospA) <font color=#447700>! Chl:C from each phytoplankton species<a name='75'></font>
+    real    :: RN2_ijk(myimp2,jm,nsl)        <font color=#447700>! Store N from denitrification <a name='76'></font>
+<font color=#447700>!-------------------------------------------------------------------------<a name='77'></font>
+<font color=#447700>! Phytoplankton parameters<a name='78'></font>
+ <font color=#447700>!Phytoplankton uptake and growth<a name='79'></font>
+    real, dimension(nospA,nsl) :: A_k      <font color=#447700>! Phytoplankton number density (cells/m3)<a name='80'></font>
+    real    :: Agrow                       <font color=#447700>! Phytoplankton growth (cells/m3/d)<a name='81'></font>
+    real, dimension(nospA,nsl) :: Agrow_k  <font color=#447700>! Phytoplankton growth (cells/m3/d)<a name='82'></font>
+    real    :: uA                 <font color=#447700>! Specific growth rate (1/d)<a name='83'></font>
+    real    :: uA_k(nsl,nospA)    <font color=#447700>! Specific growth rate (1/d)<a name='84'></font>
+    real    :: uN_k(nsl,nospA)    <font color=#447700>! Nitrogen Limited growth rate (1/d)<a name='85'></font>
+    real    :: uP_k(nsl,nospA)    <font color=#447700>! Phosphorus limited growth rate (1/d)<a name='86'></font>
+    real    :: uE_k(nsl,nospA)    <font color=#447700>! Light limited growth rate (1/d)<a name='87'></font>
+    real    :: uSi_k(nsl,nospA)   <font color=#447700>! Silica limited growth rate (1/d)<a name='88'></font>
+    real    :: f_Qn(nospA)        <font color=#447700>! Quota model for N<a name='89'></font>
+    real    :: f_Qp(nospA)        <font color=#447700>! Quota model for P<a name='90'></font>
+    real    :: Qn,Qn_k(nospA,nsl) <font color=#447700>! Phytoplankton Nitrogen Quota (mmol-N/cell)<a name='91'></font>
+    real    :: Qp,Qp_k(nospA,nsl) <font color=#447700>! Phytoplankton Phosphorus Quota (mmol-P/cell)<a name='92'></font>
+    real    :: vN    <font color=#447700>! Phytoplankton uptake rate of Nitrogen (mmol-N/cell/d)<a name='93'></font>
+    real    :: vP    <font color=#447700>! Phytoplankton uptake rate of Phosphorus (mmol-P/cell/d)<a name='94'></font>
+    real    :: vSi   <font color=#447700>! Phytoplankton uptake rate of Silica (mmol-Si/cell/d)<a name='95'></font>
+    real    :: AupN  <font color=#447700>! Total Phytoplankton uptake of Nitrogen (mmol-N/m3/d)<a name='96'></font>
+    real    :: AupP  <font color=#447700>! Total Phytoplankton uptake of Phosphorus (mmol-P/m3/d)<a name='97'></font>
+    real    :: AupSi <font color=#447700>! Total Phytoplankton uptake of Silica (mmol-Si/m3/d)<a name='98'></font>
+    integer :: RLN   <font color=#447700>! Rate Limiting Nutrient of N, P, and Si<a name='99'></font>
+ <font color=#447700>!Monod equations for phytoplankton<a name='100'></font>
+    real, dimension(nospA)    :: monodN  <font color=#447700>!Monod term in nitrogen uptake<a name='101'></font>
+    real, dimension(nospA)    :: monodP  <font color=#447700>!Monod term in phosphorus uptake<a name='102'></font>
+    real, dimension(nospA)    :: monodSi <font color=#447700>!Monod term in Si uptake<a name='103'></font>
+    real    :: Ntotal   <font color=#447700>! Total N (mmol/m3)<a name='104'></font>
+ <font color=#447700>!Phytoplankton nutrient loss<a name='105'></font>
+    real, dimension(nospA)    :: Amort <font color=#447700>! Dead phytoplankton (cells/m3/day)<a name='106'></font>
+    real, dimension(nospA)    :: AexudN_A    <font color=#447700>! Phytoplankton group exudation (mmol-N/cell/d)<a name='107'></font>
+    real, dimension(nospA)    :: AexudP_A    <font color=#447700>! Phytoplankton group exudation (mmol-P/cell/d) <a name='108'></font>
+    real    :: AexudN          <font color=#447700>! Sum of Exudation of N from all phytoplankton groups (mmol-N/m3/d)<a name='109'></font>
+    real    :: AexudP          <font color=#447700>! Sum of Exudation of P from all phytoplankton groups (mmol-P/m3/d)<a name='110'></font>
+    real    :: Aresp           <font color=#447700>! Total respiration from a phytoplankton group (cells/m3/d)<a name='111'></font>
+    real    :: Aresp_k(nospA,nsl) <font color=#447700>! Total respiration from a phytoplankton group (cells/m3/d)<a name='112'></font>
+    real    :: ArespC          <font color=#447700>! Phytoplankton equivalent carbon loss from respiration (mmol-C/m3/d)<a name='113'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='114'></font>
+<font color=#447700>! Zooplankton parameters<a name='115'></font>
+ <font color=#447700>!Zooplankton uptake and growth<a name='116'></font>
+    real, dimension(nospZ,nsl)   :: Z_k      <font color=#447700>! Zooplankton number density (indv./m3)<a name='117'></font>
+    real, dimension(nospZ),save  :: optNP    <font color=#447700>! Optimal nutrient ratio for zooplankton<a name='118'></font>
+    real, dimension(nospZ)       :: Z        <font color=#447700>! Zooplankton<a name='119'></font>
+    real, dimension(nospZ)       :: Zgrow    <font color=#447700>! Zooplankton growth (indv./m3/d)<a name='120'></font>
+    real, dimension(nospA,nospZ) :: Zgrazvol <font color=#447700>! Grazing rate in units of biovolume (um3/m3/d)<a name='121'></font>
+    real, dimension(nospA,nospZ) :: ZgrazA   <font color=#447700>! Zooplankton grazing of phytoplankton (cells/m3/d)<a name='122'></font>
+    real, dimension(nospA)       :: ZgrazA_tot <font color=#447700>! Total zooplankton grazing of phytoplankton (cells/m3/d)<a name='123'></font>
+    real, dimension(nospZ)       :: ZgrazN   <font color=#447700>! Zooplankton grazing uptake of Nitrogen (mmol-N/m3/d)<a name='124'></font>
+    real, dimension(nospZ)       :: ZgrazP   <font color=#447700>! Zooplankton grazing uptake of Phosphorus (mmol-P/m3/d)<a name='125'></font>
+    real, dimension(nospZ)       :: ZgrazC   <font color=#447700>! Zooplankton grazing uptake of Carbon (mmol-C/m3/d)<a name='126'></font>
+    real, dimension(nospZ)       :: ZinN     <font color=#447700>! Zooplankton ingestion of Nitrogen (mmol-N/m3/d)<a name='127'></font>
+    real, dimension(nospZ)       :: ZinP     <font color=#447700>! Zooplankton ingestion of Phosphorus (mmol-P/m3/d)<a name='128'></font>
+    real, dimension(nospZ)       :: ZinC     <font color=#447700>! Zooplankton ingestion of Carbon (mmol-C/m3/d)<a name='129'></font>
+ <font color=#447700>!Monod equations for zooplankton ingestion of phytoplankton<a name='130'></font>
+    real, dimension(nospA,nospZ) :: monodZ   <font color=#447700>! Monod term for zooplankton grazing<a name='131'></font>
+    real                         :: Abiovol  <font color=#447700>! Algae biovolume vector (um3/m3)<a name='132'></font>
+    real, dimension(nospA,nospZ) :: top_A    <font color=#447700>! Monod numerator value for phytoplankton group<a name='133'></font>
+    real, dimension(nospA,nospZ) :: bottom_A <font color=#447700>! Monod Denominator value for phytoplankton group<a name='134'></font>
+    real, dimension(nospZ)       :: bottom   <font color=#447700>! Sum of Monod Denominator value for all phytoplankton groups<a name='135'></font>
+ <font color=#447700>!Zooplankton nutrient loss<a name='136'></font>
+    real, dimension(nospZ)       :: Zresp    <font color=#447700>! Zooplankton respiration (individuals/m3/d)<a name='137'></font>
+    real                         :: ZrespC   <font color=#447700>! Carbon loss from zooplankton respiration (mmol-C/m3/day)<a name='138'></font>
+    real, dimension(nospZ)       :: ZunC     <font color=#447700>! Unassimilated ingested Carbon (mmol-C/m3/d)<a name='139'></font>
+    real, dimension(nospZ)       :: ZunN     <font color=#447700>! Unassimilated ingested Nitrogen (mmol-N/m3/d)<a name='140'></font>
+    real, dimension(nospZ)       :: ZunP     <font color=#447700>! Unassimilated ingested Phosphorus (mmol-P/m3/d)<a name='141'></font>
+    real, dimension(nospZ)       :: ZunSi    <font color=#447700>! Unassimilated ingested Silica (mmol-Si/m3/d)<a name='142'></font>
+    real, dimension(nospZ)       :: Zmort    <font color=#447700>! Dead zooplankton (individuals/m3/d)<a name='143'></font>
+    real :: ZmortC(nospZ), ZmortC_tot        <font color=#447700>! Carbon released from dead zooplankton (mmol-C/m3/d)<a name='144'></font>
+    real :: ZmortN(nospZ), ZmortN_tot        <font color=#447700>! Nitrogen released from dead zooplankton (mmol-N/m3/d)<a name='145'></font>
+    real :: ZmortP(nospZ), ZmortP_tot        <font color=#447700>! Phosphorus released from dead zooplankton (mmol-P/m3/d)<a name='146'></font>
+    real :: ZslopC(nospZ), ZslopC_tot        <font color=#447700>! Carbon lost to sloppy feeding (mmol-C/m3/d)<a name='147'></font>
+    real :: ZslopN(nospZ), ZslopN_tot        <font color=#447700>! Nitrogen lost to sloppy feeding (mmol-N/m3/d)<a name='148'></font>
+    real :: ZslopP(nospZ), ZslopP_tot        <font color=#447700>! Phosphorus lost to sloppy feeding (mmol-P/m3/d)<a name='149'></font>
+    real, dimension(nospZ)       :: ZexN     <font color=#447700>! Excretion from zooplankton (mmol-N/m3/d)<a name='150'></font>
+    real, dimension(nospZ)       :: ZexP     <font color=#447700>! Excretion from zooplankton (mmol-P/m3/d)<a name='151'></font>
+    real, dimension(nospZ)       :: ZegC     <font color=#447700>! Egestion from zooplankton (mmol-C/m3/d)<a name='152'></font>
+    real, dimension(nospZ)       :: ZegN     <font color=#447700>! Egestion from zooplankton (mmol-N/m3/d)<a name='153'></font>
+    real, dimension(nospZ)       :: ZegP     <font color=#447700>! Egestion from zooplankton (mmol-P/m3/d)<a name='154'></font>
+    real, dimension(nospZ)       :: ZegSi    <font color=#447700>! Egestion from zooplankton (mmol-Si/m3/d)<a name='155'></font>
+    real :: OM1_Ratio, OM2_Ratio             <font color=#447700>! Separates sloppy feeding into OM1 and OM2<a name='156'></font>
+<font color=#447700>!---------------------------------------------------------------------- <a name='157'></font>
+<font color=#447700>! Time variables  <a name='158'></font>
+    real, parameter :: SDay       = 86400.0   <font color=#447700>! Seconds in a day<a name='159'></font>
+    real, parameter :: one_d_365  = 1.0/365.0 <font color=#447700>! Convert 1/yr to 1/day<a name='160'></font>
+    real, parameter :: OneD60     = 1.0/60.0  <font color=#447700>! Convert 1/min to 1/sec<a name='161'></font>
+    real, save      :: dTd           <font color=#447700>! Timestep in days <a name='162'></font>
+    integer, save   :: StepsPerDay   <font color=#447700>! Time steps per day<a name='163'></font>
+    real            :: HrTC          <font color=#447700>! Decimal hour of day<a name='164'></font>
+    integer         :: iYrTC, iMonTC, iDayTC, iHrTC, iMinTC, iSecTC <font color=#447700>!Time variables<a name='165'></font>
+    integer         :: JY            <font color=#447700>! Function determines whether argument is a leap year<a name='166'></font>
+    integer         :: julianDay     <font color=#447700>! Holds Julian Day<a name='167'></font>
+    integer         :: mdate_julian  <font color=#447700>! Function calculates Julian Day<a name='168'></font>
+    logical         :: leapyr        <font color=#447700>! Logical, is leap year <a name='169'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='170'></font>
+<font color=#447700>! Organic Matter Calculations<a name='171'></font>
+   <font color=#447700>! Variables to calculate stoichiometry C:N:P ratios<a name='172'></font>
+    real    :: OM1_CA, OM1_NA, OM1_PA    <font color=#447700>! OM from dead phytoplankton<a name='173'></font>
+    real    :: OM2_CA, OM2_NA, OM2_PA   <a name='174'>
+    real    :: OM1_CZ, OM1_NZ, OM1_PZ    <font color=#447700>! OM from zooplankton<a name='175'></font>
+    real    :: OM2_CZ, OM2_NZ, OM2_PZ<a name='176'>
+    real :: stoich_x1A, stoich_y1A, stoich_z1A <font color=#447700>! Stoichiometry for OM1_A<a name='177'></font>
+    real :: stoich_x2A, stoich_y2A, stoich_z2A <font color=#447700>! Stoichiometry for OM2_A<a name='178'></font>
+    real :: stoich_x1Z, stoich_y1Z, stoich_z1Z <font color=#447700>! Stoichiometry for OM1_Z<a name='179'></font>
+    real :: stoich_x2Z, stoich_y2Z, stoich_z2Z <font color=#447700>! Stoichiometry for OM2_Z<a name='180'></font>
+<font color=#447700>!---------------------------------------------------------------------------<a name='181'></font>
+<font color=#447700>! reaction and Nitrification subroutine variables<a name='182'></font>
+    real    :: NO3, NH4, O2, DIC, Si, PO4               <font color=#447700>! Nutrient input to subroutines<a name='183'></font>
+    real    :: OM1_A, OM1_Z, OM1_R, OM2_A, OM2_Z, OM2_R <font color=#447700>! OM inputs to subroutines<a name='184'></font>
+    real    :: OM1_BC, OM2_BC                           <font color=#447700>! OM inputs to subroutines<a name='185'></font>
+    real    :: R_11                                     <font color=#447700>! Nitrification term<a name='186'></font>
+    real    :: RNO3, RNO3_A, RNO3_Z, RNO3_R, RNO3_BC <font color=#447700>! Remineralization terms for NO3<a name='187'></font>
+    real    :: RNH4, RNH4_A, RNH4_Z, RNH4_R, RNH4_BC <font color=#447700>! Remineralization terms for NH4<a name='188'></font>
+    real    :: ROM1_A, ROM1_Z, ROM1_R, ROM1_BC       <font color=#447700>! Remineralization terms for POC<a name='189'></font>
+    real    :: ROM2_A, ROM2_Z, ROM2_R, ROM2_BC       <font color=#447700>! Remineralization terms for DOC<a name='190'></font>
+    real    :: RO2, RO2_A, RO2_Z, RO2_R, RO2_BC      <font color=#447700>! Remineralization terms for O2<a name='191'></font>
+    real    :: RPO4, RPO4_A, RPO4_Z, RPO4_R, RPO4_BC <font color=#447700>! Remineralization terms for PO4<a name='192'></font>
+    real    :: RDIC, RDIC_A, RDIC_Z, RDIC_R, RDIC_BC <font color=#447700>! Remineralization terms for DIC<a name='193'></font>
+    real    :: RSi, RSi_A, RSi_Z, RSi_R, RSi_BC      <font color=#447700>! Remineralization terms for Si<a name='194'></font>
+    real    :: RALK, RALK_A, RALK_Z, RALK_R, RALK_BC <font color=#447700>! Remineralization terms for ALK<a name='195'></font>
+    real    :: RN2, RN2_A, RN2_Z, RN2_R, RN2_BC <font color=#447700>! Remineralization terms for N2<a name='196'></font>
+    real, dimension(10) :: RC   <font color=#447700>! Array that returns remineralization terms for OM<a name='197'></font>
+<font color=#447700>!---------------------------------------------------------<a name='198'></font>
+<font color=#447700>! Variables needed for light routine and calc_Agrow<a name='199'></font>
+    real    :: SunZenithAtm       <font color=#447700>! Solar beam zenith angle<a name='200'></font>
+    real    :: calc_solar_zenith  <font color=#447700>! Function, calculates solar beam zenith angle<a name='201'></font>
+    real    :: Katt               <font color=#447700>! Attenuation coefficient for Irradiance model 2 <a name='202'></font>
+    real    :: tmpexp             <font color=#447700>! Intermediate calculation<a name='203'></font>
+    real    :: d_bot(nsl)         <font color=#447700>! Depth from surface to bottom of cell<a name='204'></font>
+    real    :: d_sfc(nsl)         <font color=#447700>! Depth from surface to center of cell<a name='205'></font>
+    real    :: delz               <font color=#447700>! Thickness of layer k (m)<a name='206'></font>
+    real    :: PARbotkm1          <font color=#447700>! Irradiance at bottom of layer k-1 (quanta/cm2/s)<a name='207'></font>
+    real    :: PARtopk            <font color=#447700>! Irradiance at top of layer k (quanta/cm2/s)<a name='208'></font>
+    real    :: PARsurf            <font color=#447700>! Irradiance just below the sea surface (quanta/cm2/s) <a name='209'></font>
+    real    :: PARbot             <font color=#447700>! Irradiance at sea floor (quanta/cm2/s)<a name='210'></font>
+    real    :: PARdepth_k(nsl)    <font color=#447700>! Irradiance at center of layer k (quanta/cm2/s)<a name='211'></font>
+    real    :: PAR_percent_k(nsl) <font color=#447700>! Percent irradiance at center of layer k (quanta/cm2/s)<a name='212'></font>
+    real, save :: aDailyRad(myimp2,jm,nsl) <font color=#447700>! previous day's irradiance per layer<a name='213'></font>
+    real, save :: aRadSum(myimp2,jm,nsl)   <font color=#447700>! Add up current day's irradiance<a name='214'></font>
+    real       :: aDailyRad_k(nsl), aRadSum_k(nsl)<a name='215'>
+    real, parameter :: RADCONV = 1./6.0221413*1.e-19 <font color=#447700>! Convert quanta/cm2/s to mol/m2/s:<a name='216'></font>
+                                               <font color=#447700>!  = quanta/cm2/s * 1 mol/Avogadro# * 10,000cm2/m2<a name='217'></font>
+                                               <font color=#447700>!  = (1/6.022e23) * 1.0e4 = (1./6.022)e-23 * 1.0e4<a name='218'></font>
+                                               <font color=#447700>!  = (1./6.0221413)*1.e-19<a name='219'></font>
+    real, dimension(nsl) :: Chla_tot_k  <font color=#447700>! Total amount of Chl-a in all the<a name='220'></font>
+                                        <font color=#447700>!  phytoplankton species (mg/m3) per cell<a name='221'></font>
+    real, dimension(nospA,nsl) :: Chl_C_k     <font color=#447700>! Chl:C<a name='222'></font>
+    real, dimension(nsl) :: OM1A_k, OM1Z_k, OM1SPM_k, OM1BC_k <font color=#447700>!POC in g/m3<a name='223'></font>
+    real, dimension(nsl) :: CDOM_k    <font color=#447700>! CDOM, ppb<a name='224'></font>
+    real, dimension(nsl) :: N_k       <font color=#447700>! Nitrogen, mmol/m3<a name='225'></font>
+    real, dimension(nsl) :: P_k       <font color=#447700>! Phosphorus, mmol/m3<a name='226'></font>
+    real, dimension(nsl) :: Si_k      <font color=#447700>! Silica, mmol/m3<a name='227'></font>
+    real, dimension(nsl) :: S_k, T_k  <font color=#447700>! Salinity and Temperature(Celsius)<a name='228'></font>
+    real, parameter :: C_cf  = 12.0E-3    <font color=#447700>! C conversion factor (mmol-C/m3 to g-C/m3) <a name='229'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='230'></font>
+<font color=#447700>! Other variables <a name='231'></font>
+    real :: PrimProd                     <font color=#447700>! Primary production (photosynthesis)<a name='232'></font>
+    real, dimension(nospA+nospZ) :: Tadj <font color=#447700>! Temperature adjustment factor<a name='233'></font>
+    real :: Q10_T                        <font color=#447700>! Temperature adjustment Q10 relation<a name='234'></font>
+<font color=#447700>!------------------------------------------------------------------    <a name='235'></font>
+<font color=#447700>! SAVE variables for mean values to output to netCDF:<a name='236'></font>
+    real, save :: SUM_PrimProd(myim,jm,nz) = 0.<a name='237'>
+    real, save :: SUM_PAR(myim,jm,nz)  = 0.<a name='238'>
+    real, save :: SUM_CHLA(myim,jm,nz) = 0.<a name='239'>
+    real, save :: SUM_RESP(myim,jm,nz) = 0.<a name='240'>
+    real, save :: SUM_ARESPTOTC(myim,jm,nz) = 0.<a name='241'>
+    real, save :: SUM_DECAY(myim,jm,nz) = 0.<a name='242'>
+    real, save :: SUM_RESPZ_O2(myim,jm,nz) = 0.<a name='243'>
+    real, dimension(myim,jm) :: INT_PrimProd, INT_PAR, INT_CHLA, INT_RESP, INT_ARESPTOTC, INT_DECAY, INT_RESPZ_O2<a name='244'>
+<font color=#447700>!------------------------------------------------------------------<a name='245'></font>
+<font color=#447700>! SAVE KGs for instant remineralization<a name='246'></font>
+    real, save :: KG1_save, KG2_save<a name='247'>
+<font color=#447700>!------------------------------------------------------------------<a name='248'></font>
+<font color=#447700>!Vars for ave netCDF<a name='249'></font>
+    integer istart, iend, itot, jstart, jend, jtot, my_im, my_istart, fstart, fend<a name='250'>
+<font color=#447700>!------------------------------------------------------------------<a name='251'></font>
+<font color=#447700>!Output vars for alkalinity subroutine:<a name='252'></font>
+    real :: ph_calc(1), pco2_calc(1), fco2(1), co2(1), hco3(1), co3(1), omegaa(1), omegac(1), betad_calc(1), rhosw(1), p(1), tempis(1)<a name='253'>
+    real :: patm(1) = 1.<a name='254'>
+<a name='255'>
+   AVE_NETCDF_OUTPUT_FILE_NAME = trim(BASE_NETCDF_OUTPUT_FILE_NAME)//"average.nc"<a name='256'>
+<a name='257'>
+<font color=#447700>! Indices definitions for 1D vs 3D, and for netCDF<a name='258'></font>
+#IFDEF _3D<a name='259'>
+      istart = 1<a name='260'>
+      iend = my_imend - my_imstart + 1 <a name='261'>
+      jstart = 1<a name='262'>
+      jend = jm<a name='263'>
+      itot = im<a name='264'>
+      jtot = jm<a name='265'>
+     my_im = iend<a name='266'>
+ my_istart = my_imstart<a name='267'>
+    fstart = 2<a name='268'>
+      fend = my_im + 1 <a name='269'>
+#ELSE<a name='270'>
+      i = icent<a name='271'>
+      j = jcent<a name='272'>
+      myi = icent + 1<a name='273'>
+      istart = icent <a name='274'>
+      iend = icent <a name='275'>
+      jstart = jcent<a name='276'>
+      jend = jcent<a name='277'>
+      itot = 1<a name='278'>
+      jtot = 1<a name='279'>
+     my_im = 1<a name='280'>
+ my_istart = 1<a name='281'>
+    fstart = icent + 1<a name='282'>
+      fend = icent + 1<a name='283'>
+#ENDIF<a name='284'>
+<a name='285'>
+<a name='286'>
+   if(init.eq.1) then  <a name='287'>
+<a name='288'>
+<font color=#447700>!Initialize netCDF output variables<a name='289'></font>
+  RN2_ijk = -9999.<a name='290'>
+  Chl_C_ijk = -9999.<a name='291'>
+  Chla_tot_ijk = -9999.<a name='292'>
+  Parbot_ij = -9999.<a name='293'>
+  PAR_percent_ijk = -9999.<a name='294'>
+  uN_ijk = -9999.<a name='295'>
+  up_ijk = -9999.<a name='296'>
+  uE_ijk = -9999.<a name='297'>
+  uA_ijk = -9999.<a name='298'>
+  uSi_ijk = -9999.<a name='299'>
+<a name='300'>
+      <font color=#447700>!Initial Stoichiometry of POC and DOC:<a name='301'></font>
+       s_x1A= Stoich_x1A_init<a name='302'>
+       s_x2A= Stoich_x2A_init<a name='303'>
+       s_y1A= Stoich_y1A_init<a name='304'>
+       s_y2A= Stoich_y2A_init<a name='305'>
+       s_z1A= Stoich_z1A_init<a name='306'>
+       s_z2A= Stoich_z2A_init<a name='307'>
+       s_x1Z= Stoich_x1Z_init<a name='308'>
+       s_x2Z= Stoich_x2Z_init<a name='309'>
+       s_y1Z= Stoich_y1Z_init<a name='310'>
+       s_y2Z= Stoich_y2Z_init<a name='311'>
+       s_z1Z= Stoich_z1Z_init<a name='312'>
+       s_z2Z= Stoich_z2Z_init<a name='313'>
+<a name='314'>
+<a name='315'>
+#IFDEF _3D<a name='316'>
+  do j = 1,jm<a name='317'>
+   myi = 2<a name='318'>
+    do i = my_imstart,my_imend<a name='319'>
+#ENDIF<a name='320'>
+      if(fm(i,j).eq.0) then<a name='321'>
+       s_x1A(myi,j,:) = -9999.<a name='322'>
+       s_x2A(myi,j,:)=  -9999.<a name='323'>
+       s_y1A(myi,j,:)=  -9999.<a name='324'>
+       s_y2A(myi,j,:)=  -9999.<a name='325'>
+       s_z1A(myi,j,:)=  -9999.<a name='326'>
+       s_z2A(myi,j,:)=  -9999.<a name='327'>
+       s_x1Z(myi,j,:)=  -9999.<a name='328'>
+       s_x2Z(myi,j,:)=  -9999.<a name='329'>
+       s_y1Z(myi,j,:)=  -9999.<a name='330'>
+       s_y2Z(myi,j,:)=  -9999.<a name='331'>
+       s_z1Z(myi,j,:)=  -9999.<a name='332'>
+       s_z2Z(myi,j,:)=  -9999.<a name='333'>
+      endif  <font color=#447700>!endif fm.eq.0<a name='334'></font>
+      if(wsm(i,j).eq.0.) then<a name='335'>
+       s_x1A(myi,j,nsl) = -9999.<a name='336'>
+       s_x2A(myi,j,nsl)=  -9999.<a name='337'>
+       s_y1A(myi,j,nsl)=  -9999.<a name='338'>
+       s_y2A(myi,j,nsl)=  -9999.<a name='339'>
+       s_z1A(myi,j,nsl)=  -9999.<a name='340'>
+       s_z2A(myi,j,nsl)=  -9999.<a name='341'>
+       s_x1Z(myi,j,nsl)=  -9999.<a name='342'>
+       s_x2Z(myi,j,nsl)=  -9999.<a name='343'>
+       s_y1Z(myi,j,nsl)=  -9999.<a name='344'>
+       s_y2Z(myi,j,nsl)=  -9999.<a name='345'>
+       s_z1Z(myi,j,nsl)=  -9999.<a name='346'>
+       s_z2Z(myi,j,nsl)=  -9999.<a name='347'>
+      endif<a name='348'>
+#IFDEF _3D<a name='349'>
+   myi = myi + 1<a name='350'>
+  enddo      <font color=#447700>! end of do i=my_imstart,my_imend<a name='351'></font>
+  enddo      <font color=#447700>! end of do j= 1,jm<a name='352'></font>
+#ENDIF<a name='353'>
+<a name='354'>
+      IF ( THE_RESTART_FILE_TIMESTEP .NE. 0 ) THEN <font color=#447700>! Initialize from NetCDF:<a name='355'></font>
+        CALL <A href='../../html_code/CGEM_2.0/OUTPUT_NETCDF.f.html#READ_EXTRA_DATA'>READ_EXTRA_DATA</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READ_EXTRA_DATA_1">( RESTART_FILE_NAME, &amp;<a name='356'>
+                              my_imstart, my_im, 1, jtot, 1, nsl, nospA, &amp;<a name='357'>
+                              THE_RESTART_FILE_TIMESTEP, &amp;<a name='358'>
+                              PARdepth_ijk(fstart:fend, jstart:jend, :), &amp;<a name='359'>
+                              PAR_percent_ijk(fstart:fend, jstart:jend, :), &amp;<a name='360'>
+                              uN_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='361'>
+                              uP_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='362'>
+                              uE_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='363'>
+                              uA_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='364'>
+                              Chla_tot_ijk(fstart:fend, jstart:jend, :), &amp;<a name='365'>
+                              s_x1A(fstart:fend, jstart:jend, :), &amp;<a name='366'>
+                              s_y1A(fstart:fend, jstart:jend, :), &amp;<a name='367'>
+                              s_x2A(fstart:fend, jstart:jend, :), &amp;<a name='368'>
+                              s_y2A(fstart:fend, jstart:jend, :), &amp;<a name='369'>
+                              s_x1Z(fstart:fend, jstart:jend, :), &amp;<a name='370'>
+                              s_y1Z(fstart:fend, jstart:jend, :), &amp;<a name='371'>
+                              s_x2Z(fstart:fend, jstart:jend, :), &amp;<a name='372'>
+                              s_y2Z(fstart:fend, jstart:jend, :), &amp;<a name='373'>
+                              uSi_ijk(fstart:fend, jstart:jend, :, :),&amp;<a name='374'>
+                           Chl_C_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='375'>
+                                 pH(fstart:fend, jstart:jend, :),     &amp;<a name='376'>
+                                RN2_ijk(fstart:fend, jstart:jend, :)) <a name='377'>
+ <a name='378'>
+       END IF<a name='379'>
+<a name='380'>
+       dTd = dT/SDay           <font color=#447700>! Timestep length in units of days<a name='381'></font>
+       StepsPerDay = SDay / dT <font color=#447700>! Time steps in a day<a name='382'></font>
+<a name='383'>
+       optNP = ZQn/ZQp    <font color=#447700>! Optimal nutrient ratio for zooplankton<a name='384'></font>
+<a name='385'>
+       <font color=#447700>! Initialize previous day's irradiance for Chl:C calculation<a name='386'></font>
+       <font color=#447700>! These duplicated lines execute only once for init<a name='387'></font>
+#IFDEF _3D<a name='388'>
+       do j = 1,jm<a name='389'>
+          myi = 2<a name='390'>
+          do i = my_imstart,my_imend<a name='391'>
+             if(fm(i,j).eq.1) then<a name='392'>
+#ENDIF<a name='393'>
+                do k = 1, nz<a name='394'>
+                   do isp = 1, nospA          <a name='395'>
+                      A_k(isp,k) = f(myi,j,k,isp) <font color=#447700>! Phytoplankton in group isp, cells/m3<a name='396'></font>
+                   enddo <a name='397'>
+                   CDOM_k(k)  = f(myi,j,k,iCDOM)  <font color=#447700>! CDOM is in ppb<a name='398'></font>
+                                 <font color=#447700>! Convert mmol/m3 to g carbon/m3; CF_SPM is river specific<a name='399'></font>
+                                 <font color=#447700>! and converts river OM to riverine SPM<a name='400'></font>
+                   OM1SPM_k(k) = (f(myi,j,k,iOM1_R) * C_cf) / CF_SPM <a name='401'>
+                   OM1Z_k(k)   = f(myi,j,k,iOM1_Z)  * C_cf   <font color=#447700>! Convert mmol/m3 to g carbon/m3<a name='402'></font>
+                   OM1A_k(k)   = f(myi,j,k,iOM1_A)  * C_cf   <font color=#447700>! Convert mmol/m3 to g carbon/m3<a name='403'></font>
+                   OM1BC_k(k)  = f(myi,j,k,iOM1_BC) * C_cf   <font color=#447700>! Convert mmol/m3 to g carbon/m3<a name='404'></font>
+                enddo <a name='405'>
+                call <A href='../../html_code/CGEM_2.0/DailyRad_init.f.html#DAILYRAD_INIT'>DailyRad_init</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DAILYRAD_INIT_1">(TC_8, lat(j), lon(i), d(i,j), zl, zz, A_k, &amp;<a name='406'>
+                     &amp; CDOM_k, OM1A_k, OM1Z_k, OM1SPM_k, OM1BC_k, aDailyRad_k)<a name='407'>
+                aDailyRad(myi,j,:) = aDailyRad_k(:)<a name='408'>
+#IFDEF _3D<a name='409'>
+             endif  <font color=#447700>!endif fm.eq.1  <a name='410'></font>
+             myi = myi + 1<a name='411'>
+          enddo      <font color=#447700>! end of do i=my_imstart,my_imend	 <a name='412'></font>
+       enddo      <font color=#447700>! end of do j= 1,jm<a name='413'></font>
+#ENDIF<a name='414'>
+<a name='415'>
+    init=0<a name='416'>
+    print_file = 9999999<a name='417'>
+<a name='418'>
+     KG1_save = KG1<a name='419'>
+     KG2_save = KG2<a name='420'>
+<a name='421'>
+   endif  <font color=#447700>! endif(init.eq.1) ------------------------------------<a name='422'></font>
+<a name='423'>
+<a name='424'>
+<font color=#447700>!-----------------------------------------------------------------<a name='425'></font>
+<font color=#447700>!   Begin main ij loop for the biogeochemistry <a name='426'></font>
+<font color=#447700>!   calculations at time-level istep<a name='427'></font>
+<font color=#447700>!-----------------------------------------------------------------<a name='428'></font>
+#IFDEF _3D<a name='429'>
+ do j = 1,jm<a name='430'>
+   myi = 2<a name='431'>
+     do i = my_imstart,my_imend<a name='432'>
+       if(fm(i,j).eq.1) then<a name='433'>
+#ENDIF<a name='434'>
+ <font color=#447700>!---------------------------------------------------------<a name='435'></font>
+ <font color=#447700>! Calculate and convert variables needed for light routine<a name='436'></font>
+ <font color=#447700>!---------------------------------------------------------<a name='437'></font>
+      do k = 1, nz<a name='438'>
+          d_bot(k) = d(i,j) * zl(k+1) <font color=#447700>! Depth from Surface to bottom of cell<a name='439'></font>
+          d_sfc(k) = d(i,j) * zz(k) <font color=#447700>! Depth from Surface to center of cell<a name='440'></font>
+<a name='441'>
+         <font color=#447700>!Get algae counts and Nitrogen/phosphorus quotas<a name='442'></font>
+             do isp = 1, nospA          <a name='443'>
+               A_k(isp,k) = f(myi,j,k,isp) <font color=#447700>! Phytoplankton in group isp, cells/m3<a name='444'></font>
+               Qn_k(isp,k) = f(myi,j,k,iQn1-1+isp)<a name='445'>
+               Qp_k(isp,k) = f(myi,j,k,iQp1-1+isp)<a name='446'>
+             enddo <a name='447'>
+         <font color=#447700>!Save Zooplanton to k array<a name='448'></font>
+             do isp = 1,nospZ<a name='449'>
+                Z_k(isp,k) = f(myi,j,k,iZ(isp)) <font color=#447700>! Zooplankton in group isp, ind./m3<a name='450'></font>
+             enddo<a name='451'>
+<a name='452'>
+         <font color=#447700>! Save Temperature (celsius) and Salinity in columns<a name='453'></font>
+           T_k(k)     = T(i,j,k)<a name='454'>
+           S_k(k)     = S(i,j,k)<a name='455'>
+         <font color=#447700>! N,P,Si is mmol N/P/Si/m3<a name='456'></font>
+           N_k(k)     = f(myi,j,k,iNO3)+f(myi,j,k,iNH4)<a name='457'>
+           P_k(k)     = f(myi,j,k,iPO4)<a name='458'>
+           Si_k(k)    = f(myi,j,k,iSi)<a name='459'>
+         <font color=#447700>! CDOM is in ppb<a name='460'></font>
+           CDOM_k(k)  = f(myi,j,k,iCDOM)<a name='461'>
+         <font color=#447700>! Below is mmol/m3 Organic Matter from rivers converted to equivalent g carbon/m3<a name='462'></font>
+           OM1SPM_k(k) = f(myi,j,k,iOM1_R) * C_cf <a name='463'>
+         <font color=#447700>! There is 1.8% Organic Matter in SPM originating from the rivers.<a name='464'></font>
+           OM1SPM_k(k) = OM1SPM_k(k)/0.018<a name='465'>
+         <font color=#447700>! Below is mmol/m3 Organic Matter from fecal pellets converted to equivalent g carbon/m3<a name='466'></font>
+           OM1Z_k(k) = f(myi,j,k,iOM1_Z) * C_cf <a name='467'>
+         <font color=#447700>! Below is mmol/m3 Organic Matter from dead phytoplankton converted to equivalent g carbon/m3<a name='468'></font>
+           OM1A_k(k)  = f(myi,j,k,iOM1_A) * C_cf <a name='469'>
+         <font color=#447700>! Below is mmol/m3 Organic Matter from initial and boundary conditions converted to equivalent g carbon/m3<a name='470'></font>
+           OM1BC_k(k)  = f(myi,j,k,iOM1_BC) * C_cf <a name='471'>
+           aDailyRad_k(k) = aDailyRad(myi,j,k)<a name='472'>
+      enddo <font color=#447700>! End of the "DO k = 1, nz" block DO loop<a name='473'></font>
+<a name='474'>
+<font color=#447700>!----------------------------------------------------------------<a name='475'></font>
+<font color=#447700>!<a name='476'></font>
+<font color=#447700>! Get chlorophyll-a quantity per layer<a name='477'></font>
+<font color=#447700>! <a name='478'></font>
+<font color=#447700>!----------------------------------------------------------------<a name='479'></font>
+      select case (Which_chlaC)<a name='480'>
+      case (1) <font color=#447700>! Use regression<a name='481'></font>
+         Chla_tot_k = <A href='../../html_code/CGEM_2.0/Calc_Chla.f.html#CHLA_REGRESSION'>Chla_Regression</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHLA_REGRESSION_1">(A_k)<a name='482'>
+<a name='483'>
+      case (2) <font color=#447700>! Use Cloern Chl:C ratio<a name='484'></font>
+         Chla_tot_k = <A href='../../html_code/CGEM_2.0/Calc_Chla.f.html#CHLA_CLOERN'>Chla_Cloern</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHLA_CLOERN_1">(A_k, Qn_k, Qp_k, N_k, P_k, Si_k, T_k, aDailyRad_k,Chl_C_k)<a name='485'>
+<a name='486'>
+      case default<a name='487'>
+         WRITE(6, "(/'The inputfile specified invalid setting: Which_chlaC = ', I2/)") Which_chlaC<a name='488'>
+         WRITE(6, "('Which_chlaC determines the method for calculating the quantity of chlorophyll-a.')")<a name='489'>
+         WRITE(6, "('Please set Which_chlaC to one of these values:'/)")<a name='490'>
+         WRITE(6, "('1:')")<a name='491'>
+         WRITE(6, "('  Use the regression expression.'/)")<a name='492'>
+         WRITE(6, "('2:')")<a name='493'>
+         WRITE(6, "('  Use the Cloern Chl:C ratio.'/)")<a name='494'>
+         WRITE(6, "('Run aborted.'/)")<a name='495'>
+<a name='496'>
+         STOP<a name='497'>
+      end select <font color=#447700>! Which_chlaC<a name='498'></font>
+<a name='499'>
+      <font color=#447700>! Save Chla for 3D netCDF file<a name='500'></font>
+      do k = 1, nz<a name='501'>
+        do isp = 1,nospA<a name='502'>
+         Chl_C_ijk(myi,j,k,isp) = Chl_C_k(isp,k)<a name='503'>
+        enddo<a name='504'>
+         Chla_tot_ijk(myi,j,k) = Chla_tot_k(k)<a name='505'>
+         SUM_CHLA(myi-1,j,k) = SUM_CHLA(myi-1,j,k) + Chla_tot_ijk(myi,j,k)/real(print_ave)<a name='506'>
+      enddo <a name='507'>
+<a name='508'>
+<a name='509'>
+<font color=#447700>!----------------------------------------------------------------------<a name='510'></font>
+<font color=#447700>! Execute the desired atmospheric light model.  To calculate PARsurf,<a name='511'></font>
+<font color=#447700>! the effect amount of downward spectrally integrated irradiance <a name='512'></font>
+<font color=#447700>! just below the sea surface.  'Rad' is just above sea surface. <a name='513'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='514'></font>
+<a name='515'>
+ <font color=#447700>! First calculate the Julian(GMT) model year (iYrTC), month (iMonTC), <a name='516'></font>
+ <font color=#447700>! day (iDayTC), hour (iHrTC), minute (iMinTC), and second (iSecTC) <a name='517'></font>
+ <font color=#447700>! associated with the midpoint of the present timestep istep TC_8<a name='518'></font>
+<a name='519'>
+      CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_6">( iYr0, TC_8, &amp;<a name='520'>
+                           iYrTC, iMonTC, iDayTC, iHrTC, iMinTC, iSecTC )<a name='521'>
+<a name='522'>
+ <font color=#447700>! Calc HrTC, the decimal hour of day<a name='523'></font>
+       HrTC = iHrTC + OneD60*iMinTC + OneD60*iSecTC<a name='524'>
+<a name='525'>
+ <font color=#447700>! Now calculate whether or not the year iYrTC is a leap year<a name='526'></font>
+      if(<A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_2">(iYrTC) == 1) then<a name='527'>
+         leapyr = .FALSE.   <font color=#447700>! iYrTC is not a leap year<a name='528'></font>
+      else <a name='529'>
+         leapyr = .TRUE.    <font color=#447700>! iYrTC is     a leap year<a name='530'></font>
+      endif <a name='531'>
+<a name='532'>
+ <font color=#447700>! Now calculate the Julian Day associated with model time TC_8<a name='533'></font>
+      julianDay = <A href='../../html_code/CGEM_2.0/mdate_julian.f.html#MDATE_JULIAN'>mdate_julian</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MDATE_JULIAN_2">(iMonTC,iDayTC,leapyr)<a name='534'>
+<a name='535'>
+ <font color=#447700>! Now calculate SunZenithAtm, the solar beam zenith angle in radians<a name='536'></font>
+ <font color=#447700>! for a given GMT Julian day, hour, latitude and and longitude<a name='537'></font>
+     SunZenithAtm = <A href='../../html_code/CGEM_2.0/calc_solar_zenith.f.html#CALC_SOLAR_ZENITH'>calc_solar_zenith</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CALC_SOLAR_ZENITH_2">(lat(j), lon(i),  HrTC, julianDay, leapyr)<a name='538'>
+<a name='539'>
+ <font color=#447700>!--Begin Calculate atmospheric model --------------------------------<a name='540'></font>
+         <font color=#447700>! Rad(i,j) is short wave generated by NRL is used,<a name='541'></font>
+         <font color=#447700>! and is multiplied by SWtoPAR: ratio of PAR to<a name='542'></font>
+         <font color=#447700>! shortwave radiation (hardcoded 4/30/14 to 0.43).<a name='543'></font>
+         <font color=#447700>! Hardcoded to 0.47 on 2/11/16, Re: Tsubo and Walker, 2005<a name='544'></font>
+                    PARsurf = 0.47 * Rad(i,j)<a name='545'>
+ <font color=#447700>!--End Calculate atmospheric model ---------------------------------------------<a name='546'></font>
+<a name='547'>
+<font color=#447700>!----------------------------------------------------------------------------<a name='548'></font>
+<font color=#447700>! Execute the desired underwater light model to calculate the 1-D radiation<a name='549'></font>
+<font color=#447700>! arrays PARdepth_k, PARbot_ij and PAR_percent_k radiation arrays for<a name='550'></font>
+<font color=#447700>! vertical grid column (i,j).<a name='551'></font>
+<font color=#447700>!<a name='552'></font>
+<font color=#447700>! PARdepth_k(k) is the downward irradiance (photons/cm2/sec) at the middle<a name='553'></font>
+<font color=#447700>!                    of cell(i,j,k).<a name='554'></font>
+<font color=#447700>!<a name='555'></font>
+<font color=#447700>! PARbot is the downward irradiance (photons/cm2/sec) at the sea bottom<a name='556'></font>
+<font color=#447700>!<a name='557'></font>
+<font color=#447700>! PAR_percent_k(k)    is the % of incoming irradiance PARsurf that PARdepth_k(k)<a name='558'></font>
+<font color=#447700>!                 represents. PARsurf is the downward irradiance<a name='559'></font>
+<font color=#447700>!                 (photons/cm2/sec) just below the sea surface.<a name='560'></font>
+<font color=#447700>!-------------------------------------------------------------------------<a name='561'></font>
+        if(PARsurf.le.0.) then<a name='562'>
+         PAR_percent_k    = 0.0<a name='563'>
+         PARbot = 0.0<a name='564'>
+         PARdepth_k = 0.0<a name='565'>
+        else<a name='566'>
+<a name='567'>
+         select case (Which_irradiance)<a name='568'>
+<a name='569'>
+                 <font color=#447700>!--------------------------------------------<a name='570'></font>
+         case (1)<font color=#447700>! Upgraded form of the underwater light model<a name='571'></font>
+                 <font color=#447700>! developed by Brad Penta of NRL is used<a name='572'></font>
+                 <font color=#447700>!--------------------------------------------<a name='573'></font>
+                 call Call_IOP_PAR(                                    &amp;<a name='574'>
+                 &amp; PARsurf    , SunZenithAtm,                          &amp;<a name='575'>
+                 &amp; CDOM_k     , Chla_tot_k,                            &amp;<a name='576'>
+                 &amp; OM1A_k     , OM1Z_k,                                &amp;<a name='577'>
+                 &amp; OM1SPM_k   , OM1BC_k, d_bot,                        &amp;<a name='578'>
+                 &amp; nz         , d_sfc  ,                               &amp;<a name='579'>
+                 &amp; PAR_percent_k   ,                                   &amp;<a name='580'>
+                 &amp; PARbot     , PARdepth_k                         )<a name='581'>
+<a name='582'>
+                 <font color=#447700>!-------------------------------------------------<a name='583'></font>
+         case (2)<font color=#447700>! Upgraded form of the original underwater light<a name='584'></font>
+                 <font color=#447700>! model of Pete Eldridge is used. Now accounts for<a name='585'></font>
+                 <font color=#447700>! light attenuation in each k layer rather than for the whole<a name='586'></font>
+                 <font color=#447700>! mixed layer as in the Eldridge &amp; Roelke(2010) code <a name='587'></font>
+                 <font color=#447700>!-------------------------------------------------<a name='588'></font>
+<a name='589'>
+                 PARbotkm1 = PARsurf             <font color=#447700>! initialize at top of<a name='590'></font>
+                                                 <font color=#447700>! column i,j., i.e.<a name='591'></font>
+                                                 <font color=#447700>! at bottom of layer "zero".<a name='592'></font>
+<a name='593'>
+                 do k = 1, nz<a name='594'>
+                     delz  = dz(k) * d(i,j)      <font color=#447700>! dz(k) is sigma thickness<a name='595'></font>
+                                                 <font color=#447700>! of layer k (dimensionless)<a name='596'></font>
+                                                 <font color=#447700>! delz is dimensional<a name='597'></font>
+                                                 <font color=#447700>! thickness (m)<a name='598'></font>
+<a name='599'>
+                   <font color=#447700>!Calculate attenuation coefficient<a name='600'></font>
+                     Katt    = Kw                                                  &amp;<a name='601'>
+                     &amp;       + Kchla   * Chla_tot_k(k)                             &amp;<a name='602'>
+                     &amp;       + Kspm * (OM1SPM_k(k)+OM1A_k(k)+OM1Z_k(k)+OM1BC_k(k)) &amp;<a name='603'>
+                     &amp;       + Kcdom* CDOM_k(k)                                    &amp;<a name='604'>
+                     &amp;       + (((0.0022*S_k(k))-0.158)*S_k(k)+3.03)<a name='605'>
+<a name='606'>
+                     PARtopk = PARbotkm1         <font color=#447700>! irradiance at top of<a name='607'></font>
+                                                 <font color=#447700>! layer k is same as<a name='608'></font>
+                                                 <font color=#447700>! irradiance at bottom<a name='609'></font>
+                                                 <font color=#447700>! of layer km1<a name='610'></font>
+                     tmpexp  = exp(-0.5*Katt*delz)<a name='611'>
+<a name='612'>
+                     PARdepth_k(k) = PARtopk * tmpexp    <font color=#447700>! irradiance at middle of layer k<a name='613'></font>
+<a name='614'>
+                     PARbot  = PARdepth_k(k) * tmpexp    <font color=#447700>! irradiance at bottom of layer k<a name='615'></font>
+<a name='616'>
+                     PARbotkm1 = PARbot         <font color=#447700>! reinitialize for next top layer<a name='617'></font>
+<a name='618'>
+                     PAR_percent_k(k)       = 100.0*PARdepth_k(k)/PARsurf <font color=#447700>! Percent of total irradiance<a name='619'></font>
+                                                                    <font color=#447700>! at middle of bottom k layer <a name='620'></font>
+<a name='621'>
+                 enddo <a name='622'>
+<a name='623'>
+<a name='624'>
+<a name='625'>
+                 <font color=#447700>!-------------------------------------------------<a name='626'></font>
+         case (3)<font color=#447700>! Light Model from GoMDOM, case with no wind speed <a name='627'></font>
+                 <font color=#447700>!-------------------------------------------------<a name='628'></font>
+                  <font color=#447700>!GoMDOM's light model, no wind<a name='629'></font>
+                  call <A href='../../html_code/CGEM_2.0/Light_GoMDOM.f.html#LIGHT_GOMDOM'>Light_GoMDOM</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="LIGHT_GOMDOM_1">(PARsurf, S_k, A_k, Z_k,    &amp;<a name='630'>
+     &amp;               OM1A_k, OM1Z_k, OM1SPM_k, OM1BC_k,        &amp; <a name='631'>
+     &amp;               d(i,j), dz, PAR_percent_k, PARbot, PARdepth_k  )<a name='632'>
+<a name='633'>
+         case default<a name='634'>
+           WRITE(6, "(' ')")<a name='635'>
+           WRITE(6, "('You have chosen Which_irradiance = ', I2)") Which_irradiance<a name='636'>
+           WRITE(6, "('which is not supported. ')")<a name='637'>
+           WRITE(6, "('Only Which_irradiance = 1, 2, and 3 are supported where: ')")<a name='638'>
+           WRITE(6, "(' ')")<a name='639'>
+           WRITE(6, "('Which_irradiance = 1: ')")<a name='640'>
+           WRITE(6, "('Underwater light model developed by Brad Penta of NRL ')")<a name='641'>
+           WRITE(6, "(' ')")<a name='642'>
+           WRITE(6, "('Which_irradiance = 2: ')")<a name='643'>
+           WRITE(6, "('Upgraded form of the original underwater light ')")<a name='644'>
+           WRITE(6, "('model of Pete Eldridge is used. ')")<a name='645'>
+           WRITE(6, "(' ')")<a name='646'>
+           WRITE(6, "('Which_irradiance = 3: ')")<a name='647'>
+           WRITE(6, "('GoMDOM light model is used. ')")<a name='648'>
+           WRITE(6, "(' ')")<a name='649'>
+           WRITE(6, "('Abort Run.')")<a name='650'>
+           WRITE(6, "(' ')")<a name='651'>
+           STOP<a name='652'>
+         end select<a name='653'>
+<a name='654'>
+        endif<a name='655'>
+<a name='656'>
+         <font color=#447700>! Save array values for netCDF<a name='657'></font>
+           PAR_percent_ijk(myi,j,1:nz) = PAR_percent_k(1:nz)<a name='658'>
+           PARdepth_ijk(myi,j,1:nz) = PARdepth_k(1:nz)<a name='659'>
+           SUM_PAR(myi-1,j,:) = SUM_PAR(myi-1,j,:) + PARdepth_k(1:nz)/real(print_ave)<a name='660'>
+           PARbot_ij(myi,j) = Parbot<a name='661'>
+<font color=#447700>!---------------------End Underwater Light Model-----------------------------------<a name='662'></font>
+<a name='663'>
+<font color=#447700>! Update running total of current day's irradiance<a name='664'></font>
+         aRadSum_k(:) = aRadSum_k(:) + PARdepth_k(:)<a name='665'>
+         if (MOD(istep, StepsPerDay) .eq. 0) then <font color=#447700>! If last time step of day<a name='666'></font>
+            <font color=#447700>! Convert summed irradiance from quanta/cm2/s to mol quanta/m2/s<a name='667'></font>
+            <font color=#447700>! and store for next day's processing<a name='668'></font>
+            aDailyRad_k(:) = aRadSum_k(:) * RADCONV<a name='669'>
+#ifdef LCO_DEBUG<a name='670'>
+            write(6,*) "End of day. istep = ", istep<a name='671'>
+            write(6, "(4X, 'k', 7X, 'aRadSum', 7X, 'aDailyRad')")<a name='672'>
+            WRITE(6, "(I5, E20.12, E20.12)") (k, aRadSum_k(k), aDailyRad_k(k), k=1,nz)<a name='673'>
+            WRITE(6,"(' ')")<a name='674'>
+#endif<a name='675'>
+            aRadSum_k(:) = 0.0<a name='676'>
+         endif <font color=#447700>! if (MOD(istep, StepsPerDay) .eq. 0)<a name='677'></font>
+<a name='678'>
+         aDailyRad(myi,j,:) = aDailyRad_k(:)<a name='679'>
+         aRadSum(myi,j,:) = aRadSum_k(:)<a name='680'>
+<a name='681'>
+         <font color=#447700>! Write plot text files for irradiance and chlorophyll, but only for<a name='682'></font>
+         <font color=#447700>! certain cells: icent/jcent and MS River<a name='683'></font>
+         if(OUT_1D.eq.1) then<a name='684'>
+            if (i .eq. icent .and. j .eq. jcent) then<a name='685'>
+               write(300,9004) istep, PARdepth_k(1), PARdepth_k(6), &amp;<a name='686'>
+                    &amp; PARdepth_k(12), PARdepth_k(20)<a name='687'>
+               write(301,9004) istep, Chla_tot_k(1), Chla_tot_k(6), &amp;<a name='688'>
+                    &amp; Chla_tot_k(12), Chla_tot_k(20)<a name='689'>
+               write(302,9004) istep, aDailyRad_k(1), aDailyRad_k(6), aDailyRad_k(12), &amp;<a name='690'>
+                    &amp; aDailyRad_k(20)<a name='691'>
+               write(303,9004) istep, PAR_percent_k(1), PAR_percent_k(6), PAR_percent_k(12), &amp;<a name='692'>
+                    &amp; PAR_percent_k(20)<a name='693'>
+            endif <font color=#447700>! current cell == icent/jcent<a name='694'></font>
+#IFDEF _3D<a name='695'>
+            if (i .eq. riv_icent .and. j .eq. riv_jcent) then<a name='696'>
+               write(304,9004) istep, PARdepth_k(1), PARdepth_k(6), &amp;<a name='697'>
+                    &amp; PARdepth_k(12), PARdepth_k(20)<a name='698'>
+               write(305,9004) istep, Chla_tot_k(1), Chla_tot_k(6), &amp;<a name='699'>
+                    &amp; Chla_tot_k(12), Chla_tot_k(20)<a name='700'>
+               write(306,9004) istep, aDailyRad_k(1), aDailyRad_k(6), aDailyRad_k(12), &amp;<a name='701'>
+                    &amp; aDailyRad_k(20)<a name='702'>
+               write(307,9004) istep, PAR_percent_k(1), PAR_percent_k(6), PAR_percent_k(12), &amp;<a name='703'>
+                    &amp; PAR_percent_k(20)<a name='704'>
+            endif <font color=#447700>! current cell == MS River cell<a name='705'></font>
+#ENDIF<a name='706'>
+         endif <font color=#447700>! OUT_1D<a name='707'></font>
+<a name='708'>
+<font color=#447700>!-------------------------------------------------------------------------<a name='709'></font>
+<font color=#447700>! call subroutine calc_Agrow to execute the desired phytoplankton <a name='710'></font>
+<font color=#447700>! growth model to calculate the one-D array Agrow_k.<a name='711'></font>
+<font color=#447700>!<a name='712'></font>
+<font color=#447700>! Agrow_k(k) is the growth-rate  for<a name='713'></font>
+<font color=#447700>! vertical grid column (i,j) at cell (i,j,k).<a name='714'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='715'></font>
+       call <A href='../../html_code/CGEM_2.0/calc_Agrow.f.html#CALC_AGROW'>calc_Agrow</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CALC_AGROW_1">(  PARdepth_k,    T_k,                    &amp;<a name='716'>
+     &amp; Qn_k   , Qp_k, N_k, P_k, Si_k , A_k     , Agrow_k,                  &amp;<a name='717'>
+     &amp; uA_k, Aresp_k, uN_k, uP_k, uE_k, uSi_k  )<a name='718'>
+<a name='719'>
+<font color=#447700>! Save arrays to output to netCDF<a name='720'></font>
+      do isp = 1,nospA<a name='721'>
+       do k = 1,nz<a name='722'>
+        uN_ijk(myi,j,k,isp) = uN_k(k,isp)<a name='723'>
+        uP_ijk(myi,j,k,isp) = uP_k(k,isp)<a name='724'>
+        uE_ijk(myi,j,k,isp) = uE_k(k,isp)<a name='725'>
+        uA_ijk(myi,j,k,isp) = uA_k(k,isp)<a name='726'>
+        uSi_ijk(myi,j,k,isp) = uSi_k(k,isp)<a name='727'>
+       enddo<a name='728'>
+      enddo<a name='729'>
+<font color=#447700>!------end phytoplankton growth model-------------------------<a name='730'></font>
+<a name='731'>
+<a name='732'>
+<font color=#447700>!------------------------------------------<a name='733'></font>
+<font color=#447700>! Begin main k loop within the main ij loop<a name='734'></font>
+<font color=#447700>!------------------------------------------<a name='735'></font>
+      do k = 1, nz      <a name='736'>
+<font color=#447700>!---------------------------------------------------------------------	   <a name='737'></font>
+  <font color=#447700>!Initialize variables<a name='738'></font>
+<font color=#447700>!  Zooplankton groups<a name='739'></font>
+   Z(:)         = f(myi,j,k,iZ(:))<a name='740'>
+<a name='741'>
+          do isp = 1, nospA<a name='742'>
+             Abiovol       = A_k(isp,k)*volcell(isp) <a name='743'>
+             top_A(isp,:)    = AMAX1((Abiovol-Athresh(isp))*ediblevector(:,isp),0.0)<a name='744'>
+             bottom_A(isp,:) = Abiovol * ediblevector(:,isp)<a name='745'>
+          enddo<a name='746'>
+<a name='747'>
+          bottom(1) = SUM(bottom_A(:,1))   <font color=#447700>! sum over isp<a name='748'></font>
+          bottom(2) = SUM(bottom_A(:,2))   <font color=#447700>! sum over isp<a name='749'></font>
+<a name='750'>
+          do isp = 1, nospA<a name='751'>
+	     monodZ(isp,:)  = top_A(isp,:)/(ZKa(:) + bottom(:))<a name='752'>
+	  enddo <a name='753'>
+<a name='754'>
+<font color=#447700>!--------------------------------------------------------------------------<a name='755'></font>
+<font color=#447700>! Initialize counters to zero that are used to accumulate variable values<a name='756'></font>
+<font color=#447700>! over the nospA=6 phytoplankton groups and the nospZ=2 zooplankton groups.<a name='757'></font>
+<font color=#447700>!--------------------------------------------------------------------------<a name='758'></font>
+      PrimProd  = 0.0<a name='759'>
+      ArespC    = 0.0<a name='760'>
+      AexudN    = 0.0<a name='761'>
+      AexudP    = 0.0 <a name='762'>
+      AupN      = 0.0<a name='763'>
+      AupP      = 0.0<a name='764'>
+      AupSi     = 0.0<a name='765'>
+      ZgrazC    = 0.0<a name='766'>
+      ZgrazN    = 0.0<a name='767'>
+      ZgrazP    = 0.0<a name='768'>
+<a name='769'>
+<font color=#447700>!---------------------------------------------------------------<a name='770'></font>
+<font color=#447700>! Set the scalar variables that are common to all three reaction<a name='771'></font>
+<font color=#447700>! subroutines<a name='772'></font>
+<font color=#447700>!----------------------------------------------------------------<a name='773'></font>
+        O2        = f(myi,j,k,iO2)<a name='774'>
+        NO3       = f(myi,j,k,iNO3)<a name='775'>
+        NH4       = f(myi,j,k,iNH4)<a name='776'>
+        Si        = f(myi,j,k,iSi)<a name='777'>
+        PO4       = f(myi,j,k,iPO4)<a name='778'>
+        DIC       = f(myi,j,k,iDIC)<a name='779'>
+        OM1_A     = f(myi,j,k,iOM1_A)<a name='780'>
+        OM2_A     = f(myi,j,k,iOM2_A)<a name='781'>
+        OM1_Z    = f(myi,j,k,iOM1_Z)<a name='782'>
+        OM2_Z    = f(myi,j,k,iOM2_Z)<a name='783'>
+        OM1_R    = f(myi,j,k,iOM1_R)<a name='784'>
+        OM2_R    = f(myi,j,k,iOM2_R)<a name='785'>
+        OM1_BC    = f(myi,j,k,iOM1_BC)<a name='786'>
+        OM2_BC    = f(myi,j,k,iOM2_BC)<a name='787'>
+<a name='788'>
+<font color=#447700>!--------------------------------------<a name='789'></font>
+<font color=#447700>! Call temperature and growth functions<a name='790'></font>
+<font color=#447700>!-----------------------------------------<a name='791'></font>
+      call <A href='../../html_code/CGEM_2.0/func_T.f.html#FUNC_T'>func_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="FUNC_T_3">(T_k(k), Tadj)<a name='792'>
+      call <A href='../../html_code/CGEM_2.0/func_Qs.f.html#FUNC_QS'>func_Qs</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="FUNC_QS_1">(Qn_k(:,k), Qp_k(:,k), f_Qn, f_Qp)<a name='793'>
+<a name='794'>
+<font color=#447700>!Nutrients only taken up during the day:<a name='795'></font>
+     Is_Day = 1<a name='796'>
+     if(RAD(i,j).eq.0) Is_Day = 0<a name='797'>
+<a name='798'>
+<font color=#447700>! ----------------------------------------------------------------------<a name='799'></font>
+      do isp = 1, nospA      <a name='800'>
+<font color=#447700>! ----------------------------------------------------------------------   <a name='801'></font>
+       Aresp   = Aresp_k(isp,k)    <a name='802'>
+       uA      = uA_k(k,isp)    <a name='803'>
+       Agrow   = Agrow_k(isp,k) <a name='804'>
+       Qn      = Qn_k(isp,k) <a name='805'>
+       Qp      = Qp_k(isp,k)      <a name='806'>
+<a name='807'>
+<font color=#447700>!---------------------------------------------------------------------      <a name='808'></font>
+<font color=#447700>! Note that the expressions for PrimProd, ArespC, AexudN, AexudP are <a name='809'></font>
+<font color=#447700>! sums over the isp phytoplankton groups. When the isp loop is complete,<a name='810'></font>
+<font color=#447700>! PrimProd, ArespC. AexudN, and AexudP will represent totals for<a name='811'></font>
+<font color=#447700>! all the nospA phytoplankton groups. <a name='812'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='813'></font>
+      PrimProd       = PrimProd + Agrow*Qc(isp)    <font color=#447700>! Phytoplankton <a name='814'></font>
+                                                   <font color=#447700>! primary production<a name='815'></font>
+                                                   <font color=#447700>! (mmol-C/m3/d)	<a name='816'></font>
+      SUM_PrimProd(myi-1,j,k) = SUM_PrimProd(myi-1,j,k) + PrimProd/real(print_ave)<a name='817'>
+<a name='818'>
+      ArespC  = ArespC + Aresp*Qc(isp)             <font color=#447700>! Phytoplankton respiration <a name='819'></font>
+						   <font color=#447700>! equivalent carbon loss<a name='820'></font>
+						   <font color=#447700>! (mmol-C/m3/d)	<a name='821'></font>
+      SUM_ARESPTOTC(myi-1,j,k) = SUM_ARESPTOTC(myi-1,j,k) + ArespC/real(print_ave)<a name='822'>
+      <a name='823'>
+      AexudN_A(isp) = Aresp*Qn/A_k(isp,k)   <font color=#447700>! Phytoplankton group exudation (mmol-N/cell/d)<a name='824'></font>
+      AexudP_A(isp) = Aresp*Qp/A_k(isp,k)   <font color=#447700>! Phytoplankton group exudation (mmol-P/cell/d)<a name='825'></font>
+      AexudN = AexudN + Aresp*Qn            <font color=#447700>! Total Phytoplankton exudation (mmol-N/m3/d)<a name='826'></font>
+      AexudP = AexudP + Aresp*Qp            <font color=#447700>! Total Phytoplankton exudation (mmol-P/m3/d)<a name='827'></font>
+      <a name='828'>
+<font color=#447700>!-------------------------------------------------------------------------<a name='829'></font>
+<font color=#447700>! Calculate dead phytoplankton, particulate and dissolved  <a name='830'></font>
+<font color=#447700>!-------------------------------------------------------------------------      <a name='831'></font>
+     Amort(isp)     = A_k(isp,k) * mA(isp)    <font color=#447700>! dead phytoplankton (cells/m3/day)<a name='832'></font>
+<a name='833'>
+   <font color=#447700>!Monod Equations<a name='834'></font>
+     Ntotal       = NO3 + NH4 <a name='835'>
+     monodN(isp)  = Ntotal/(Ntotal+Kn(isp)) <a name='836'>
+     monodP(isp)  = PO4/(PO4+Kp(isp))      <a name='837'>
+     monodSi(isp) = Si/(Si+Ksi(isp))<a name='838'>
+<a name='839'>
+<font color=#447700>!------------------------------------------------------------------------     <a name='840'></font>
+<font color=#447700>! Nutrient limited uptake:<a name='841'></font>
+<font color=#447700>! Find Rate Limiting Nutrient RLN for N, P, and Si:<a name='842'></font>
+<font color=#447700>! N==1, P==2, Si==3<a name='843'></font>
+   if(Ntotal.le.PO4.and.Ntotal.le.Si) then<a name='844'>
+     RLN = 1<a name='845'>
+   elseif (PO4.le.Ntotal.and.PO4.le.Si) then<a name='846'>
+     RLN = 2<a name='847'>
+   else<a name='848'>
+     RLN = 3<a name='849'>
+   endif<a name='850'>
+<a name='851'>
+<font color=#447700>!------------------------------------------------------------------------<a name='852'></font>
+   if(Is_Day.eq.0) then  <font color=#447700>!Nutrient uptake only takes place during the day<a name='853'></font>
+        vN = 0<a name='854'>
+        vP = 0<a name='855'>
+        vSi = 0<a name='856'>
+<a name='857'>
+   else<a name='858'>
+<a name='859'>
+      if(RLN.eq.1) then<a name='860'>
+         vN = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_1">(T_k(k),vmaxN(isp))*monodN(isp)*f_Qn(isp)<a name='861'>
+<a name='862'>
+         vP = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_2">(T_k(k),vmaxP(isp))*monodP(isp)*f_Qp(isp)&amp;<a name='863'>
+     &amp;      *( Ntotal/(Ntotal+aN(isp)*Kn(isp)) )<a name='864'>
+<a name='865'>
+         vSi = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_3">(T_k(k),vmaxSi(isp))*monodSi(isp)        &amp;<a name='866'>
+     &amp;      *( Ntotal/(Ntotal+aN(isp)*Kn(isp)) )<a name='867'>
+<a name='868'>
+      elseif(RLN.eq.2) then<a name='869'>
+<a name='870'>
+         vN = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_4">(T_k(k),vmaxN(isp))*monodN(isp)*f_Qn(isp)&amp;<a name='871'>
+     &amp;      *( PO4/(PO4+aN(isp)*Kp(isp)) )<a name='872'>
+<a name='873'>
+         vP = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_5">(T_k(k),vmaxP(isp))*monodP(isp)*f_Qp(isp)<a name='874'>
+<a name='875'>
+         vSi = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_6">(T_k(k),vmaxSi(isp))*monodSi(isp)       &amp;<a name='876'>
+     &amp;      *( PO4/(PO4+aN(isp)*Kp(isp)) )<a name='877'>
+<a name='878'>
+      else<a name='879'>
+<a name='880'>
+         vN = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_7">(T_k(k),vmaxN(isp))*monodN(isp)*f_Qn(isp)&amp;<a name='881'>
+     &amp;      *( Si/(Si+aN(isp)*Ksi(isp)) )<a name='882'>
+<a name='883'>
+         vP = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_8">(T_k(k),vmaxP(isp))*monodP(isp)*f_Qp(isp)&amp;<a name='884'>
+     &amp;      *( Si/(Si+aN(isp)*Ksi(isp)) )<a name='885'>
+<a name='886'>
+         vSi = <A href='../../html_code/CGEM_2.0/Q10_T.f.html#Q10_T'>Q10_T</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="Q10_T_9">(T_k(k),vmaxSi(isp))*monodSi(isp)<a name='887'>
+<a name='888'>
+      endif<a name='889'>
+<a name='890'>
+   endif <font color=#447700>!Endif Is_Day.eq.0<a name='891'></font>
+<a name='892'>
+      <a name='893'>
+<font color=#447700>!--------------------------------------------------------------      <a name='894'></font>
+<font color=#447700>! When isp loop is done, AupN and AupP are totals for all nospA <a name='895'></font>
+<font color=#447700>! phytoplankton groups in cell k          <a name='896'></font>
+<font color=#447700>!---------------------------------------------------------------   <a name='897'></font>
+      AupN = AupN + A_k(isp,k)*vN     <font color=#447700>! Phytoplankton uptake of Nitrogen (mmol-N/m3/d)<a name='898'></font>
+      AupP = AupP + A_k(isp,k)*vP     <font color=#447700>! Phytoplankton uptake of Phosphorus (mmol-P/m3/d) <a name='899'></font>
+      AupSi = AupSi + A_k(isp,k)*vSi  <font color=#447700>! Phytoplankton uptake of Silica (mmol-Si/m3/d)<a name='900'></font>
+    <a name='901'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='902'></font>
+<font color=#447700>! Note that Zumax(1)*monodZ(isp,1) is volume of type isp phytoplankton<a name='903'></font>
+<font color=#447700>! eaten per day by type 1 zooplankton. Therefore<a name='904'></font>
+<font color=#447700>!      Zumax(1)*monodZ(isp,1)/volcell(isp)<a name='905'></font>
+<font color=#447700>! is the number of type isp phytoplankton eaten per day by type 1 <a name='906'></font>
+<font color=#447700>! zooplankton. An analogous statement holds for type 2 zooplankton<a name='907'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='908'></font>
+      Zgrazvol(isp,:)     = Z(:)*Zumax(:)*monodZ(isp,:)   <font color=#447700>! Grazing of phytoplankton by biovolume (um3/m3/d)<a name='909'></font>
+      ZgrazA(isp,:)       = Zgrazvol(isp,:)/volcell(isp)  <font color=#447700>! Grazing of phytoplankton (cells/m3/d)<a name='910'></font>
+      ZgrazA_tot(isp)     = ZgrazA(isp,1) + ZgrazA(isp,2) <font color=#447700>! Grazing of phytoplankton group by all zooplankton <a name='911'></font>
+<a name='912'>
+<font color=#447700>!----------------------------------------------------------------------<a name='913'></font>
+<font color=#447700>! When the isp loop is finished, ZgrazC, ZgrazN, and ZgrazP will be total<a name='914'></font>
+<font color=#447700>! carbon, nitrogen, and phosphorous uptake of zooplankton from grazing<a name='915'></font>
+<font color=#447700>! all phytoplankton groups<a name='916'></font>
+<font color=#447700>!---------------------------------------------------------------------<a name='917'></font>
+      ZgrazC(:) = ZgrazC(:) + ZgrazA(isp,:) * Qc(isp)     <font color=#447700>! Carbon uptake from grazing (mmol-C/m3/day)<a name='918'></font>
+      ZgrazN(:) = ZgrazN(:) + ZgrazA(isp,:) * Qn          <font color=#447700>! Nitrogen uptake from grazing( mmol-N/m3/day)<a name='919'></font>
+      ZgrazP(:) = ZgrazP(:) + ZgrazA(isp,:) * Qp          <font color=#447700>! Phosphorus uptake from grazing (mmol-P/m3/day)<a name='920'></font>
+            <a name='921'>
+<font color=#447700>!---------------------------------------------------------<a name='922'></font>
+<font color=#447700>!-A; Phytoplankton number density (cells/m3);<a name='923'></font>
+<font color=#447700>!---------------------------------------------------------<a name='924'></font>
+      ff(myi,j,k,iA(isp))         = AMAX1(f(myi,j,k,iA(isp))                              &amp;<a name='925'>
+      &amp; + ( Agrow - Aresp - ZgrazA_tot(isp) - Amort(isp) )*dTd,1.e-8)       <a name='926'>
+      <a name='927'>
+<a name='928'>
+<font color=#447700>! Write intermediate variables:<a name='929'></font>
+      if(Calibration.eq.1.and.k.eq.1.and.isp.eq.1.and.i.eq.icent.and.j.eq.jcent) then<a name='930'>
+        write(101,9005) istep,f(myi,j,k,iA(isp)), &amp;<a name='931'>
+       &amp; Agrow,-Aresp,-ZgrazA_tot(isp),-Amort(isp)<a name='932'>
+      endif<a name='933'>
+<a name='934'>
+      <a name='935'>
+<font color=#447700>!----------------------------------------------------------------------<a name='936'></font>
+<font color=#447700>!-Qn: Phytoplankton Nitrogen Quota (mmol-N/cell)<a name='937'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='938'></font>
+      Qn = f(myi,j,k,iQn(isp))                              &amp;<a name='939'>
+      &amp;               + (vN - Qn*uA)*dTd<a name='940'>
+<a name='941'>
+<font color=#447700>!      &amp;               + (vN - Qn*uA - AexudN_A(isp))*dTd ! Subtracting twice<a name='942'></font>
+                                                          <font color=#447700>! Doesnt mass balance<a name='943'></font>
+<a name='944'>
+<font color=#447700>! Enforce minima, also enforce maxima if not equal Droop (Which_quota=1)<a name='945'></font>
+      if(Which_quota.eq.1) then<a name='946'>
+            Qn = AMAX1(Qn,QminN(isp))<a name='947'>
+      else<a name='948'>
+            Qn = AMIN1(AMAX1(Qn,QminN(isp)),QmaxN(isp))<a name='949'>
+      endif<a name='950'>
+<a name='951'>
+      ff(myi,j,k,iQn1-1+isp) = Qn<a name='952'>
+ <a name='953'>
+<font color=#447700>!----------------------------------------------------------------------<a name='954'></font>
+<font color=#447700>!-Qp: Phytoplankton Phosphorus Quota (mmol-P/cell)<a name='955'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='956'></font>
+      Qp = f(myi,j,k,iQp(isp))                              &amp;<a name='957'>
+      &amp;               + (vP - Qp*uA)*dTd<a name='958'>
+<a name='959'>
+<font color=#447700>!      &amp;               + (vP - Qp*uA - AexudP_A(isp))*dTd<a name='960'></font>
+<a name='961'>
+<font color=#447700>! Enforce minima, also enforce maxima if not equal Droop (Which_quota=1)<a name='962'></font>
+      if(Which_quota.eq.1) then<a name='963'>
+            Qp = AMAX1(Qp,QminP(isp))<a name='964'>
+      else<a name='965'>
+            Qp = AMIN1(AMAX1(Qp,QminP(isp)),QmaxP(isp))<a name='966'>
+      endif<a name='967'>
+<a name='968'>
+      ff(myi,j,k,iQp1-1+isp) = Qp      <a name='969'>
+<a name='970'>
+<font color=#447700>! Write intermediate variables:<a name='971'></font>
+      if(Calibration.eq.1.and.k.eq.1.and.isp.eq.1.and.i.eq.icent.and.j.eq.jcent) then<a name='972'>
+        write(143,9011) istep, Ntotal, PO4, vN, vP, Qn, Qp,&amp;<a name='973'>
+       &amp; uA, vN - AexudN_A(isp) - Qn*uA, vP - AexudP_A(isp) - Qp*uA, monodN(isp),  monodP(isp)<a name='974'>
+      endif<a name='975'>
+<a name='976'>
+<font color=#447700>!----------------------------------------------------------------------- <a name='977'></font>
+      enddo  <font color=#447700>! END OF do isp = 1, nospA <a name='978'></font>
+<a name='979'>
+<a name='980'>
+<font color=#447700>!-------------------------------------------------------------------<a name='981'></font>
+<font color=#447700>! Now calculate the total ingested ZinC, ZinN, and ZinP of C, N, and P<a name='982'></font>
+<font color=#447700>!-------------------------------------------------------------------<a name='983'></font>
+      ZslopC(:)  = Zslop(:)*ZgrazC(:)                      <font color=#447700>! Sloppy feeding (mmol-C/m3/d)<a name='984'></font>
+      ZslopC_tot = ZslopC(1) + ZslopC(2)                   <font color=#447700>! Total Sloppy feeding (mmol-C/m3/d)<a name='985'></font>
+      ZunC(:)    = (1.0_8-Zeffic(:))*(ZgrazC(:)-ZslopC(:)) <font color=#447700>! Unassimilated (mmol-C/m3/d)<a name='986'></font>
+      ZinC(:)    = ZgrazC(:) - ZslopC(:) - ZunC(:)         <font color=#447700>! Ingested (mmol-C/m3/d)<a name='987'></font>
+<a name='988'>
+      ZslopN(:)  = Zslop(:)*ZgrazN(:)                      <font color=#447700>! Sloppy feeding (mmol-N/m3/d)<a name='989'></font>
+      ZslopN_tot = ZslopN(1) + ZslopN(2)                   <font color=#447700>! Total Sloppy feeding (mmol-N/m3/d) <a name='990'></font>
+      ZunN(:)    = (1.0_8-Zeffic(:))*(ZgrazN(:)-ZslopN(:)) <font color=#447700>! Unassimilated (mmol-N/m3/d)<a name='991'></font>
+      ZinN(:)    = ZgrazN(:) - ZslopN(:) - ZunN(:)         <font color=#447700>! Ingested (mmol-N/m3/d)<a name='992'></font>
+<a name='993'>
+      ZslopP(:)  = Zslop(:)*ZgrazP(:)                      <font color=#447700>! Sloppy feeding (mmol-P/m3/d)<a name='994'></font>
+      ZslopP_tot = ZslopP(1) + ZslopP(2)                   <font color=#447700>! Total Sloppy feeding (mmol-P/m3/d)<a name='995'></font>
+      ZunP(:)    = (1.0_8-Zeffic(:))*(ZgrazP(:)-ZslopP(:)) <font color=#447700>! Unassimilated (mmol-P/m3/d)<a name='996'></font>
+      ZinP(:)    = ZgrazP(:) - ZslopP(:) - ZunP(:)         <font color=#447700>! Ingested (mmol-P/m3/d)<a name='997'></font>
+<font color=#447700>!-------------------------------------------------<a name='998'></font>
+<a name='999'>
+<a name='1000'>
+<font color=#447700>!------------------------------------         <a name='1001'></font>
+<font color=#447700>! Liebigs Law for zooplankton group 1<a name='1002'></font>
+<font color=#447700>!------------------------------------<a name='1003'></font>
+     if (ZinN(1) .gt. optNP(1)*ZinP(1)) then  <a name='1004'>
+<a name='1005'>
+        Zgrow(1)= ZinP(1)/ZQp(1)                   <font color=#447700>! P-limited growth (indv./m3/d) <a name='1006'></font>
+        ZegN(1) = ZinN(1) - ZinP(1)*optNP(1)       <font color=#447700>! P-limited N excretion (mmol-N/m3/d) <a name='1007'></font>
+                                                   <font color=#447700>! determined by subtracting N-equivalent of ZinP<a name='1008'></font>
+        ZegC(1) = ZinC(1) - ZinP(1)/ZQp(1)*ZQc(1)  <font color=#447700>! P-limited C excretion (mmol-C/m3/d)<a name='1009'></font>
+        ZegP(1) = 0.                        <a name='1010'>
+<a name='1011'>
+      else<a name='1012'>
+<a name='1013'>
+        Zgrow(1)= ZinN(1)/ZQn(1)                   <font color=#447700>! N-limited growth (indv./m3/d)<a name='1014'></font>
+        ZegP(1) = ZinP(1) - ZinN(1)/optNP(1)       <font color=#447700>! N-limited P excretion (mmol-P/m3/d)     <a name='1015'></font>
+        ZegC(1) = ZinC(1) - ZinN(1)/ZQn(1)*ZQc(1)  <font color=#447700>! N-limited C excretion (mmol-C/m3/d) <a name='1016'></font>
+        ZegN(1) = 0.<a name='1017'>
+<a name='1018'>
+      endif<a name='1019'>
+<font color=#447700>!------------------------------------------------<a name='1020'></font>
+<a name='1021'>
+<font color=#447700>!------------------------------------<a name='1022'></font>
+<font color=#447700>! Liebigs Law for zooplankton group 2   <a name='1023'></font>
+<font color=#447700>!------------------------------------ <a name='1024'></font>
+<a name='1025'>
+     if (ZinN(2) .gt. optNP(2)*ZinP(2)) then <a name='1026'>
+   <a name='1027'>
+        Zgrow(2)  = ZinP(2)/ZQp(2)                 <font color=#447700>! P-limited growth (indv./m3/d) <a name='1028'></font>
+        ZegN(2) = ZinN(2) - ZinP(2)*optNP(2)       <font color=#447700>! P-limited N excretion (mmol-N/m3/d)<a name='1029'></font>
+                                                   <font color=#447700>! determined by subtracting N-equivalent of ZinP<a name='1030'></font>
+        ZegC(2) = ZinC(2) - ZinP(2)/ZQp(2)*ZQc(2)  <font color=#447700>! P-limited C excretion (mmol-C/m3/d) <a name='1031'></font>
+        ZegP(2) = 0.                         <a name='1032'>
+<a name='1033'>
+      else<a name='1034'>
+<a name='1035'>
+        Zgrow(2)  = ZinN(2)/ZQn(2)                 <font color=#447700>! N-limited growth (indv./m3/d) <a name='1036'></font>
+        ZegP(2) = ZinP(2) - ZinN(2)/optNP(2)       <font color=#447700>! N-limited P excretion (mmol-P/m3/d)       <a name='1037'></font>
+        ZegC(2) = ZinC(2) - ZinN(2)/ZQn(2)*ZQc(2)  <font color=#447700>! N-limited C excretion (mmol-C/m3/d) <a name='1038'></font>
+        ZegN(2) = 0.<a name='1039'>
+<a name='1040'>
+     endif   <a name='1041'>
+<font color=#447700>!-----------------------------------------------------<a name='1042'></font>
+<font color=#447700>! ZegC should not be negative <a name='1043'></font>
+      ZegC(1) = max(ZegC(1),0.)<a name='1044'>
+      ZegC(2) = max(ZegC(2),0.)<a name='1045'>
+<a name='1046'>
+<font color=#447700>! Egestion and unassimilated for Si set equivalent to that of N<a name='1047'></font>
+      ZegSi = ZegN<a name='1048'>
+      ZunSi = ZunN<a name='1049'>
+<a name='1050'>
+<font color=#447700>! Zooplankton growth is modified by a temperature adjustment factor<a name='1051'></font>
+      <font color=#447700>!Doesn't mass balance!  Zgrow(:) = Tadj(nospA+1:nospA+nospZ)*Zgrow(:)<a name='1052'></font>
+<a name='1053'>
+<font color=#447700>! Zooplankton respiration based on growth and basal metabolism, both modified by a temperature adjustment factor <a name='1054'></font>
+     <font color=#447700>! Zresp(:) = (Zgrow(:)*Zrespg(:) + Tadj(nospA+1:nospA+nospZ)*Z(:)*Zrespb(:))  !Zooplankton respiration (indv./m3/d)<a name='1055'></font>
+      Zresp(:) = Zgrow(:)*Zrespg(:) + Z(:)*Zrespb(:)  <font color=#447700>!Zooplankton respiration (indv./m3/d)<a name='1056'></font>
+      ZrespC   = SUM(Zresp*ZQc)                                       <font color=#447700>!Total Carbon loss from respiration (mmol-C/m3/d)<a name='1057'></font>
+      SUM_RESPZ_O2(myi-1,j,k) = SUM_RESPZ_O2(myi-1,j,k) + ZrespC/real(print_ave) <a name='1058'>
+<a name='1059'>
+                                                <font color=#447700>! Excretion<a name='1060'></font>
+      ZexN(:)   = Zresp(:)*ZQn(:)               <font color=#447700>! (mmol-N/m3/d)<a name='1061'></font>
+      ZexP(:)   = Zresp(:)*ZQp(:)               <font color=#447700>! (mmol-P/m3/d)<a name='1062'></font>
+<a name='1063'>
+                                                <font color=#447700>! Mortality<a name='1064'></font>
+     Zmort(:)       = Zm(:) * Z(:) * Z(:)       <font color=#447700>! (indv./m3/d)<a name='1065'></font>
+     ZmortC(:)      = Zmort(:)*ZQc(:)           <font color=#447700>! (mmol-C/m3/d)<a name='1066'></font>
+     ZmortC_tot     = SUM(ZmortC)<a name='1067'>
+     ZmortN(:)      = Zmort(:)*ZQn(:)           <font color=#447700>! (mmol-N/m3/d)<a name='1068'></font>
+     ZmortN_tot     = SUM(ZmortN)<a name='1069'>
+     ZmortP(:)      = Zmort(:)*ZQp(:)           <font color=#447700>! (mmol-P/m3/d)<a name='1070'></font>
+     ZmortP_tot     = SUM(ZmortP)<a name='1071'>
+<font color=#447700>!-------------------------------------------------------------------------<a name='1072'></font>
+<a name='1073'>
+<font color=#447700>!---------------------------------------------------------<a name='1074'></font>
+<font color=#447700>!-G; Zooplankton number density (individuals/m3);<a name='1075'></font>
+<font color=#447700>!---------------------------------------------------------<a name='1076'></font>
+      ff(myi,j,k,iZ(:))  = AMAX1( f(myi,j,k,iZ(:))                         &amp;<a name='1077'>
+      &amp;      + (Zgrow(:) - Zresp(:) - Zmort(:))*dTd, 1.e-8)<a name='1078'>
+<font color=#447700>!------------------------------------------------------------------------<a name='1079'></font>
+<a name='1080'>
+<font color=#447700>!-----------------------------------------------------------<a name='1081'></font>
+<font color=#447700>! Remineralization - reactions<a name='1082'></font>
+<font color=#447700>!---------------------------------------------------------------<a name='1083'></font>
+       <font color=#447700>! Instant Remineralization, if on bottom of shelf, redefine KG's<a name='1084'></font>
+       if(k.eq.nz.and.Which_fluxes(iInRemin).eq.1.and.wsm(i,j).eq.0.) then<a name='1085'>
+           KG1 = KG_bot<a name='1086'>
+           KG2 = KG_bot<a name='1087'>
+       endif<a name='1088'>
+<font color=#447700>!------------------------------------------------------------<a name='1089'></font>
+<font color=#447700>! Nitrification<a name='1090'></font>
+<font color=#447700>!--------------------------------------------------------------<a name='1091'></font>
+        call <A href='../../html_code/CGEM_2.0/Nitrification.f.html#NITRIFICATION'>Nitrification</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="NITRIFICATION_2">( O2, NH4, KO2, KNH4, nitmax, T_k(k), R_11 )<a name='1092'>
+        <font color=#447700>!R_11        = one_d_365 * R_11  !Change units from /year to /day<a name='1093'></font>
+        <font color=#447700>! New GoMDOM Nitrification has units already /day<a name='1094'></font>
+<a name='1095'>
+<font color=#447700>!------------------------------------------------------------<a name='1096'></font>
+<font color=#447700>! Carbon Chemistry<a name='1097'></font>
+<font color=#447700>!--------------------------------------------------------------<a name='1098'></font>
+<font color=#447700>!!! MOCSY alkalinity expressions:<a name='1099'></font>
+        call <A href='../../html_code/CGEM_2.0/vars.f.html#VARS'>vars</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="VARS_2">(ph_calc, pco2_calc, fco2, co2, hco3, co3, OmegaA, OmegaC, BetaD_calc, rhoSW, p, tempis,&amp;<a name='1100'>
+             T(i,j,k), S(i,j,k), f(myi,j,k,iALK)/1000., f(myi,j,k,iDIC)/1000., f(myi,j,k,iSi)/1000., f(myi,j,k,iPO4)/1000., patm, d_sfc(k), lat(j), 1,&amp;<a name='1101'>
+             'mol/m3', 'Tinsitu', 'm ', 'u74', 'l  ', 'pf ', 'Pzero  ')<a name='1102'>
+        pH(myi,j,k) = ph_calc(1)<a name='1103'>
+<a name='1104'>
+<a name='1105'>
+<font color=#447700>!------------------------------------------------------------<a name='1106'></font>
+<font color=#447700>! Particulate and Dissolved dead phytoplankton, rate of remineralization<a name='1107'></font>
+<font color=#447700>!--------------------------------------------------------------<a name='1108'></font>
+        call <A href='../../html_code/CGEM_2.0/reaction.f.html#REACTION'>reaction</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_1">( OM1_A, OM2_A, O2, NO3, KG1, KG2, KO2, KstarO2, KNO3,               &amp;<a name='1109'>
+     &amp;  s_x1A(myi,j,k), s_y1A(myi,j,k), s_z1A(myi,j,k), s_x2A(myi,j,k), s_y2A(myi,j,k), s_z2A(myi,j,k), T_k(k), RC )<a name='1110'>
+<a name='1111'>
+        RC        = one_d_365 * RC  <font color=#447700>!Change units from /year to /day<a name='1112'></font>
+<a name='1113'>
+        ROM1_A     = RC(1)          <font color=#447700>! units are /m3/day<a name='1114'></font>
+        ROM2_A     = RC(2)<a name='1115'>
+        RO2_A      = RC(3)<a name='1116'>
+        RNO3_A     = RC(4)<a name='1117'>
+        RPO4_A     = RC(5)<a name='1118'>
+        RDIC_A     = RC(6)<a name='1119'>
+        RNH4_A     = RC(7)<a name='1120'>
+        RSi_A      = RC(8)<a name='1121'>
+        RALK_A     = RC(9)<a name='1122'>
+        RN2_A      = RC(10)<a name='1123'>
+<a name='1124'>
+<a name='1125'>
+<font color=#447700>!------------------------------------------------------------<a name='1126'></font>
+<font color=#447700>! Particulate and Dissolved fecal pellets, rate of remineralization<a name='1127'></font>
+<font color=#447700>!--------------------------------------------------------------<a name='1128'></font>
+        call <A href='../../html_code/CGEM_2.0/reaction.f.html#REACTION'>reaction</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_2">( OM1_Z, OM2_Z, O2, NO3, KG1, KG2, KO2, KstarO2, KNO3,               &amp;<a name='1129'>
+     &amp;  s_x1Z(myi,j,k), s_y1Z(myi,j,k), s_z1Z(myi,j,k), s_x2Z(myi,j,k), s_y2Z(myi,j,k), s_z2Z(myi,j,k), T_k(k), RC )<a name='1130'>
+<a name='1131'>
+        RC       = one_d_365 * RC   <font color=#447700>!Change units from /year to /day<a name='1132'></font>
+<a name='1133'>
+        ROM1_Z     = RC(1)         <font color=#447700>! units are /m3/day<a name='1134'></font>
+        ROM2_Z     = RC(2)<a name='1135'>
+        RO2_Z      = RC(3)<a name='1136'>
+        RNO3_Z     = RC(4)<a name='1137'>
+        RPO4_Z     = RC(5)<a name='1138'>
+        RDIC_Z     = RC(6)<a name='1139'>
+        RNH4_Z     = RC(7)<a name='1140'>
+        RSi_Z      = RC(8)<a name='1141'>
+        RALK_Z     = RC(9)<a name='1142'>
+        RN2_Z      = RC(10)<a name='1143'>
+<a name='1144'>
+<a name='1145'>
+<font color=#447700>!------------------------------------------------------------<a name='1146'></font>
+<font color=#447700>! Particulate and Dissolved riverine OM, rate of remineralization <a name='1147'></font>
+<font color=#447700>!------------------------------------------------------------<a name='1148'></font>
+        call <A href='../../html_code/CGEM_2.0/reaction.f.html#REACTION'>reaction</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_3">( OM1_R, OM2_R, O2, NO3, KG1_R, KG2_R, KO2, KstarO2, KNO3,               &amp;<a name='1149'>
+     &amp;  stoich_x1R, stoich_y1R, stoich_z1R, stoich_x2R, stoich_y2R, stoich_z2R, T_k(k), RC )<a name='1150'>
+<a name='1151'>
+        RC       = one_d_365 * RC   <font color=#447700>!Change units from /year to /day<a name='1152'></font>
+<a name='1153'>
+        ROM1_R     = RC(1)         <font color=#447700>! units are /m3/day<a name='1154'></font>
+        ROM2_R     = RC(2)<a name='1155'>
+        RO2_R      = RC(3)<a name='1156'>
+        RNO3_R     = RC(4)<a name='1157'>
+        RPO4_R     = RC(5)<a name='1158'>
+        RDIC_R     = RC(6)<a name='1159'>
+        RNH4_R     = RC(7)<a name='1160'>
+        RSi_R      = RC(8)<a name='1161'>
+        RALK_R     = RC(9)<a name='1162'>
+        RN2_R      = RC(10)<a name='1163'>
+<a name='1164'>
+<font color=#447700>!------------------------------------------------------------<a name='1165'></font>
+<font color=#447700>! Particulate and Dissolved initial and boundary OM, rate of remineralization<a name='1166'></font>
+<font color=#447700>!------------------------------------------------------------<a name='1167'></font>
+        call <A href='../../html_code/CGEM_2.0/reaction.f.html#REACTION'>reaction</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_4">( OM1_BC, OM2_BC, O2, NO3, KG1_BC, KG2_BC, KO2, KstarO2, KNO3,               &amp;<a name='1168'>
+     &amp;  stoich_x1BC, stoich_y1BC, stoich_z1BC, stoich_x2BC, stoich_y2BC, stoich_z2BC, T_k(k), RC )<a name='1169'>
+<a name='1170'>
+        RC       = one_d_365 * RC   <font color=#447700>!Change units from /year to /day<a name='1171'></font>
+<a name='1172'>
+        ROM1_BC     = RC(1)         <font color=#447700>! units are /m3/day<a name='1173'></font>
+        ROM2_BC     = RC(2)<a name='1174'>
+        RO2_BC      = RC(3)<a name='1175'>
+        RNO3_BC     = RC(4)<a name='1176'>
+        RPO4_BC     = RC(5)<a name='1177'>
+        RDIC_BC     = RC(6)<a name='1178'>
+        RNH4_BC     = RC(7)<a name='1179'>
+        RSi_BC      = RC(8)<a name='1180'>
+        RALK_BC     = RC(9)<a name='1181'>
+        RN2_BC      = RC(10)<a name='1182'>
+<a name='1183'>
+       <font color=#447700>! Instant Remineralization, change KG's back to original<a name='1184'></font>
+       if(k.eq.nz.and.Which_fluxes(iInRemin).eq.1.and.wsm(i,j).eq.0.) then<a name='1185'>
+           KG1 = KG1_save<a name='1186'>
+           KG2 = KG2_save<a name='1187'>
+       endif<a name='1188'>
+<a name='1189'>
+<font color=#447700>!--------------------------------------------------------------------<a name='1190'></font>
+<font color=#447700>! Sum remineralization terms from dead phytoplankton, fecal pellets, and riverine particulate<a name='1191'></font>
+  RO2   = RO2_A  + RO2_Z  + RO2_R  + RO2_BC - 2.*R_11  <font color=#447700>! (mmol-O2/m3/d)<a name='1192'></font>
+  RNO3  = RNO3_A + RNO3_Z + RNO3_R + RNO3_BC + R_11    <font color=#447700>! (mmol-NO3/m3/d)<a name='1193'></font>
+  RNH4  = RNH4_A + RNH4_Z + RNH4_R + RNH4_BC - R_11    <font color=#447700>! (mmol-NH4/m3/d)<a name='1194'></font>
+  RPO4  = RPO4_A + RPO4_Z + RPO4_R + RPO4_BC           <font color=#447700>! (mmol-PO4/m3/d)<a name='1195'></font>
+  RDIC  = RDIC_A + RDIC_Z + RDIC_R + RDIC_BC           <font color=#447700>! (mmol-DIC/m3/d)<a name='1196'></font>
+  RSi   = RSi_A  + RSi_Z  + RSi_R  + RSi_BC            <font color=#447700>! (mmol-Si/m3/d)<a name='1197'></font>
+  RALK  = RALK_A + RALK_Z + RALK_R + RALK_BC - 2.*R_11 <font color=#447700>! (mmol-HCO3/m3/d)<a name='1198'></font>
+  RN2   = RN2_A + RN2_Z + RN2_R + RN2_BC               <font color=#447700>! (mmol-N2/m3/d)<a name='1199'></font>
+       <font color=#447700>!Save for netCDF<a name='1200'></font>
+       RN2_ijk(myi,j,k) = RN2_ijk(myi,j,k) + (2*RN2)*dTd   <font color=#447700>! Sum of N in N2 <a name='1201'></font>
+<a name='1202'>
+  SUM_DECAY(myi-1,j,k) = SUM_DECAY(myi-1,j,k) + -RO2/real(print_ave)<a name='1203'>
+<a name='1204'>
+<a name='1205'>
+<a name='1206'>
+<font color=#447700>! Save RO2 as CBODW<a name='1207'></font>
+  CBODW(myi,j,k) = RO2<a name='1208'>
+<font color=#447700>!--------------------------------------------------------------------<a name='1209'></font>
+<a name='1210'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1211'></font>
+<font color=#447700>! Stoichiometry - calculate C:N:P ratios for Remineralization equations<a name='1212'></font>
+<font color=#447700>!---------------------------------------------------------------------<a name='1213'></font>
+<font color=#447700>!-- Organic Matter from dead phytoplankton --------------------------<a name='1214'></font>
+OM1_CA = 0.<a name='1215'>
+OM2_CA = 0.<a name='1216'>
+OM1_NA = 0.<a name='1217'>
+OM2_NA = 0.<a name='1218'>
+OM1_PA = 0.<a name='1219'>
+OM2_PA = 0.<a name='1220'>
+<a name='1221'>
+do isp=1,nospA <a name='1222'>
+ if ( uN_k(k,isp) .lt. uP_k(k,isp)  ) then<a name='1223'>
+<font color=#447700>!Particulate<a name='1224'></font>
+   OM1_CA = OM1_CA + Amort(isp)*(Qn_k(isp,k)-QminN(isp))/Qn_k(isp,k)*Qc(isp)<a name='1225'>
+   OM1_NA = OM1_NA + Amort(isp)*(Qn_k(isp,k)-QminN(isp))<a name='1226'>
+   OM1_PA = OM1_PA + Amort(isp)*(Qn_k(isp,k)-QminN(isp))/Qn_k(isp,k)*Qp_k(isp,k)<a name='1227'>
+<font color=#447700>!Dissolved<a name='1228'></font>
+   OM2_CA = OM2_CA + Amort(isp)*QminN(isp)/Qn_k(isp,k)*Qc(isp)<a name='1229'>
+   OM2_NA = OM2_NA + Amort(isp)*QminN(isp)<a name='1230'>
+   OM2_PA = OM2_PA + Amort(isp)*QminN(isp)/Qn_k(isp,k)*Qp_k(isp,k)<a name='1231'>
+ else<a name='1232'>
+<font color=#447700>!Particulate<a name='1233'></font>
+   OM1_CA = OM1_CA + Amort(isp)*(Qp_k(isp,k)-QminP(isp))/Qp_k(isp,k)*Qc(isp)<a name='1234'>
+   OM1_NA = OM1_NA + Amort(isp)*(Qp_k(isp,k)-QminP(isp))/Qp_k(isp,k)*Qn_k(isp,k)<a name='1235'>
+   OM1_PA = OM1_PA + Amort(isp)*(Qp_k(isp,k)-QminP(isp))<a name='1236'>
+<font color=#447700>!Dissolved<a name='1237'></font>
+   OM2_CA = OM2_CA + Amort(isp)*QminP(isp)/Qp_k(isp,k)*Qc(isp)<a name='1238'>
+   OM2_NA = OM2_NA + Amort(isp)*QminP(isp)/Qp_k(isp,k)*Qn_k(isp,k)<a name='1239'>
+   OM2_PA = OM2_PA + Amort(isp)*QminP(isp)<a name='1240'>
+ endif<a name='1241'>
+enddo<a name='1242'>
+<a name='1243'>
+                                              <font color=#447700>! Particulate<a name='1244'></font>
+<font color=#447700>!    OM1_CA   = SUM(Amort*(QminN/Qn_k(:,k))*Qc)        ! (mmol-C/m3/d)<a name='1245'></font>
+<font color=#447700>!    OM1_NA   = SUM(Amort*QminN)                       ! (mmol-N/m3/d)<a name='1246'></font>
+<font color=#447700>!    OM1_PA   = SUM(Amort*(QminN/Qn_k(:,k))*Qp_k(:,k))      ! (mmol-P/m3/d)<a name='1247'></font>
+                                             <font color=#447700>! Dissolved<a name='1248'></font>
+<font color=#447700>!    OM2_CA    = SUM(Amort*((Qn_k(:,k)-QminN)/Qn_k(:,k))*Qc)   ! (mmol-C/m3/d)<a name='1249'></font>
+<font color=#447700>!    OM2_NA    = SUM(Amort*(Qn_k(:,k)-QminN))                  ! (mmol-N/m3/d)<a name='1250'></font>
+<font color=#447700>!    OM2_PA    = SUM(Amort*((Qn_k(:,k)-QminN)/Qn_k(:,k))*Qp_k(:,k)) !  (mmol-P/m3/d)<a name='1251'></font>
+<a name='1252'>
+   <font color=#447700>!This calculates the cumulative stoichiometry ratios for OM1_A<a name='1253'></font>
+   if(OM1_CA.ne.0) then<a name='1254'>
+    stoich_x1A = (OM1_CA*dTd + OM1_A) / (OM1_PA*dTd + (1/s_x1A(myi,j,k))*OM1_A) <font color=#447700>! C/P<a name='1255'></font>
+    stoich_y1A = (OM1_NA*dTd + (s_y1A(myi,j,k)/s_x1A(myi,j,k))*OM1_A) / (OM1_PA*dTd + (1/s_x1A(myi,j,k))*OM1_A) <font color=#447700>!N/P<a name='1256'></font>
+    stoich_z1A = 1.<a name='1257'>
+   else<a name='1258'>
+    stoich_x1A = s_x1A(myi,j,k)<a name='1259'>
+    stoich_y1A = s_y1A(myi,j,k)<a name='1260'>
+    stoich_z1A = 1.<a name='1261'>
+   endif<a name='1262'>
+   <font color=#447700>!Save for later timesteps and for netCDF files<a name='1263'></font>
+    s_x1A(myi,j,k) = stoich_x1A<a name='1264'>
+    s_y1A(myi,j,k) = stoich_y1A<a name='1265'>
+    s_z1A(myi,j,k) = stoich_z1A<a name='1266'>
+<a name='1267'>
+<a name='1268'>
+<a name='1269'>
+   <font color=#447700>!This calculates the cumulative stoichiometry ratios for OM2_A<a name='1270'></font>
+   if(OM2_CA.ne.0) then<a name='1271'>
+    stoich_x2A = (OM2_CA*dTd + OM2_A) / (OM2_PA*dTd + (1/s_x2A(myi,j,k))*OM2_A) <font color=#447700>! C/P<a name='1272'></font>
+    stoich_y2A = (OM2_NA*dTd + (s_y2A(myi,j,k)/s_x2A(myi,j,k))*OM2_A) / (OM2_PA*dTd + (1/s_x2A(myi,j,k))*OM2_A) <font color=#447700>!N/P<a name='1273'></font>
+    stoich_z2A = 1.<a name='1274'>
+   else<a name='1275'>
+    stoich_x2A = s_x2A(myi,j,k)<a name='1276'>
+    stoich_y2A = s_y2A(myi,j,k)<a name='1277'>
+    stoich_z2A = 1.<a name='1278'>
+   endif<a name='1279'>
+   <font color=#447700>!Save for later timesteps and for netCDF files<a name='1280'></font>
+    s_x2A(myi,j,k) = stoich_x2A<a name='1281'>
+    s_y2A(myi,j,k) = stoich_y2A<a name='1282'>
+    s_z2A(myi,j,k) = stoich_z2A<a name='1283'>
+<a name='1284'>
+<font color=#447700>!-- Organic Matter from fecal pellets ---------------------------------<a name='1285'></font>
+    OM1_Ratio = SUM( (Qn_k(:,k)-QminN)/Qn_k(:,k)*A_k(:,k))/SUM(A_k(:,k)) <a name='1286'>
+    OM2_Ratio = SUM( (QminN/Qn_k(:,k))*A_k(:,k))/SUM(A_k(:,k))<a name='1287'>
+<a name='1288'>
+    OM1_CZ  = ZegC(1) + ZunC(1) + ZmortC_tot + OM1_Ratio*ZslopC_tot <font color=#447700>!  (mmol-C/m3/d)<a name='1289'></font>
+    OM1_NZ  = ZegN(1) + ZunN(1) + ZmortN_tot + OM1_Ratio*ZslopN_tot <font color=#447700>!  (mmol-N/m3/d)<a name='1290'></font>
+    OM1_PZ  = ZegP(1) + ZunP(1) + ZmortP_tot + OM1_Ratio*ZslopP_tot <font color=#447700>!  (mmol-P/m3/d)<a name='1291'></font>
+                                                                  <font color=#447700>! Dissolved<a name='1292'></font>
+    OM2_CZ  = ZegC(2) + ZunC(2) + OM2_Ratio*ZslopC_tot              <font color=#447700>!  (mmol-C/m3/d)<a name='1293'></font>
+    OM2_NZ  = ZegN(2) + ZunN(2) + OM2_Ratio*ZslopN_tot              <font color=#447700>!  (mmol-N/m3/d)<a name='1294'></font>
+    OM2_PZ  = ZegP(2) + ZunP(2) + OM2_Ratio*ZslopP_tot              <font color=#447700>!  (mmol-P/m3/d)<a name='1295'></font>
+<a name='1296'>
+   <font color=#447700>!This calculates the cumulative stoichiometry ratios for OM1_Z<a name='1297'></font>
+   if(OM1_CZ.ne.0) then<a name='1298'>
+    stoich_x1Z = (OM1_CZ*dTd + OM1_Z) / (OM1_PZ*dTd + (1./s_x1Z(myi,j,k))*OM1_Z) <font color=#447700>! C/P<a name='1299'></font>
+    stoich_y1Z = (OM1_NZ*dTd + (s_y1Z(myi,j,k)/s_x1Z(myi,j,k))*OM1_Z) / (OM1_PZ*dTd + (1./s_x1Z(myi,j,k))*OM1_Z) <font color=#447700>!N/P<a name='1300'></font>
+    stoich_z1Z = 1.<a name='1301'>
+   else<a name='1302'>
+    stoich_x1Z = s_x1Z(myi,j,k)<a name='1303'>
+    stoich_y1Z = s_y1Z(myi,j,k)<a name='1304'>
+    stoich_z1Z = 1.<a name='1305'>
+   endif<a name='1306'>
+   <font color=#447700>!Save for later timesteps and for netCDF files<a name='1307'></font>
+    s_x1Z(myi,j,k) = stoich_x1Z<a name='1308'>
+    s_y1Z(myi,j,k) = stoich_y1Z<a name='1309'>
+    s_z1Z(myi,j,k) = stoich_z1Z<a name='1310'>
+<a name='1311'>
+   <font color=#447700>!This calculates the cumulative stoichiometry ratios for OM2_Z<a name='1312'></font>
+   if(OM2_CZ.ne.0) then<a name='1313'>
+    stoich_x2Z = (OM2_CZ*dTd + OM2_Z) / (OM2_PZ*dTd + (1./s_x2Z(myi,j,k))*OM2_Z) <font color=#447700>!  C/P<a name='1314'></font>
+    stoich_y2Z = (OM2_NZ*dTd + (s_y2Z(myi,j,k)/s_x2Z(myi,j,k))*OM2_Z) / (OM2_PZ*dTd + (1./s_x2Z(myi,j,k))*OM2_Z) <font color=#447700>!N/P<a name='1315'></font>
+    stoich_z2Z = 1.<a name='1316'>
+   else<a name='1317'>
+    stoich_x2Z = s_x2Z(myi,j,k)<a name='1318'>
+    stoich_y2Z = s_y2Z(myi,j,k)<a name='1319'>
+    stoich_z2Z = 1.<a name='1320'>
+   endif<a name='1321'>
+   <font color=#447700>!Save for later timesteps and for netCDF files<a name='1322'></font>
+    s_x2Z(myi,j,k) = stoich_x2Z<a name='1323'>
+    s_y2Z(myi,j,k) = stoich_y2Z<a name='1324'>
+    s_z2Z(myi,j,k) = stoich_z2Z<a name='1325'>
+<font color=#447700>!------------------------------------------------------------------------<a name='1326'></font>
+     <a name='1327'>
+<font color=#447700>!-------------------------------<a name='1328'></font>
+<font color=#447700>!-NO3; (mmol-N/m3)<a name='1329'></font>
+<font color=#447700>!-------------------------------     <a name='1330'></font>
+       ff(myi,j,k,iNO3) = AMAX1(f(myi,j,k,iNO3)                            &amp;<a name='1331'>
+       &amp;  + ( RNO3 - AupN*NO3/(NO3+NH4) )*dTd, 0.0 )              <a name='1332'>
+       <a name='1333'>
+<font color=#447700>!--------------------------------<a name='1334'></font>
+<font color=#447700>!-NH4; Ammonium (mmol-N/m3)<a name='1335'></font>
+<font color=#447700>!--------------------------------<a name='1336'></font>
+       ff(myi,j,k,iNH4) = AMAX1(f(myi,j,k,iNH4)                            &amp;<a name='1337'>
+       &amp; + ( RNH4 - AupN*NH4/(NO3+NH4) + AexudN + SUM(ZexN) )*dTd, 0.0)          <a name='1338'>
+<a name='1339'>
+<font color=#447700>!----------------------------<a name='1340'></font>
+<font color=#447700>!-Silica: (mmol-Si/m3)<a name='1341'></font>
+<font color=#447700>!----------------------------<a name='1342'></font>
+       ff(myi,j,k,iSi) =  AMAX1(f(myi,j,k,iSi)                             &amp;<a name='1343'>
+       &amp; + ( RSi - AupSi + SUM(ZegSi) + SUM(ZunSi) )*dTd, 0.0)<a name='1344'>
+<a name='1345'>
+<font color=#447700>!---------------------------------------------<a name='1346'></font>
+<font color=#447700>!-PO4: Phosphate (mmol-P/m3)<a name='1347'></font>
+<font color=#447700>!--------------------------------------<a name='1348'></font>
+      ff(myi,j,k,iPO4) = AMAX1(f(myi,j,k,iPO4)                             &amp;<a name='1349'>
+      &amp; + ( RPO4 - AupP + AexudP + SUM(ZexP) )*dTd, 0.0)<a name='1350'>
+<a name='1351'>
+<a name='1352'>
+<font color=#447700>!---------------------------------------------------------<a name='1353'></font>
+<font color=#447700>!-DIC: Dissolved Inorganic Carbon (mmol-C/m3)<a name='1354'></font>
+<font color=#447700>!---------------------------------------------------------<a name='1355'></font>
+       ff(myi,j,k,iDIC) = AMAX1(f(myi,j,k,iDIC)                            &amp;<a name='1356'>
+       &amp;  + ( RDIC - PrimProd + ArespC  + ZrespC)*dTd, 0.0)  <a name='1357'>
+<a name='1358'>
+<font color=#447700>!-----------------------------------------------------------------------      <a name='1359'></font>
+<font color=#447700>!-O2: Oxygen (mmol O2 m-3) <a name='1360'></font>
+<font color=#447700>!-------------------------------------------------------------------      <a name='1361'></font>
+       SUM_RESP(myi-1,j,k) = SUM_RESP(myi-1,j,k) +  (ArespC + ZrespC - RO2)/real(print_ave)<a name='1362'>
+<a name='1363'>
+       ff(myi,j,k,iO2)  = AMAX1(f(myi,j,k,iO2)                             &amp;  <a name='1364'>
+       &amp;  + ( PrimProd - ArespC + RO2 - ZrespC)*dTd, 0.0)<a name='1365'>
+<font color=#447700>! Let Oxygen go negative:<a name='1366'></font>
+<font color=#447700>!       ff(myi,j,k,iO2) = f(myi,j,k,iO2) + (RO2 + PrimProd - ArespC - ZrespC)*dTd<a name='1367'></font>
+<a name='1368'>
+<font color=#447700>!-----------------------------------------<a name='1369'></font>
+<font color=#447700>!-OM1_A: (mmol-C/m3-- Dead Phytoplankton Particulate)<a name='1370'></font>
+<font color=#447700>!-----------------------------------------<a name='1371'></font>
+       ff(myi,j,k,iOM1_A) = AMAX1(f(myi,j,k,iOM1_A)                       &amp;<a name='1372'>
+       &amp;   + ( (ROM1_A) + OM1_CA )*dTd, 0.0)       <a name='1373'>
+<a name='1374'>
+<font color=#447700>!----------------------------------------------------------------------<a name='1375'></font>
+<font color=#447700>!---------------------------------------------<a name='1376'></font>
+<font color=#447700>!-OM2_A: (mmol-C/m3-- Dead Phytoplankton Dissolved)<a name='1377'></font>
+<font color=#447700>!---------------------------------------------<a name='1378'></font>
+       ff(myi,j,k,iOM2_A) = AMAX1(f(myi,j,k,iOM2_A)                       &amp;<a name='1379'>
+       &amp;   + (ROM2_A + OM2_CA )*dTd, 0.0)              <a name='1380'>
+<a name='1381'>
+<font color=#447700>!----------------------------------------------------------------------<a name='1382'></font>
+<font color=#447700>!------------------------------------------<a name='1383'></font>
+<font color=#447700>!-OM1_Z:(mmol-C/m3--G particulate)<a name='1384'></font>
+<font color=#447700>!------------------------------------------<a name='1385'></font>
+       ff(myi,j,k,iOM1_Z) = AMAX1(f(myi,j,k,iOM1_Z)                     &amp;<a name='1386'>
+       &amp;   +( ROM1_Z + OM1_CZ)*dTd, 0.0)              <a name='1387'>
+<a name='1388'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1389'></font>
+<font color=#447700>!-----------------------------------------------<a name='1390'></font>
+<font color=#447700>!-OM2_Z:(mmol-C/m3--G dissolved)<a name='1391'></font>
+<font color=#447700>!-----------------------------------------------<a name='1392'></font>
+       ff(myi,j,k,iOM2_Z) = AMAX1(f(myi,j,k,iOM2_Z)                      &amp;<a name='1393'>
+       &amp;   + ( ROM2_Z + OM2_CZ )*dTd, 0.0)              <a name='1394'>
+<a name='1395'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1396'></font>
+<font color=#447700>!-------------------------------------------<a name='1397'></font>
+<font color=#447700>!-OM1_R: (mmol-C/m3--SPM particulate)<a name='1398'></font>
+<font color=#447700>!-------------------------------------------<a name='1399'></font>
+       ff(myi,j,k,iOM1_R) = AMAX1(f(myi,j,k,iOM1_R)                      &amp;<a name='1400'>
+       &amp;   + ( ROM1_R )*dTd, 0.0)              <a name='1401'>
+<a name='1402'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1403'></font>
+<font color=#447700>!------------------------------------------------<a name='1404'></font>
+<font color=#447700>!-OM2_R: (mmol-C/m3--SPM dissolved)<a name='1405'></font>
+<font color=#447700>!------------------------------------------------<a name='1406'></font>
+       ff(myi,j,k,iOM2_R) =  AMAX1(f(myi,j,k,iOM2_R)                     &amp;<a name='1407'>
+       &amp;   + ( ROM2_R )*dTd, 0.0)       <a name='1408'>
+<a name='1409'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1410'></font>
+<font color=#447700>!-------------------------------------------<a name='1411'></font>
+<font color=#447700>!-OM1_BC: (mmol-C/m3--initial and boundary condition OM particulate)<a name='1412'></font>
+<font color=#447700>!-------------------------------------------<a name='1413'></font>
+       ff(myi,j,k,iOM1_BC) = AMAX1(f(myi,j,k,iOM1_BC)                      &amp;<a name='1414'>
+       &amp;   + ( ROM1_BC )*dTd, 0.0)<a name='1415'>
+<a name='1416'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1417'></font>
+<font color=#447700>!------------------------------------------------<a name='1418'></font>
+<font color=#447700>!-OM2_BC: (mmol-C/m3--initial and boundary condition OM dissolved)<a name='1419'></font>
+<font color=#447700>!------------------------------------------------<a name='1420'></font>
+       ff(myi,j,k,iOM2_BC) =  AMAX1(f(myi,j,k,iOM2_BC)                     &amp;<a name='1421'>
+       &amp;   + ( ROM2_BC )*dTd, 0.0)<a name='1422'>
+<a name='1423'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1424'></font>
+<font color=#447700>!----------------------------<a name='1425'></font>
+<font color=#447700>!-CDOM: (ppb) <a name='1426'></font>
+<font color=#447700>!----------------------------<a name='1427'></font>
+       ff(myi,j,k,iCDOM) =  AMAX1(f(myi,j,k,iCDOM)*(1.0 - KGcdom*dTd), 0.0)  <a name='1428'>
+<a name='1429'>
+<font color=#447700>!---------------------------------------------------------------------<a name='1430'></font>
+<font color=#447700>!----------------------------<a name='1431'></font>
+<font color=#447700>!-ALK: (mmol-HCO3/m3)<a name='1432'></font>
+<font color=#447700>!----------------------------<a name='1433'></font>
+       ff(myi,j,k,iALK) =  AMAX1(f(myi,j,k,iALK) +                 &amp;<a name='1434'>
+      &amp; (RALK + AupN*NO3/(NO3+NH4) - AupN*NH4/(NO3+NH4) + AupP + 4.8*AupP)*dTd, 0.0) <a name='1435'>
+<a name='1436'>
+<a name='1437'>
+                      <a name='1438'>
+<font color=#447700>!--------------------------------------------------------------------<a name='1439'></font>
+<a name='1440'>
+<font color=#447700>! Write intermediate variables:<a name='1441'></font>
+      if(Calibration.eq.1.and.k.eq.1.and.i.eq.icent.and.j.eq.jcent) then<a name='1442'>
+       write(105,9004) istep,ff(myi,j,k,iZ(1)),Zgrow(1),-Zresp(1),-Zmort(1)<a name='1443'>
+       write(113,9004) istep,RDIC,RDIC_A,RDIC_Z,RDIC_R<a name='1444'>
+       write(137,9003) istep,ff(myi,j,k,iNO3),RNO3,- AupN*NO3/(NO3+NH4)<a name='1445'>
+       write(117,9005) istep,ff(myi,j,k,iNH4),RNH4,ZexN(1)+ZexN(2),       &amp;<a name='1446'>
+     &amp; AexudN,-AupN*NH4/(NO3+NH4)<a name='1447'>
+       write(121,9007) istep,ff(myi,j,k,iPO4),RPO4,-AupP,                 &amp;<a name='1448'>
+     &amp; AexudP,ZexP(1)+ZexP(2),ZmortP_tot,ZslopP_tot<a name='1449'>
+       write(109,9005) istep,ff(myi,j,k,iDIC),RDIC,                       &amp;<a name='1450'>
+     &amp; -PrimProd,ArespC,ZrespC<a name='1451'>
+       write(125,9008) istep,ff(myi,j,k,iO2),PrimProd,                    &amp;<a name='1452'>
+     &amp; -ArespC,RO2,-ZrespC,RO2_A,RO2_Z,RO2_R<a name='1453'>
+       write(131,9003) istep,ff(myi,j,k,iOM1_A),ROM1_A,OM1_CA<a name='1454'>
+       write(132,9003) istep,ff(myi,j,k,iOM2_A),ROM2_A,OM2_CA<a name='1455'>
+       write(133,9003) istep,ff(myi,j,k,iOM1_Z),ROM1_Z,OM1_CZ<a name='1456'>
+       write(134,9003) istep,ff(myi,j,k,iOM2_Z),ROM2_Z,OM2_CZ<a name='1457'>
+       write(135,9002) istep,ff(myi,j,k,iOM1_R),ROM1_R<a name='1458'>
+       write(136,9002) istep,ff(myi,j,k,iOM2_R),ROM2_R<a name='1459'>
+       write(142,9016) istep,-RO2_A,-RO2_Z,-RO2_R,RNO3_A,RNO3_Z,RNO3_R,   &amp;<a name='1460'>
+     &amp; RNH4_A,RNH4_Z,RNH4_R,RPO4_A,RPO4_Z,RPO4_R,RDIC_A,RDIC_Z,RDIC_R,R_11<a name='1461'>
+       write(144,9006) istep,ff(myi,j,k,iALK),RALK,AupN,NO3,    &amp;<a name='1462'>
+     &amp; NH4, AupP<a name='1463'>
+       write(145,9007) istep,ff(myi,j,k,iNO3),RNO3_A,RNO3_Z,RNO3_R,RNO3_BC,R_11,AupN<a name='1464'>
+      endif<a name='1465'>
+      if(Calibration.eq.1.and.k.eq.6.and.i.eq.icent.and.j.eq.jcent) then<a name='1466'>
+       write(146,9007) istep,ff(myi,j,k,iNO3),RNO3_A,RNO3_Z,RNO3_R,RNO3_BC,R_11,AupN<a name='1467'>
+      endif<a name='1468'>
+      if(Calibration.eq.1.and.k.eq.12.and.i.eq.icent.and.j.eq.jcent) then<a name='1469'>
+       write(147,9007) istep,ff(myi,j,k,iNO3),RNO3_A,RNO3_Z,RNO3_R,RNO3_BC,R_11,AupN<a name='1470'>
+      endif<a name='1471'>
+      if(Calibration.eq.1.and.k.eq.20.and.i.eq.icent.and.j.eq.jcent) then<a name='1472'>
+       write(148,9007) istep,ff(myi,j,k,iNO3),RNO3_A,RNO3_Z,RNO3_R,RNO3_BC,R_11,AupN<a name='1473'>
+      endif<a name='1474'>
+<a name='1475'>
+      enddo   <font color=#447700>! end of  "do k = 1, nz" <a name='1476'></font>
+<a name='1477'>
+#IFDEF _3D<a name='1478'>
+       endif <font color=#447700>!End of if(fm(ij) statement<a name='1479'></font>
+     myi = myi + 1<a name='1480'>
+   enddo      <font color=#447700>! end of do i block do loop<a name='1481'></font>
+ enddo      <font color=#447700>! end of do j block do loop<a name='1482'></font>
+#ENDIF<a name='1483'>
+<font color=#447700>! ----------------------------------------------------------------------<a name='1484'></font>
+<a name='1485'>
+<font color=#447700>!update f for the current timestep<a name='1486'></font>
+         do k = 1,nz<a name='1487'>
+#IFDEF _3D<a name='1488'>
+         do j = 1,jm<a name='1489'>
+          myi = 2<a name='1490'>
+         do i = my_imstart,my_imend<a name='1491'>
+             if(fm(i,j).eq.1) then<a name='1492'>
+#ENDIF<a name='1493'>
+<a name='1494'>
+             f(myi,j,k,:) = ff(myi,j,k,:)<a name='1495'>
+#IFDEF _3D<a name='1496'>
+             endif<a name='1497'>
+           myi = myi+1<a name='1498'>
+         enddo<a name='1499'>
+         enddo<a name='1500'>
+#ENDIF<a name='1501'>
+         enddo<a name='1502'>
+<font color=#447700>!-- End Main GEM Calculations ---------------------------------------------------<a name='1503'></font>
+<a name='1504'>
+<a name='1505'>
+<font color=#447700>!--------------------------------------------------------------------<a name='1506'></font>
+<font color=#447700>!-- Average netCDF Output -------------------------------------------<a name='1507'></font>
+      <font color=#447700>! istep-istep_start+1 is the total timesteps ran so far. In case of a crash restart, <a name='1508'></font>
+      <font color=#447700>! the time loop start at istep_start instead of 1<a name='1509'></font>
+      if((init_ave_netcdf.eq.1).and.((istep-istep_start+1).eq.istep_wait.or.istep_wait.eq.0)) then<a name='1510'>
+<a name='1511'>
+        i_out = 0<a name='1512'>
+<a name='1513'>
+        IF ( InitializeHow .EQ. 2 ) THEN <font color=#447700>! Crash restart<a name='1514'></font>
+           i_out = <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#LAST_AVE_NETCDF_TIMESTEP'>LAST_AVE_NETCDF_TIMESTEP</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="LAST_AVE_NETCDF_TIMESTEP_1"> ( AVE_NETCDF_OUTPUT_FILE_NAME )<a name='1515'>
+        END IF<a name='1516'>
+<a name='1517'>
+        IF ( myid .EQ. 0 ) THEN<a name='1518'>
+<a name='1519'>
+          <font color=#447700>! Create a new average NetCDF file in non-crash-restart cases only:<a name='1520'></font>
+          IF ( InitializeHow .NE. 2 ) THEN<a name='1521'>
+            CALL <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CREATE_FILE_AV'>CREATE_FILE_AV</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CREATE_FILE_AV_1">( AVE_NETCDF_OUTPUT_FILE_NAME, itot, jtot, NZ, nstep, &amp;<a name='1522'>
+                               iYr0, iYrS, iMonS, iDayS, iHrS, iMinS, iSecS, &amp;<a name='1523'>
+                               iYrE, iMonE, iDayE, iHrE, iMinS, iSecS, dT, &amp;<a name='1524'>
+#IFDEF _3D<a name='1525'>
+                          lon, lat, fm, code_ID )<a name='1526'>
+#ELSE<a name='1527'>
+                          lon(j), lat(i), fm(i,j), code_ID )<a name='1528'>
+#ENDIF<a name='1529'>
+            CALL <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CLOSE_FILE_AV'>CLOSE_FILE_AV</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CLOSE_FILE_AV_1">()<a name='1530'>
+          END IF<a name='1531'>
+        END IF<a name='1532'>
+        CALL MPI_BARRIER( MPI_COMM_WORLD, mpierr ) <font color=#447700>! Wait until file is created.<a name='1533'></font>
+<a name='1534'>
+        if(istep_wait.ne.0) then<a name='1535'>
+          SUM_PrimProd = 0.<a name='1536'>
+          SUM_PAR = 0.<a name='1537'>
+          SUM_CHLA = 0.<a name='1538'>
+          SUM_RESP = 0.<a name='1539'>
+          SUM_ARESPTOTC = 0.<a name='1540'>
+          SUM_DECAY = 0.<a name='1541'>
+          SUM_RESPZ_O2 = 0.<a name='1542'>
+        endif<a name='1543'>
+<a name='1544'>
+        print_file = istep_wait + print_ave<a name='1545'>
+<a name='1546'>
+        <font color=#447700>! Each process opens the new average output NetCDF file for writing:<a name='1547'></font>
+        CALL <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#OPEN_FILE_AV'>OPEN_FILE_AV</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="OPEN_FILE_AV_1">( trim(AVE_NETCDF_OUTPUT_FILE_NAME) )<a name='1548'>
+        CALL MPI_BARRIER( MPI_COMM_WORLD, mpierr ) <font color=#447700>! Wait until file is updated<a name='1549'></font>
+<a name='1550'>
+        init_ave_netcdf = 0   <font color=#447700>! Don't initialize NetCDF file again during this run.<a name='1551'></font>
+<a name='1552'>
+      endif<a name='1553'>
+<a name='1554'>
+<a name='1555'>
+      if ( (istep-istep_start+1).eq.print_file )  then<a name='1556'>
+<a name='1557'>
+          INT_PrimProd = 0.<a name='1558'>
+          INT_PAR = 0.<a name='1559'>
+          INT_CHLA = 0.<a name='1560'>
+          INT_RESP = 0.<a name='1561'>
+          INT_ARESPTOTC = 0.<a name='1562'>
+          INT_DECAY = 0.<a name='1563'>
+          INT_RESPZ_O2 = 0.<a name='1564'>
+<a name='1565'>
+         do k = 1,nz<a name='1566'>
+#IFDEF _3D<a name='1567'>
+         do j = 1,jm<a name='1568'>
+         myi = 1<a name='1569'>
+         do i = my_imstart,my_imend<a name='1570'>
+             if(fm(i,j).eq.1) then<a name='1571'>
+#ELSE<a name='1572'>
+         myi = icent<a name='1573'>
+#ENDIF<a name='1574'>
+               INT_PrimProd(myi,j) = INT_PrimProd(myi,j) + SUM_PrimProd(myi,j,k)*d(i,j)*dz(k)<a name='1575'>
+               INT_PAR(myi,j) = INT_PAR(myi,j) + SUM_PAR(myi,j,k)*d(i,j)*dz(k)<a name='1576'>
+               INT_CHLA(myi,j) = INT_CHLA(myi,j) + SUM_CHLA(myi,j,k)*d(i,j)*dz(k)<a name='1577'>
+               INT_RESP(myi,j) = INT_RESP(myi,j) + SUM_RESP(myi,j,k)*d(i,j)*dz(k)<a name='1578'>
+               INT_ARESPTOTC(myi,j) = INT_ARESPTOTC(myi,j) + SUM_ARESPTOTC(myi,j,k)*d(i,j)*dz(k)<a name='1579'>
+               INT_DECAY(myi,j) = INT_DECAY(myi,j) + SUM_DECAY(myi,j,k)*d(i,j)*dz(k)<a name='1580'>
+               INT_RESPZ_O2(myi,j) = INT_RESPZ_O2(myi,j) + SUM_RESPZ_O2(myi,j,k)*d(i,j)*dz(k)<a name='1581'>
+#IFDEF _3D<a name='1582'>
+             endif<a name='1583'>
+             myi = myi + 1<a name='1584'>
+         enddo<a name='1585'>
+         enddo<a name='1586'>
+#ENDIF<a name='1587'>
+         enddo<a name='1588'>
+<a name='1589'>
+<a name='1590'>
+         <font color=#447700>! Each process writes to average output NetCDF file:<a name='1591'></font>
+          CALL <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#WRITE_DATA_AV'>WRITE_DATA_AV</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="WRITE_DATA_AV_1">( my_istart, my_im, 1, jtot, 1, NZ, i_out, istep,                  &amp;<a name='1592'>
+           &amp; SUM_PrimProd(istart:iend,jstart:jend,:), SUM_PAR(istart:iend,jstart:jend,:), SUM_CHLA(istart:iend,jstart:jend,:), SUM_RESP(istart:iend,jstart:jend,:),&amp;<a name='1593'>
+           &amp; SUM_ARESPTOTC(istart:iend,jstart:jend,:), SUM_DECAY(istart:iend,jstart:jend,:), SUM_RESPZ_O2(istart:iend,jstart:jend,:),                              &amp;<a name='1594'>
+           &amp; INT_PrimProd(istart:iend,jstart:jend), INT_PAR(istart:iend,jstart:jend), INT_CHLA(istart:iend,jstart:jend), INT_RESP(istart:iend,jstart:jend),        &amp;<a name='1595'>
+           &amp; INT_ARESPTOTC(istart:iend,jstart:jend), INT_DECAY(istart:iend,jstart:jend), INT_RESPZ_O2(istart:iend,jstart:jend) )<a name='1596'>
+          CALL MPI_BARRIER( MPI_COMM_WORLD, mpierr ) <font color=#447700>! Wait until file is updated<a name='1597'></font>
+<a name='1598'>
+          SUM_PrimProd = 0.0<a name='1599'>
+          SUM_PAR = 0.<a name='1600'>
+          SUM_CHLA = 0.<a name='1601'>
+          SUM_RESP = 0.0<a name='1602'>
+          SUM_ARESPTOTC = 0.0<a name='1603'>
+          SUM_DECAY = 0.0<a name='1604'>
+          SUM_RESPZ_O2 = 0.0<a name='1605'>
+<a name='1606'>
+         i_out = i_out + 1<a name='1607'>
+         print_file = print_file + print_ave<a name='1608'>
+<a name='1609'>
+      endif<a name='1610'>
+<a name='1611'>
+      <font color=#447700>! Close average NetCDF file at end of run only if the file has been created.<a name='1612'></font>
+      if((istep.eq.istep_end).and.(init_ave_netcdf.eq.0)) call <A href='../../html_code/CGEM_2.0/AVE_NETCDF.f.html#CLOSE_FILE_AV'>CLOSE_FILE_AV</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CLOSE_FILE_AV_2">()<a name='1613'>
+<font color=#447700>!-- End Average netCDF calls -------------------------------------------------------------------<a name='1614'></font>
+<font color=#447700>!-----------------------------------------------------------------------------------------------<a name='1615'></font>
+<a name='1616'>
+<font color=#447700>!-- Call "Extra" variables for netCDF --------------------------------------------------------<a name='1617'></font>
+  <font color=#447700>! --- dump output when istep is a multiple of iout<a name='1618'></font>
+      if (  mod( istep, iout ) .eq. 0 ) then<a name='1619'>
+         CALL <A href='../../html_code/CGEM_2.0/OUTPUT_NETCDF.f.html#WRITE_EXTRA_DATA'>WRITE_EXTRA_DATA</A><A href='../../html_code/CGEM_2.0/GEM_EPA.f.html#GEM_EPA' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="WRITE_EXTRA_DATA_1">( my_imstart, my_im, 1, jtot, 1, nsl, nospA, istep_out, &amp;<a name='1620'>
+                                     PARdepth_ijk(fstart:fend, jstart:jend, :), &amp;<a name='1621'>
+                                  PAR_percent_ijk(fstart:fend, jstart:jend, :), &amp;<a name='1622'>
+                                        uN_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='1623'>
+                                        uP_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='1624'>
+                                        uE_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='1625'>
+                                        uA_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='1626'>
+                                     Chla_tot_ijk(fstart:fend, jstart:jend, :), &amp;<a name='1627'>
+                                            s_x1A(fstart:fend, jstart:jend, :), &amp;<a name='1628'>
+                                            s_y1A(fstart:fend, jstart:jend, :), &amp;<a name='1629'>
+                                            s_x2A(fstart:fend, jstart:jend, :), &amp;<a name='1630'>
+                                            s_y2A(fstart:fend, jstart:jend, :), &amp;<a name='1631'>
+                                            s_x1Z(fstart:fend, jstart:jend, :), &amp;<a name='1632'>
+                                            s_y1Z(fstart:fend, jstart:jend, :), &amp;<a name='1633'>
+                                            s_x2Z(fstart:fend, jstart:jend, :), &amp;<a name='1634'>
+                                            s_y2Z(fstart:fend, jstart:jend, :), &amp;<a name='1635'>
+                                       uSi_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='1636'>
+                                     Chl_C_ijk(fstart:fend, jstart:jend, :, :), &amp;<a name='1637'>
+                                              pH(fstart:fend, jstart:jend, :) , &amp;<a name='1638'>
+                                         RN2_ijk(fstart:fend, jstart:jend, :))<a name='1639'>
+  <a name='1640'>
+          CALL MPI_BARRIER( MPI_COMM_WORLD, mpierr ) <font color=#447700>! Wait until file is updated<a name='1641'></font>
+     endif  <font color=#447700>!end of "if (mod(istep,iout).eq.0)" block if<a name='1642'></font>
+<a name='1643'>
+<a name='1644'>
+<a name='1645'>
+<font color=#447700>! Formatting staments<a name='1646'></font>
+9002 format(i7,G16.8,G16.8)<a name='1647'>
+9003 format(i7,G16.8,G16.8,G16.8)<a name='1648'>
+9004 format(i7,G16.8,G16.8,G16.8,G16.8)<a name='1649'>
+9005 format(i7,G16.8,G16.8,G16.8,G16.8,G16.8)<a name='1650'>
+9006 format(i7,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)<a name='1651'>
+9007 format(i7,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)<a name='1652'>
+9008 format(i7,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)<a name='1653'>
+9011 format(i7,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)<a name='1654'>
+9016 format(i7,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)<a name='1655'>
+<a name='1656'>
+   return<a name='1657'>
+   END Subroutine GEM_EPA  <font color=#447700>! End of subroutine GEM_EPA<a name='1658'></font>
+<font color=#447700>!---------------------------------------------------------------------- <a name='1659'></font>
+</pre></body></html>

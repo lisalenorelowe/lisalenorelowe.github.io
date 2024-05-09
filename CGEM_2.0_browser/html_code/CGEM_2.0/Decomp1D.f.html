@@ -1,0 +1,26 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!<a name='2'></font>
+<font color=#447700>!  This file contains a routine for producing a decomposition of a 1-d array<a name='3'></font>
+<font color=#447700>!  when given a number of processors.  It may be used in "direct" product<a name='4'></font>
+<font color=#447700>!  decomposition.  The values returned assume a "global" domain in [1:n]<a name='5'></font>
+<font color=#447700>!<a name='6'></font>
+<A NAME='DECOMP1D'><A href='../../html_code/CGEM_2.0/Decomp1D.f.html#DECOMP1D' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='7'>
+      <font color=#993300>subroutine </font><font color=#cc0000>Decomp1D</font>( n, numprocs, myid, s, e ) <A href='../../call_to/DECOMP1D.html' TARGET='index'>2</A><a name='8'>
+      implicit none <a name='9'>
+<a name='10'>
+      integer n, numprocs, myid, s, e<a name='11'>
+      integer nlocal<a name='12'>
+      integer deficit<a name='13'>
+<font color=#447700>!<a name='14'></font>
+      nlocal  = n / numprocs<a name='15'>
+      s       = myid * nlocal + 1<a name='16'>
+      deficit = mod(n,numprocs)<a name='17'>
+      s       = s + min(myid,deficit)<a name='18'>
+      if (myid .lt. deficit) then<a name='19'>
+          nlocal = nlocal + 1<a name='20'>
+      endif<a name='21'>
+      e = s + nlocal - 1<a name='22'>
+      if (e .gt. n .or. myid .eq. numprocs-1) e = n<a name='23'>
+      return<a name='24'>
+      end<a name='25'>
+</pre></body></html>

@@ -1,0 +1,126 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='GETSHEAR'><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>GetShear</font>(TC_8,Ux,Vx,Wx,S,T,lat,dxdy,dxy,d,dz,tau) <A href='../../call_to/GETSHEAR.html' TARGET='index'>1</A>,<A href='../../call_from/GETSHEAR.html' TARGET='index'>9</A><a name='3'>
+<a name='4'>
+       USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_35"> <font color=#447700>! For iYr0, etc.<a name='5'></font>
+       USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_15"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='6'></font>
+       USE <A href='../../html_code/CGEM_2.0/depth2press.f.html#MDEPTH2PRESS'>mdepth2press</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MDEPTH2PRESS_1"><a name='7'>
+       USE <A href='../../html_code/CGEM_2.0/rhoinsitu.f.html#MRHOINSITU'>mrhoinsitu</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MRHOINSITU_1"><a name='8'>
+ <a name='9'>
+       implicit none<a name='10'>
+<a name='11'>
+       include "mpif.h"<a name='12'>
+<a name='13'>
+<font color=#447700>!    Specify variables for file dates and times<a name='14'></font>
+       integer iYr, iMon, iDay<a name='15'>
+<font color=#447700>!    Specify variables for Model dates and times<a name='16'></font>
+       integer iMYr, iMMon, iMDay, iMHour, iMMin, iMSec<a name='17'>
+<font color=#447700>!    Looping variables<a name='18'></font>
+       integer i, j, istat<a name='19'>
+<font color=#447700>!    Time  <a name='20'></font>
+       integer*8, intent(in) ::  TC_8 <font color=#447700>! Seconds since Model_dim::iYr0.<a name='21'></font>
+       integer(8), save :: FSeconds_8 <font color=#447700>! File seconds since iYr0.<a name='22'></font>
+       integer(8) :: MSeconds_8   <font color=#447700>! Model seconds since iYr0.<a name='23'></font>
+       integer, save :: isaveMDay <font color=#447700>! Save the previous timestep Model day <a name='24'></font>
+       integer, save :: init=1 <font color=#447700>! First time subroutine is called<a name='25'></font>
+<font color=#447700>!    Input variables needed to calculate Shear<a name='26'></font>
+       real, dimension(im,jm,nsl), intent(in) :: Ux, Vx, Wx <font color=#447700>!Current Fluxes<a name='27'></font>
+       real, dimension(im,jm,nsl), intent(in) :: S, T  <font color=#447700>!Salinity, Temperature<a name='28'></font>
+       real, dimension(im,jm), intent(in) :: dxdy,d  <font color=#447700>!dxdy, d=total depth<a name='29'></font>
+       real, dimension(jm), intent(in) :: lat, dxy   <font color=#447700>!latitude, dxy=dx=dy      <a name='30'></font>
+       real, dimension(nsl), intent(in) :: dz   <font color=#447700>!Sigma thickness<a name='31'></font>
+<font color=#447700>!    For calculating rho, density of water<a name='32'></font>
+       real, dimension(1) :: pdbar, rhois <font color=#447700>!pressure, density<a name='33'></font>
+<font color=#447700>!    Specify calculated variables <a name='34'></font>
+       real,save :: ubar(im,jm),vbar(im,jm),wbar(im,jm) <a name='35'>
+       real, intent(out) :: tau(im,jm) <font color=#447700>!Shear (or turbulence)<a name='36'></font>
+       real :: uprimesq, vprimesq, wprimesq <font color=#447700>!Intermediate calculation<a name='37'></font>
+<font color=#447700>!    Initialization and MPI<a name='38'></font>
+       integer :: mpierr<a name='39'>
+<font color=#447700>!---------------------------------------------------------------------<a name='40'></font>
+<a name='41'>
+<font color=#447700>!Get total seconds for just the day part of the model time<a name='42'></font>
+call <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_22">( iYr0, TC_8, iMYr, iMMon, iMDay, iMHour, iMMin, iMSec )<a name='43'>
+MSeconds_8 = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_25">( iYr0, iMYr, iMMon, iMDay, 0, 0, 0 ) <a name='44'>
+<a name='45'>
+if(init.eq.1) then<a name='46'>
+<a name='47'>
+<font color=#447700>!The data file is currently only for 2006, so:<a name='48'></font>
+if(iMYr.ne.2006) then<a name='49'>
+  write(6,*) "Error: Averages ubar, vbar, and wbar were only calculated for 2006."<a name='50'>
+  call MPI_Finalize(mpierr)<a name='51'>
+  stop<a name='52'>
+endif<a name='53'>
+<a name='54'>
+<font color=#447700>!    Open the Averages file. <a name='55'></font>
+       open (unit=7000, file=NONHYDRODIR//"daily_ave.bin", status='old', form='unformatted')<a name='56'>
+<a name='57'>
+<font color=#447700>! Read in dates and average current data corresponding each time period.---------<a name='58'></font>
+       do<a name='59'>
+<font color=#447700>!   Read in dates<a name='60'></font>
+         read (7000, IOSTAT = istat) iYr, iMon, iDay <a name='61'>
+<font color=#447700>!   Test for end of file.<a name='62'></font>
+         if (ISTAT &lt; 0) then<a name='63'>
+          write(6,*) "Shear EOF"<a name='64'>
+          call MPI_Finalize(mpierr)<a name='65'>
+          stop <a name='66'>
+         endif<a name='67'>
+<a name='68'>
+<font color=#447700>!   If not end of file, read average current data<a name='69'></font>
+         read (7000) ubar<a name='70'>
+         read (7000) vbar<a name='71'>
+         read (7000) wbar<a name='72'>
+<a name='73'>
+<font color=#447700>!  Get File Simulation Time in seconds since iYr0:<a name='74'></font>
+         FSeconds_8 = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_26">( iYr0, iYr, iMon, iDay, 0, 0, 0 )<a name='75'>
+         if(MSeconds_8.eq.FSeconds_8) then<a name='76'>
+           isaveMDay = iMDay  <font color=#447700>!Save the current day<a name='77'></font>
+           exit <font color=#447700>!If the dates match, exit read loop<a name='78'></font>
+         endif<a name='79'>
+       enddo<a name='80'>
+<a name='81'>
+  init=0<a name='82'>
+endif  <font color=#447700>!End Initial Subroutine call<a name='83'></font>
+<a name='84'>
+<font color=#447700>!After the initial subroutine is called, isaveMDay==iMDay, and the calculation can<a name='85'></font>
+<font color=#447700>!begin, but if isaveMDay!=iMDay, we can read in the next value in the averages file:<a name='86'></font>
+if(isaveMDay.ne.iMDay) then<a name='87'>
+<font color=#447700>!   Read in dates<a name='88'></font>
+         read (7000, IOSTAT = istat) iYr, iMon, iDay<a name='89'>
+<font color=#447700>!   Test for end of file.<a name='90'></font>
+         if (ISTAT &lt; 0) then<a name='91'>
+          write(6,*) "Shear EOF"<a name='92'>
+          call MPI_Finalize(mpierr)<a name='93'>
+          stop<a name='94'>
+         endif<a name='95'>
+<font color=#447700>!   If not end of file, read average current data<a name='96'></font>
+         read (7000) ubar<a name='97'>
+         read (7000) vbar<a name='98'>
+         read (7000) wbar<a name='99'>
+    isaveMDay = iMDay<a name='100'>
+<font color=#447700>!Error checking, delete for speed later:<a name='101'></font>
+    if(isaveMDay.ne.iDay) then<a name='102'>
+       write(6,*) "Error, Model Day does not match File Day."<a name='103'>
+       call MPI_Finalize(mpierr)<a name='104'>
+    endif<a name='105'>
+endif<a name='106'>
+<a name='107'>
+<font color=#447700>!Start Calculation:<a name='108'></font>
+<font color=#447700>!Note, tau of im or jm should never be used, fm2 should block the boundary cells<a name='109'></font>
+do i=1,im-1<a name='110'>
+ do j=1,jm-1<a name='111'>
+    uprimesq = ( .5*(Ux(i,j,nz)+Ux(i+1,j,nz))/dxy(j)/(d(i,j)*dz(nz)) - (ubar(i,j)))**2<a name='112'>
+    vprimesq = ( .5*(Vx(i,j,nz)+Vx(i,j+1,nz))/dxy(j)/(d(i,j)*dz(nz)) - (vbar(i,j)))**2<a name='113'>
+    wprimesq = ( .5*(Wx(i,j,nz)+Wx(i,j,nsl))/dxdy(i,j) - (wbar(i,j)) )**2<a name='114'>
+   <font color=#447700>!Use MOCSY to get rho (water density)<a name='115'></font>
+    call <A href='../../html_code/CGEM_2.0/depth2press.f.html#DEPTH2PRESS'>depth2press</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEPTH2PRESS_1">(d(i,j), lat(j), pdbar, 1)<a name='116'>
+    call <A href='../../html_code/CGEM_2.0/rhoinsitu.f.html#RHOINSITU'>rhoinsitu</A><A href='../../html_code/CGEM_2.0/GetShear.f.html#GETSHEAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RHOINSITU_1">(S(i,j,nz), T(i,j,nz), pdbar, 1, rhois)<a name='117'>
+    tau(i,j) = 0.19 * 0.5 * rhois(1) * (uprimesq + vprimesq + wprimesq)<a name='118'>
+ enddo<a name='119'>
+enddo<a name='120'>
+<a name='121'>
+       RETURN<a name='122'>
+<a name='123'>
+       end subroutine GetShear  <a name='124'>
+<a name='125'>
+</pre></body></html>

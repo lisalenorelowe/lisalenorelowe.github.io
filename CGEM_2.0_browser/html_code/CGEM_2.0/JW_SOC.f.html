@@ -1,0 +1,87 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='JW_SOC'><A href='../../html_code/CGEM_2.0/JW_SOC.f.html#JW_SOC' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>JW_SOC</font>(O2Flux,NH4Flux,PO4Flux,CBODW_in,PHY_in,I_in,DO2_in,T,tau,myi,j) <A href='../../call_to/JW_SOC.html' TARGET='index'>1</A>,<A href='../../call_from/JW_SOC.html' TARGET='index'>4</A><a name='3'>
+<a name='4'>
+      USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/JW_SOC.f.html#JW_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_14">,     ONLY:myimp2<a name='5'>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/JW_SOC.f.html#JW_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_40">,   ONLY:nospA,jm<a name='6'>
+      USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/JW_SOC.f.html#JW_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_25">,  ONLY:Qc,dT<a name='7'>
+      USE <A href='../../html_code/CGEM_2.0/Conversions.f.html#CONVERSIONS'>Conversions</A><A href='../../html_code/CGEM_2.0/JW_SOC.f.html#JW_SOC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CONVERSIONS_6">, ONLY:SDay,convert_I<a name='8'>
+<a name='9'>
+      IMPLICIT NONE<a name='10'>
+<a name='11'>
+      real, intent(out) :: O2Flux       <font color=#447700>!Change in O2, (mg O2/L/d)<a name='12'></font>
+      real, intent(out) :: NH4Flux      <font color=#447700>!Change in NH4, (mg NH4/L/d)<a name='13'></font>
+      real, intent(out) :: PO4Flux      <font color=#447700>!Change in PO4, (mg PO4/L/d)<a name='14'></font>
+      real, intent(in) :: CBODW_in      <font color=#447700>!CBOD in water column (bottom sigma layer), (mmol O2/m3)<a name='15'></font>
+                                        <font color=#447700>!  RO2(decay term) in CGEM<a name='16'></font>
+      real, intent(in) :: PHY_in(nospA) <font color=#447700>!Phytoplankton concentration (bottom sigma layer), (cells/m3)<a name='17'></font>
+      real, intent(in) :: I_in          <font color=#447700>!Irradiance (bottom sigma layer), (quanta/cm2/s) <a name='18'></font>
+      real, intent(in) :: DO2_in        <font color=#447700>!Dissolved Oxygen concentration (bottom sigma layer), (mmol O2/m3)<a name='19'></font>
+      real, intent(in) :: T             <font color=#447700>!Temperature (bottom sigma layer), (C)<a name='20'></font>
+      real, intent(in) :: tau           <font color=#447700>!Bottom shear stress, (Pa)<a name='21'></font>
+      integer, intent(in) :: myi, j     <font color=#447700>!Indices<a name='22'></font>
+      real, parameter :: v_CBODW   = 0.5   <font color=#447700>!Organic matter settling velocity, (m/d)<a name='23'></font>
+      real, parameter :: f_dCBODW  = 0.50  <font color=#447700>!Fraction of dissolved CBODW, (unitless)<a name='24'></font>
+      real, parameter :: v_PHY     = 0.5   <font color=#447700>!Phytoplankton settling velocity, (m/d)<a name='25'></font>
+      real, parameter :: theta_bp  = 1.080 <font color=#447700>!Temperature coefficient for benthic photosynthesis, (unitless)<a name='26'></font>
+      real, parameter :: kSOC      = 0.003 <font color=#447700>!CBODS decomposition rate, (1/d)<a name='27'></font>
+      real, parameter :: theta_SOC = 1.080 <font color=#447700>!Temperature coefficient for SOC, (unitless)<a name='28'></font>
+      real, parameter :: f_asoc    = 0.65  <font color=#447700>!Ratio of aerobic respiration to total sediment respiration, (unitless)<a name='29'></font>
+      real, parameter :: K_SOC     = 0.5   <font color=#447700>!Half saturation constant for O2 limitation of SOC, (mg O2/L)<a name='30'></font>
+      real, parameter :: ktau      = 1.01  <font color=#447700>!Bottom stress coefficient, (unitless)<a name='31'></font>
+      real, parameter :: tau_ce    = 0.11  <font color=#447700>!Critical shear stress for settleable sediment resuspension, (Pa)<a name='32'></font>
+      real, parameter :: kCBODS    = 0.001 <font color=#447700>!CBODS burial rate, (1/d)<a name='33'></font>
+      real, parameter :: f_dnf     = 0.12<a name='34'>
+      real :: CBODW, PHY(nospA), PHY_tot, I, DO2  <font color=#447700>!Variables converted to subroutine units<a name='35'></font>
+      real :: dCBODS, CBODS_sed_burial, SOC, Bnth_Photosyn, PHY_sett, CBODW_sett <font color=#447700>!Calculations<a name='36'></font>
+      real, save :: CBODS(myimp2,jm)<a name='37'>
+      integer, save :: init = 0<a name='38'>
+<a name='39'>
+      if(init.eq.0) then<a name='40'>
+      <font color=#447700>!Initialize CBODS<a name='41'></font>
+       CBODS = 0.<a name='42'>
+       init = 1<a name='43'>
+      endif<a name='44'>
+<a name='45'>
+      <font color=#447700>!Unit Conversions<a name='46'></font>
+      CBODW = CBODW_in * 32./1000.  <font color=#447700>!Convert to (mg O2/L)<a name='47'></font>
+      PHY = PHY_in * Qc * 12./1000. <font color=#447700>!Convert to (mg C/L)<a name='48'></font>
+      PHY_tot = SUM(PHY)            <font color=#447700>!Total from all phytoplankton groups (mg C/L)<a name='49'></font>
+      I = I_in * convert_I          <font color=#447700>!Convert to (mol photons/m2/d)<a name='50'></font>
+      DO2 = DO2_in * 32./1000.      <font color=#447700>!Convert to (mg O2/L)<a name='51'></font>
+<a name='52'>
+      <font color=#447700>!Everything here in units of mg,L<a name='53'></font>
+<a name='54'>
+<font color=#447700>! CBODS sediment burial<a name='55'></font>
+      CBODS_sed_burial = kCBODS * CBODS(myi,j)<a name='56'>
+<font color=#447700>! Sediment oxygen consumption<a name='57'></font>
+      SOC = kSOC * theta_SOC**(T-20.) * f_asoc * CBODS(myi,j) * (DO2 / (K_SOC + DO2) ) &amp;<a name='58'>
+     &amp;      * ktau**AMAX1((tau-tau_ce),0.0)       <a name='59'>
+<font color=#447700>! Benthic Photosynthesis<a name='60'></font>
+      Bnth_Photosyn = 0.53 * theta_bp**(T-20.) * (32./12.) * (132./1000.) * I**1.45 <a name='61'>
+<font color=#447700>! Phytoplankton settling<a name='62'></font>
+      PHY_sett = (32./12.) * v_PHY * PHY_tot<a name='63'>
+<font color=#447700>! CBODW settling<a name='64'></font>
+      CBODW_sett = v_CBODW * (1-f_dCBODW) * CBODW<a name='65'>
+<font color=#447700>! Differential equation for CBODS:<a name='66'></font>
+      dCBODS = CBODW_sett + PHY_sett + Bnth_Photosyn - SOC - CBODS_sed_burial<a name='67'>
+      CBODS(myi,j) = CBODS(myi,j) + dCBODS*dT/SDay<a name='68'>
+<a name='69'>
+<font color=#447700>! Benthic O2 flux:<a name='70'></font>
+      O2Flux = Bnth_Photosyn - SOC<a name='71'>
+<font color=#447700>! Benthic NH4 flux:<a name='72'></font>
+      NH4Flux = ((1.-f_dnf)*(16./106.)*(14./32.) - (f_dnf*(84.8/106.)*(14./32.))) &amp;<a name='73'>
+     &amp; * SOC <a name='74'>
+<font color=#447700>! Benthic PO4 flux:<a name='75'></font>
+      PO4Flux = (1./106.)*(30.97/32.) * SOC<a name='76'>
+<a name='77'>
+<font color=#447700>! Convert back to mmol/m3:<a name='78'></font>
+      O2Flux = O2Flux * 1000./32.<a name='79'>
+      NH4Flux = NH4Flux * 1000./14. <a name='80'>
+      PO4Flux = PO4Flux * 1000./30.97<a name='81'>
+<a name='82'>
+<a name='83'>
+      RETURN<a name='84'>
+<a name='85'>
+      END Subroutine JW_SOC <a name='86'>
+</pre></body></html>

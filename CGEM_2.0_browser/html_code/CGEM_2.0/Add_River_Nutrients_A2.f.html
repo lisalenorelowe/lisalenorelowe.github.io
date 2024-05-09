@@ -1,0 +1,209 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='ADD_RIVER_NUTRIENTS'><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_A2.f.html#ADD_RIVER_NUTRIENTS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+       <font color=#993300>Subroutine </font><font color=#cc0000>Add_River_Nutrients</font>(                                 &amp;  <A href='../../call_to/ADD_RIVER_NUTRIENTS.html' TARGET='index'>2</A>,<A href='../../call_from/ADD_RIVER_NUTRIENTS.html' TARGET='index'>21</A><a name='3'>
+     &amp; iYr, TC_8, irv, jrv, wtrv, myid, numprocs, f,                   &amp;<a name='4'>
+     &amp; my_imstart, my_imend, d, dxdy, dz)<a name='5'>
+<a name='6'>
+       USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_1"><a name='7'>
+       USE <A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS'>CGEM_vars</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CGEM_VARS_1"> <a name='8'>
+       USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_1"><a name='9'>
+       USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_1"><a name='10'>
+       USE <A href='../../html_code/CGEM_2.0/Conversions.f.html#CONVERSIONS'>Conversions</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CONVERSIONS_1"><a name='11'>
+<a name='12'>
+       IMPLICIT NONE<a name='13'>
+<a name='14'>
+       include '<A href='../../html_code/include/mpif.h.html'>mpif.h</A>'<A NAME="mpif.h_1"><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><a name='15'>
+<a name='16'>
+<font color=#447700>! --- Input to subroutine:<a name='17'></font>
+      integer, intent(in) :: iYr   <font color=#447700>! GMT year (YYYY; 2002-2007) <a name='18'></font>
+      integer(kind=8), intent(in) :: TC_8    <font color=#447700>! Seconds since Model_dim::iYr0. <a name='19'></font>
+      integer, intent(in) :: irv(nr),jrv(nr) <font color=#447700>! i and j coord of the grid cell where<a name='20'></font>
+                                             <font color=#447700>! the mouth each river is located<a name='21'></font>
+      real   , intent(in) :: wtrv(nsl,nr), d(im,jm), dxdy(im,jm), dz(kb)<a name='22'>
+      integer, intent(in) :: myid, numprocs<a name='23'>
+<a name='24'>
+<font color=#447700>! --- Output from subroutine:<a name='25'></font>
+      real, dimension(myimp2,jm,nsl,nf), intent(inout) :: f<a name='26'>
+<a name='27'>
+<font color=#447700>! --- Locals<a name='28'></font>
+      real   :: River_flow(nr)  <font color=#447700>! river flow rate (m3/sec)<a name='29'></font>
+<a name='30'>
+      real   :: Riv_NO3(nr)     <font color=#447700>! mmol/m3<a name='31'></font>
+      real   :: Riv_NH4(nr)     <font color=#447700>! mmol/m3<a name='32'></font>
+      real   :: Riv_Si(nr)      <font color=#447700>! mmol/m3<a name='33'></font>
+      real   :: Riv_PO4(nr)     <font color=#447700>! mmol/m3<a name='34'></font>
+      real   :: Riv_DIC(nr)     <font color=#447700>! mmol/m3<a name='35'></font>
+      real   :: Riv_O2(nr)      <font color=#447700>! mmol/m3<a name='36'></font>
+      real   :: Riv_OM1_R(nr)  <font color=#447700>! mmol/m3<a name='37'></font>
+      real   :: Riv_OM2_R(nr)  <font color=#447700>! mmol/m3<a name='38'></font>
+      real   :: trvf, rvf<a name='39'>
+      integer :: mpierr, myi, my_imstart, my_imend, i, j, k, l<a name='40'>
+<a name='41'>
+      real         :: Riv_Chl(nr)     <font color=#447700>! mg/m3<a name='42'></font>
+      real         :: riv_chl_A_density_mg<a name='43'>
+      real         :: riv_A_per_group<a name='44'>
+      real         :: riv_cell_A1<a name='45'>
+      real         :: riv_cell_A2<a name='46'>
+      real         :: riv_cell_A3<a name='47'>
+      real         :: riv_cell_A4<a name='48'>
+      real         :: riv_cell_A5<a name='49'>
+      real         :: riv_cell_A6<a name='50'>
+      real         :: riv_cell_NO3<a name='51'>
+      real         :: riv_cell_NH4<a name='52'>
+      real         :: riv_cell_Si<a name='53'>
+      real         :: riv_cell_PO4<a name='54'>
+      real         :: riv_cell_DIC<a name='55'>
+      real         :: riv_cell_O2<a name='56'>
+      real         :: riv_cell_OM1_R<a name='57'>
+      real         :: riv_cell_OM2_R<a name='58'>
+      real         :: riv_cell_CDOM<a name='59'>
+      real         :: riv_cell_ALK<a name='60'>
+<a name='61'>
+<font color=#447700>!-----------------<a name='62'></font>
+<font color=#447700>! --- River input<a name='63'></font>
+<font color=#447700>!-----------------<a name='64'></font>
+      if(myid.eq.0) call <A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW'>get_river_flow</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GET_RIVER_FLOW_1"> (iYr, TC_8, River_flow ) <a name='65'>
+      if(numprocs.gt.1) then<a name='66'>
+      call MPI_BCAST(River_flow,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='67'>
+      endif<a name='68'>
+<a name='69'>
+<a name='70'>
+if(myid.eq.0) then<a name='71'>
+      call <A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS'>get_river_nutrients</A><A href='../../html_code/CGEM_2.0/Add_River_Nutrients_orig.f.html#ADD_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GET_RIVER_NUTRIENTS_1">(                                        &amp;<a name='72'>
+     &amp; TC_8                      , wtrv                      ,         &amp;<a name='73'>
+     &amp; Riv_NO3                   , Riv_NH4                   ,         &amp;<a name='74'>
+     &amp; Riv_Si                    , Riv_PO4                   ,         &amp;<a name='75'>
+     &amp; Riv_DIC                   , Riv_O2                    ,         &amp;<a name='76'>
+     &amp; Riv_OM1_R                 , Riv_OM2_R, Riv_Chl        )         <a name='77'>
+endif<a name='78'>
+      if(numprocs.gt.1) then<a name='79'>
+      call MPI_BCAST(Riv_NO3,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='80'>
+      call MPI_BCAST(Riv_NH4,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='81'>
+      call MPI_BCAST(Riv_Si,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='82'>
+      call MPI_BCAST(Riv_PO4,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='83'>
+      call MPI_BCAST(Riv_DIC,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='84'>
+      call MPI_BCAST(Riv_O2,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='85'>
+      call MPI_BCAST(Riv_OM1_R,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='86'>
+      call MPI_BCAST(Riv_OM2_R,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='87'>
+      call MPI_BCAST(Riv_Chl,nr,MPI_real,0,MPI_COMM_WORLD,mpierr)<a name='88'>
+      endif<a name='89'>
+<a name='90'>
+<a name='91'>
+<a name='92'>
+      do l = 1, nr<a name='93'>
+         i    = irv(l)<a name='94'>
+         j    = jrv(l)<a name='95'>
+       if(i.ge.my_imstart.and.i.le.my_imend) then<a name='96'>
+              myi = i - my_imstart + 2<a name='97'>
+<font color=#447700>!----------------------------------------------------------------------<a name='98'></font>
+<font color=#447700>! River_flow is really discharge which has the dimensions of (m**3)/sec<a name='99'></font>
+<font color=#447700>! (d(i,j)*dxdy(i,j)) is the total volume of the water column<a name='100'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='101'></font>
+         trvf = River_flow(l)*dT/(d(i,j)*dxdy(i,j))<a name='102'>
+<a name='103'>
+         do k = 1, nz<a name='104'>
+            rvf = trvf*wtrv(k,l)/dz(k) <a name='105'>
+            <font color=#447700>!-------------------------------------------------------<a name='106'></font>
+            <font color=#447700>! Calculate Riv_A1(l)...,Riv_A6(l), from Riv_Chl(l)<a name='107'></font>
+            <font color=#447700>! Chl vs phytoplankton regression equation<a name='108'></font>
+            <font color=#447700>!-------------------------------------------------------<a name='109'></font>
+<a name='110'>
+              <font color=#447700>!Riv_Chl(l)      = 1.0 ! mg-Chl/m3 total river chlorophyl-<a name='111'></font>
+                                    <font color=#447700>! This is a placeholder until<a name='112'></font>
+                                    <font color=#447700>! John L's river Chl data is available<a name='113'></font>
+                                    <font color=#447700>! on the same spreadsheet as the<a name='114'></font>
+                                    <font color=#447700>! rest of John L's data to be read<a name='115'></font>
+                                    <font color=#447700>! into get_river_nutrients.<a name='116'></font>
+<a name='117'>
+              riv_chl_A_density_mg   = Riv_Chl(l)     <font color=#447700>!/        &amp;<a name='118'></font>
+<font color=#447700>! do not average for this test.<a name='119'></font>
+<font color=#447700>!              &amp;                        real(nospA,kind = 4)<a name='120'></font>
+                                                      <font color=#447700>! average total ChlA among <a name='121'></font>
+                                                      <font color=#447700>! phytoplankton groups<a name='122'></font>
+<a name='123'>
+              riv_A_per_group  = riv_chl_A_density_mg * C2_chla_mg_inv<a name='124'>
+                                                      <font color=#447700>! C2_chla_mg_inv defined in module Conversions<a name='125'></font>
+                                                      <font color=#447700>! convert ChlA in mg to number density <a name='126'></font>
+<a name='127'>
+               riv_cell_A2     = rvf * riv_A_per_group <a name='128'>
+               riv_cell_A1     = 0. <font color=#447700>!riv_cell_A1<a name='129'></font>
+               riv_cell_A3     = 0. <font color=#447700>!riv_cell_A1<a name='130'></font>
+               riv_cell_A4     = 0. <font color=#447700>!riv_cell_A1<a name='131'></font>
+               riv_cell_A5     = 0. <font color=#447700>!riv_cell_A1<a name='132'></font>
+               riv_cell_A6     = 0. <font color=#447700>!riv_cell_A1<a name='133'></font>
+<a name='134'>
+               riv_cell_NO3    =  rvf * Riv_NO3(l)<a name='135'>
+               riv_cell_NH4    =  rvf * Riv_NH4(l)<a name='136'>
+               riv_cell_Si     =  rvf * Riv_Si(l)<a name='137'>
+<a name='138'>
+               riv_cell_PO4    =  rvf * Riv_PO4(l)<a name='139'>
+<a name='140'>
+               riv_cell_DIC    =  rvf * Riv_DIC(l)<a name='141'>
+               riv_cell_O2     =  rvf * Riv_O2(l)<a name='142'>
+<a name='143'>
+               riv_cell_OM1_R  =  rvf * Riv_OM1_R(l)<a name='144'>
+               riv_cell_OM2_R  =  rvf * Riv_OM2_R(l)<a name='145'>
+<a name='146'>
+<font color=#447700>!From Cai 2003: convert from uM to mmol/m3 (unit conversion=1) <a name='147'></font>
+               riv_cell_ALK =  (-0.0304*River_flow(l)+2648.7)<a name='148'>
+<a name='149'>
+<font color=#447700>!from Spencer et al. (2012) regressions we can calculate<a name='150'></font>
+<font color=#447700>!River CDOM (a440, m-1) = 1.10 * RiverDOC(mg/L) - 2.76.<a name='151'></font>
+<font color=#447700>!As before, the riverine DOC (mmol/m3) should be converted to mg/L before doing the above calculation<a name='152'></font>
+<font color=#447700>!DOC(mg/L)= DOC(mmol/m3) * (12/1000)<a name='153'></font>
+              riv_cell_CDOM = 1.10 * Riv_OM2_R(l)*12./1000.  - 2.76<a name='154'>
+              riv_cell_CDOM = AMAX1(riv_cell_CDOM,0.)<a name='155'>
+<font color=#447700>!Convert back into (ppb):<a name='156'></font>
+<font color=#447700>!CONVERT CDOM 440 to 312<a name='157'></font>
+<font color=#447700>!a312 = a440 X exp(-S*(312-440)), where S = 0.016 (S was obtained from D’Sa and Dimarco 2009).<a name='158'></font>
+              riv_cell_CDOM = riv_cell_CDOM * exp(-0.016*(312.-440.))<a name='159'>
+<font color=#447700>!CONVERT CDOM 312 to ppb:<a name='160'></font>
+<font color=#447700>! calculate CDOM (QSE ppb): CDOM (QSE ppb) = a(312)*2.933 + 0.538<a name='161'></font>
+              riv_cell_CDOM = riv_cell_CDOM*2.933 + 0.538<a name='162'>
+<a name='163'>
+              riv_cell_CDOM = riv_cell_CDOM*rvf<a name='164'>
+<a name='165'>
+<font color=#447700>!For now, set all A's Equal<a name='166'></font>
+               f(myi,j,k,iA1)     = f(myi,j,k,iA1)    + riv_cell_A1 <a name='167'>
+               f(myi,j,k,iA2)     = f(myi,j,k,iA2)    + riv_cell_A2 <a name='168'>
+               f(myi,j,k,iA3)     = f(myi,j,k,iA3)    + riv_cell_A3 <a name='169'>
+               f(myi,j,k,iA4)     = f(myi,j,k,iA4)    + riv_cell_A4 <a name='170'>
+               f(myi,j,k,iA5)     = f(myi,j,k,iA5)    + riv_cell_A5 <a name='171'>
+               f(myi,j,k,iA6)     = f(myi,j,k,iA6)    + riv_cell_A6 <a name='172'>
+<font color=#447700>!               f(myi,j,k,iA2)     = f(myi,j,k,iA1)<a name='173'></font>
+<font color=#447700>!               f(myi,j,k,iA3)     = f(myi,j,k,iA1)<a name='174'></font>
+<font color=#447700>!               f(myi,j,k,iA4)     = f(myi,j,k,iA1)<a name='175'></font>
+<font color=#447700>!               f(myi,j,k,iA5)     = f(myi,j,k,iA1)<a name='176'></font>
+<font color=#447700>!               f(myi,j,k,iA6)     = f(myi,j,k,iA1)<a name='177'></font>
+<font color=#447700>!Seed Zooplankton as dependent on A<a name='178'></font>
+<font color=#447700>!               f(myi,j,k,iZ1)     = f(myi,j,k,iZ1)    + 2.e-6*riv_cell_A1<a name='179'></font>
+<font color=#447700>!               f(myi,j,k,iZ2)     = f(myi,j,k,iZ2)    + 2.e-5*riv_cell_A1<a name='180'></font>
+<a name='181'>
+<font color=#447700>!Multiply nutrients by a factor to test nutrient influence on hypoxia<a name='182'></font>
+               f(myi,j,k,iNO3)    = f(myi,j,k,iNO3)    + rcNO3*riv_cell_NO3 <a name='183'>
+               f(myi,j,k,iNH4)    = f(myi,j,k,iNH4)    + rcNH4*riv_cell_NH4 <a name='184'>
+               f(myi,j,k,iSi)     = f(myi,j,k,iSi)     + rcSi *riv_cell_Si<a name='185'>
+               f(myi,j,k,iPO4)    = f(myi,j,k,iPO4)    + rcPO4*riv_cell_PO4 <a name='186'>
+<font color=#447700>!End Multiply Nutrients<a name='187'></font>
+<a name='188'>
+               f(myi,j,k,iDIC)    = f(myi,j,k,iDIC)    + riv_cell_DIC <a name='189'>
+               f(myi,j,k,iO2)     = f(myi,j,k,iO2)     + riv_cell_O2 <a name='190'>
+<a name='191'>
+               f(myi,j,k,iOM1_R)  = f(myi,j,k,iOM1_R)  + riv_cell_OM1_R <a name='192'>
+               f(myi,j,k,iOM2_R)  = f(myi,j,k,iOM2_R)  + riv_cell_OM2_R <a name='193'>
+               f(myi,j,k,iCDOM)   = f(myi,j,k,iCDOM)   + riv_cell_CDOM <a name='194'>
+<a name='195'>
+               f(myi,j,k,iALK)    = riv_cell_ALK <font color=#447700>!Boundary condition, not differential equation<a name='196'></font>
+<a name='197'>
+               f(myi,j,k,iQn(1:nospA)) = QmaxN(1:nospA) <font color=#447700>!Boundary condition, not differential equation<a name='198'></font>
+               f(myi,j,k,iQp(1:nospA)) = QmaxP(1:nospA) <font color=#447700>!Boundary condition, not differential equation<a name='199'></font>
+<a name='200'>
+<a name='201'>
+         enddo  <font color=#447700>! End of " do k = 1, nz" <a name='202'></font>
+        endif<a name='203'>
+      enddo     <font color=#447700>! End of " do l = 1, nr" <a name='204'></font>
+<a name='205'>
+         <a name='206'>
+      RETURN<a name='207'>
+      END Subroutine Add_River_Nutrients <a name='208'>
+</pre></body></html>

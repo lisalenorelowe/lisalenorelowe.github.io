@@ -1,0 +1,214 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='OUTPUT_DATA_1D_TEXT'><A href='../../html_code/CGEM_2.0/Output_Data_1D.f.html#OUTPUT_DATA_1D_TEXT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>Output_Data_1D_text</font>(f,my_imstart,my_imend,istep,icent,jcent) <A href='../../call_to/OUTPUT_DATA_1D_TEXT.html' TARGET='index'>2</A>,<A href='../../call_from/OUTPUT_DATA_1D_TEXT.html' TARGET='index'>4</A><a name='3'>
+<a name='4'>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Output_Data_1D.f.html#OUTPUT_DATA_1D_TEXT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_44"><a name='5'>
+      USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/Output_Data_1D.f.html#OUTPUT_DATA_1D_TEXT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_16"><a name='6'>
+      USE <A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS'>CGEM_vars</A><A href='../../html_code/CGEM_2.0/Output_Data_1D.f.html#OUTPUT_DATA_1D_TEXT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CGEM_VARS_11"> <a name='7'>
+      USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Output_Data_1D.f.html#OUTPUT_DATA_1D_TEXT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_28">, ONLY:ph<a name='8'>
+<a name='9'>
+      implicit none<a name='10'>
+ <a name='11'>
+      include '<A href='../../html_code/include/mpif.h.html'>mpif.h</A>'<A NAME="mpif.h_1"><A href='../../html_code/CGEM_2.0/Output_Data_1D.f.html#OUTPUT_DATA_1D_TEXT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><a name='12'>
+<a name='13'>
+      integer my_imstart,my_imend,istep,icent,jcent,ircent,jrcent<a name='14'>
+      real f(myimp2,jm,nsl,nf) <a name='15'>
+      integer, save :: iopen1 = 0<a name='16'>
+      integer, save :: iopen2 = 0<a name='17'>
+<a name='18'>
+<a name='19'>
+<font color=#447700>!For the first file, use the coordinate that the 1D code uses:<a name='20'></font>
+      ircent = icent <font color=#447700>!1D cell<a name='21'></font>
+      jrcent = jcent <font color=#447700>!1D cell j location<a name='22'></font>
+<font color=#447700>!If the processor contains the 'i' location, print<a name='23'></font>
+<a name='24'>
+9000 format(i7,G16.8,G16.8,G16.8,G16.8)<a name='25'>
+      if(my_imstart.le.(ircent).and.my_imend.ge.(ircent)) then<a name='26'>
+<a name='27'>
+        ircent = ircent - my_imstart + 2<a name='28'>
+<a name='29'>
+        if(iopen1.eq.0) then<a name='30'>
+      open(260,file="./R_PLOTS/A1.txt",status='unknown')<a name='31'>
+      open(261,file="./R_PLOTS/A2.txt",status='unknown')<a name='32'>
+      open(262,file="./R_PLOTS/A3.txt",status='unknown')<a name='33'>
+      open(263,file="./R_PLOTS/A4.txt",status='unknown')<a name='34'>
+      open(264,file="./R_PLOTS/A5.txt",status='unknown')<a name='35'>
+      open(265,file="./R_PLOTS/A6.txt",status='unknown')<a name='36'>
+      open(266,file="./R_PLOTS/Qn1.txt",status='unknown')<a name='37'>
+      open(267,file="./R_PLOTS/Qn2.txt",status='unknown')<a name='38'>
+      open(268,file="./R_PLOTS/Qn3.txt",status='unknown')<a name='39'>
+      open(269,file="./R_PLOTS/Qn4.txt",status='unknown')<a name='40'>
+      open(270,file="./R_PLOTS/Qn5.txt",status='unknown')<a name='41'>
+      open(271,file="./R_PLOTS/Qn6.txt",status='unknown')<a name='42'>
+      open(272,file="./R_PLOTS/Qp1.txt",status='unknown')<a name='43'>
+      open(273,file="./R_PLOTS/Qp2.txt",status='unknown')<a name='44'>
+      open(274,file="./R_PLOTS/Qp3.txt",status='unknown')<a name='45'>
+      open(275,file="./R_PLOTS/Qp4.txt",status='unknown')<a name='46'>
+      open(276,file="./R_PLOTS/Qp5.txt",status='unknown')<a name='47'>
+      open(277,file="./R_PLOTS/Qp6.txt",status='unknown')<a name='48'>
+      open(278,file="./R_PLOTS/G1.txt",status='unknown')<a name='49'>
+      open(279,file="./R_PLOTS/G2.txt",status='unknown')<a name='50'>
+      open(280,file="./R_PLOTS/NO3.txt",status='unknown')<a name='51'>
+      open(281,file="./R_PLOTS/NH4.txt",status='unknown')<a name='52'>
+      open(282,file="./R_PLOTS/PO4.txt",status='unknown')<a name='53'>
+      open(283,file="./R_PLOTS/DIC.txt",status='unknown')<a name='54'>
+      open(284,file="./R_PLOTS/O2.txt",status='unknown')<a name='55'>
+      open(294,file="./R_PLOTS/OM1_A.txt",status='unknown')<a name='56'>
+      open(295,file="./R_PLOTS/OM2_A.txt",status='unknown')<a name='57'>
+      open(296,file="./R_PLOTS/OM1_Z.txt",status='unknown')<a name='58'>
+      open(297,file="./R_PLOTS/OM2_Z.txt",status='unknown')<a name='59'>
+      open(298,file="./R_PLOTS/OM1_R.txt",status='unknown')<a name='60'>
+      open(299,file="./R_PLOTS/OM2_R.txt",status='unknown')<a name='61'>
+      <font color=#447700>! PAR, irradiance and Chl-a are not stored in f();<a name='62'></font>
+      <font color=#447700>! so they are printed from GEM_EPA() routine.<a name='63'></font>
+      open(300,file="./R_PLOTS/Rad.txt",status='unknown')<a name='64'>
+      open(301,file="./R_PLOTS/Chla.txt",status='unknown')<a name='65'>
+      open(302,file="./R_PLOTS/DailyRad.txt",status='unknown')<a name='66'>
+      open(303,file="./R_PLOTS/PAR.txt",status='unknown')<a name='67'>
+      open(2100,file="./R_PLOTS/CDOM.txt",status='unknown')<a name='68'>
+      open(2101,file="./R_PLOTS/Si.txt",status='unknown')<a name='69'>
+      open(2102,file="./R_PLOTS/OM1_BC.txt",status='unknown')<a name='70'>
+      open(2103,file="./R_PLOTS/OM2_BC.txt",status='unknown')<a name='71'>
+      open(2104,file="./R_PLOTS/ALK.txt",status='unknown')<a name='72'>
+      open(2105,file="./R_PLOTS/pH.txt",status='unknown')<a name='73'>
+          iopen1 = 1<a name='74'>
+          endif<a name='75'>
+<a name='76'>
+      write(260,9000) istep,f(ircent,jrcent,1,iA1),f(ircent,jrcent,6,iA1),f(ircent,jrcent,11,iA1),f(ircent,jrcent,20,iA1)<a name='77'>
+      write(261,9000) istep,f(ircent,jrcent,1,iA2),f(ircent,jrcent,6,iA2),f(ircent,jrcent,11,iA2),f(ircent,jrcent,20,iA2)<a name='78'>
+      write(262,9000) istep,f(ircent,jrcent,1,iA3),f(ircent,jrcent,6,iA3),f(ircent,jrcent,11,iA3),f(ircent,jrcent,20,iA3)<a name='79'>
+      write(263,9000) istep,f(ircent,jrcent,1,iA4),f(ircent,jrcent,6,iA4),f(ircent,jrcent,11,iA4),f(ircent,jrcent,20,iA4)<a name='80'>
+      write(264,9000) istep,f(ircent,jrcent,1,iA5),f(ircent,jrcent,6,iA5),f(ircent,jrcent,11,iA5),f(ircent,jrcent,20,iA5)<a name='81'>
+      write(265,9000) istep,f(ircent,jrcent,1,iA6),f(ircent,jrcent,6,iA6),f(ircent,jrcent,11,iA6),f(ircent,jrcent,20,iA6)<a name='82'>
+      write(266,9000) istep,f(ircent,jrcent,1,iQn1),f(ircent,jrcent,6,iQn1),f(ircent,jrcent,11,iQn1),f(ircent,jrcent,20,iQn1)<a name='83'>
+      write(267,9000) istep,f(ircent,jrcent,1,iQn2),f(ircent,jrcent,6,iQn2),f(ircent,jrcent,11,iQn2),f(ircent,jrcent,20,iQn2)<a name='84'>
+      write(268,9000) istep,f(ircent,jrcent,1,iQn3),f(ircent,jrcent,6,iQn3),f(ircent,jrcent,11,iQn3),f(ircent,jrcent,20,iQn3)<a name='85'>
+      write(269,9000) istep,f(ircent,jrcent,1,iQn4),f(ircent,jrcent,6,iQn4),f(ircent,jrcent,11,iQn4),f(ircent,jrcent,20,iQn4)<a name='86'>
+      write(270,9000) istep,f(ircent,jrcent,1,iQn5),f(ircent,jrcent,6,iQn5),f(ircent,jrcent,11,iQn5),f(ircent,jrcent,20,iQn5)<a name='87'>
+      write(271,9000) istep,f(ircent,jrcent,1,iQn6),f(ircent,jrcent,6,iQn6),f(ircent,jrcent,11,iQn6),f(ircent,jrcent,20,iQn6)<a name='88'>
+      write(272,9000) istep,f(ircent,jrcent,1,iQp1),f(ircent,jrcent,6,iQp1),f(ircent,jrcent,11,iQp1),f(ircent,jrcent,20,iQp1)<a name='89'>
+      write(273,9000) istep,f(ircent,jrcent,1,iQp2),f(ircent,jrcent,6,iQp2),f(ircent,jrcent,11,iQp2),f(ircent,jrcent,20,iQp2)<a name='90'>
+      write(274,9000) istep,f(ircent,jrcent,1,iQp3),f(ircent,jrcent,6,iQp3),f(ircent,jrcent,11,iQp3),f(ircent,jrcent,20,iQp3)<a name='91'>
+      write(275,9000) istep,f(ircent,jrcent,1,iQp4),f(ircent,jrcent,6,iQp4),f(ircent,jrcent,11,iQp4),f(ircent,jrcent,20,iQp4)<a name='92'>
+      write(276,9000) istep,f(ircent,jrcent,1,iQp5),f(ircent,jrcent,6,iQp5),f(ircent,jrcent,11,iQp5),f(ircent,jrcent,20,iQp5)<a name='93'>
+      write(277,9000) istep,f(ircent,jrcent,1,iQp6),f(ircent,jrcent,6,iQp6),f(ircent,jrcent,11,iQp6),f(ircent,jrcent,20,iQp6)<a name='94'>
+      write(278,9000) istep,f(ircent,jrcent,1,iZ1),f(ircent,jrcent,6,iZ1),f(ircent,jrcent,11,iZ1),f(ircent,jrcent,20,iZ1)<a name='95'>
+      write(279,9000) istep,f(ircent,jrcent,1,iZ2),f(ircent,jrcent,6,iZ2),f(ircent,jrcent,11,iZ2),f(ircent,jrcent,20,iZ2)<a name='96'>
+      write(280,9000) istep,f(ircent,jrcent,1,iNO3),f(ircent,jrcent,6,iNO3),f(ircent,jrcent,11,iNO3),f(ircent,jrcent,20,iNO3)<a name='97'>
+      write(281,9000) istep,f(ircent,jrcent,1,iNH4),f(ircent,jrcent,6,iNH4),f(ircent,jrcent,11,iNH4),f(ircent,jrcent,20,iNH4)<a name='98'>
+      write(282,9000) istep,f(ircent,jrcent,1,iPO4),f(ircent,jrcent,6,iPO4),f(ircent,jrcent,11,iPO4),f(ircent,jrcent,20,iPO4)<a name='99'>
+      write(283,9000) istep,f(ircent,jrcent,1,iDIC),f(ircent,jrcent,6,iDIC),f(ircent,jrcent,11,iDIC),f(ircent,jrcent,20,iDIC)<a name='100'>
+      write(284,9000) istep,f(ircent,jrcent,1,iO2),f(ircent,jrcent,6,iO2),f(ircent,jrcent,11,iO2),f(ircent,jrcent,20,iO2)<a name='101'>
+      write(294,9000) istep,f(ircent,jrcent,1,iOM1_A),f(ircent,jrcent,6,iOM1_A),f(ircent,jrcent,11,iOM1_A),f(ircent,jrcent,20,iOM1_A)<a name='102'>
+      write(295,9000) istep,f(ircent,jrcent,1,iOM2_A),f(ircent,jrcent,6,iOM2_A),f(ircent,jrcent,11,iOM2_A),f(ircent,jrcent,20,iOM2_A)<a name='103'>
+      write(296,9000) istep,f(ircent,jrcent,1,iOM1_Z),f(ircent,jrcent,6,iOM1_Z),f(ircent,jrcent,11,iOM1_Z),f(ircent,jrcent,20,iOM1_Z)<a name='104'>
+      write(297,9000) istep,f(ircent,jrcent,1,iOM2_Z),f(ircent,jrcent,6,iOM2_Z),f(ircent,jrcent,11,iOM2_Z),f(ircent,jrcent,20,iOM2_Z)<a name='105'>
+      write(298,9000) istep,f(ircent,jrcent,1,iOM1_R),f(ircent,jrcent,6,iOM1_R),f(ircent,jrcent,11,iOM1_R),f(ircent,jrcent,20,iOM1_R)<a name='106'>
+      write(299,9000) istep,f(ircent,jrcent,1,iOM2_R),f(ircent,jrcent,6,iOM2_R),f(ircent,jrcent,11,iOM2_R),f(ircent,jrcent,20,iOM2_R)<a name='107'>
+      write(2100,9000) istep,f(ircent,jrcent,1,iCDOM),f(ircent,jrcent,6,iCDOM),f(ircent,jrcent,11,iCDOM),f(ircent,jrcent,20,iCDOM)<a name='108'>
+      write(2101,9000) istep,f(ircent,jrcent,1,iSi),f(ircent,jrcent,6,iSi),f(ircent,jrcent,11,iSi),f(ircent,jrcent,20,iSi)<a name='109'>
+      write(2102,9000) istep,f(ircent,jrcent,1,iOM1_BC),f(ircent,jrcent,6,iOM1_BC),f(ircent,jrcent,11,iOM1_BC),f(ircent,jrcent,20,iOM1_BC)<a name='110'>
+      write(2103,9000) istep,f(ircent,jrcent,1,iOM2_BC),f(ircent,jrcent,6,iOM2_BC),f(ircent,jrcent,11,iOM2_BC),f(ircent,jrcent,20,iOM2_BC)<a name='111'>
+      write(2104,9000) istep,f(ircent,jrcent,1,iALK),f(ircent,jrcent,6,iALK),f(ircent,jrcent,11,iALK),f(ircent,jrcent,20,iALK)<a name='112'>
+      write(2105,9000) istep,ph(ircent,jrcent,1),ph(ircent,jrcent,6),ph(ircent,jrcent,11),ph(ircent,jrcent,20)<a name='113'>
+      endif<a name='114'>
+<a name='115'>
+#IFDEF _3D<a name='116'>
+<font color=#447700>!Change to locations of the Misssissippi River (biggest flow)<a name='117'></font>
+<font color=#447700>!Located at i = 258, j = 89<a name='118'></font>
+     ircent = 258 <font color=#447700>!irv(1) <a name='119'></font>
+     jrcent =  89 <font color=#447700>!jrv(1)<a name='120'></font>
+<a name='121'>
+      if(my_imstart.le.(ircent).and.my_imend.ge.(ircent)) then<a name='122'>
+<a name='123'>
+       ircent = ircent - my_imstart + 2     <a name='124'>
+<a name='125'>
+           if(iopen2.eq.0) then<a name='126'>
+      open(160,file="./R_PLOTS/A1.river.txt",status='unknown')<a name='127'>
+      open(161,file="./R_PLOTS/A2.river.txt",status='unknown')<a name='128'>
+      open(162,file="./R_PLOTS/A3.river.txt",status='unknown')<a name='129'>
+      open(163,file="./R_PLOTS/A4.river.txt",status='unknown')<a name='130'>
+      open(164,file="./R_PLOTS/A5.river.txt",status='unknown')<a name='131'>
+      open(165,file="./R_PLOTS/A6.river.txt",status='unknown')<a name='132'>
+      open(166,file="./R_PLOTS/Qn1.river.txt",status='unknown')<a name='133'>
+      open(167,file="./R_PLOTS/Qn2.river.txt",status='unknown')<a name='134'>
+      open(168,file="./R_PLOTS/Qn3.river.txt",status='unknown')<a name='135'>
+      open(169,file="./R_PLOTS/Qn4.river.txt",status='unknown')<a name='136'>
+      open(170,file="./R_PLOTS/Qn5.river.txt",status='unknown')<a name='137'>
+      open(171,file="./R_PLOTS/Qn6.river.txt",status='unknown')<a name='138'>
+      open(172,file="./R_PLOTS/Qp1.river.txt",status='unknown')<a name='139'>
+      open(173,file="./R_PLOTS/Qp2.river.txt",status='unknown')<a name='140'>
+      open(174,file="./R_PLOTS/Qp3.river.txt",status='unknown')<a name='141'>
+      open(175,file="./R_PLOTS/Qp4.river.txt",status='unknown')<a name='142'>
+      open(176,file="./R_PLOTS/Qp5.river.txt",status='unknown')<a name='143'>
+      open(177,file="./R_PLOTS/Qp6.river.txt",status='unknown')<a name='144'>
+      open(184,file="./R_PLOTS/G1.river.txt",status='unknown')<a name='145'>
+      open(185,file="./R_PLOTS/G2.river.txt",status='unknown')<a name='146'>
+      open(188,file="./R_PLOTS/NO3.river.txt",status='unknown')<a name='147'>
+      open(189,file="./R_PLOTS/NH4.river.txt",status='unknown')<a name='148'>
+      open(191,file="./R_PLOTS/PO4.river.txt",status='unknown')<a name='149'>
+      open(192,file="./R_PLOTS/DIC.river.txt",status='unknown')<a name='150'>
+      open(193,file="./R_PLOTS/O2.river.txt",status='unknown')<a name='151'>
+      open(194,file="./R_PLOTS/OM1_A.river.txt",status='unknown')<a name='152'>
+      open(195,file="./R_PLOTS/OM2_A.river.txt",status='unknown')<a name='153'>
+      open(196,file="./R_PLOTS/OM1_Z.river.txt",status='unknown')<a name='154'>
+      open(197,file="./R_PLOTS/OM2_Z.river.txt",status='unknown')<a name='155'>
+      open(198,file="./R_PLOTS/OM1_R.river.txt",status='unknown')<a name='156'>
+      open(199,file="./R_PLOTS/OM2_R.river.txt",status='unknown')<a name='157'>
+      <font color=#447700>! PAR, irradiance and Chl-a are not stored in f();<a name='158'></font>
+      <font color=#447700>! so they are printed from GEM_EPA() routine.<a name='159'></font>
+      open(304,file="./R_PLOTS/Rad.river.txt",status='unknown')<a name='160'>
+      open(305,file="./R_PLOTS/Chla.river.txt",status='unknown')<a name='161'>
+      open(306,file="./R_PLOTS/DailyRad.river.txt",status='unknown')<a name='162'>
+      open(307,file="./R_PLOTS/PAR.river.txt",status='unknown')<a name='163'>
+      open(1100,file="./R_PLOTS/CDOM.river.txt",status='unknown')<a name='164'>
+      open(1101,file="./R_PLOTS/Si.river.txt",status='unknown')<a name='165'>
+      open(1102,file="./R_PLOTS/OM1_BC.river.txt",status='unknown')<a name='166'>
+      open(1103,file="./R_PLOTS/OM2_BC.river.txt",status='unknown')<a name='167'>
+      open(1104,file="./R_PLOTS/ALK.river.txt",status='unknown')<a name='168'>
+      open(1105,file="./R_PLOTS/pH.river.txt",status='unknown')<a name='169'>
+             iopen2 = 1<a name='170'>
+             endif<a name='171'>
+<a name='172'>
+      write(160,9000) istep,f(ircent,jrcent,1,iA1),f(ircent,jrcent,6,iA1),f(ircent,jrcent,11,iA1),f(ircent,jrcent,20,iA1)<a name='173'>
+      write(161,9000) istep,f(ircent,jrcent,1,iA2),f(ircent,jrcent,6,iA2),f(ircent,jrcent,11,iA2),f(ircent,jrcent,20,iA2)<a name='174'>
+      write(162,9000) istep,f(ircent,jrcent,1,iA3),f(ircent,jrcent,6,iA3),f(ircent,jrcent,11,iA3),f(ircent,jrcent,20,iA3)<a name='175'>
+      write(163,9000) istep,f(ircent,jrcent,1,iA4),f(ircent,jrcent,6,iA4),f(ircent,jrcent,11,iA4),f(ircent,jrcent,20,iA4)<a name='176'>
+      write(164,9000) istep,f(ircent,jrcent,1,iA5),f(ircent,jrcent,6,iA5),f(ircent,jrcent,11,iA5),f(ircent,jrcent,20,iA5)<a name='177'>
+      write(165,9000) istep,f(ircent,jrcent,1,iA6),f(ircent,jrcent,6,iA6),f(ircent,jrcent,11,iA6),f(ircent,jrcent,20,iA6)<a name='178'>
+      write(166,9000) istep,f(ircent,jrcent,1,iQn1),f(ircent,jrcent,6,iQn1),f(ircent,jrcent,11,iQn1),f(ircent,jrcent,20,iQn1)<a name='179'>
+      write(167,9000) istep,f(ircent,jrcent,1,iQn2),f(ircent,jrcent,6,iQn2),f(ircent,jrcent,11,iQn2),f(ircent,jrcent,20,iQn2)<a name='180'>
+      write(168,9000) istep,f(ircent,jrcent,1,iQn3),f(ircent,jrcent,6,iQn3),f(ircent,jrcent,11,iQn3),f(ircent,jrcent,20,iQn3)<a name='181'>
+      write(169,9000) istep,f(ircent,jrcent,1,iQn4),f(ircent,jrcent,6,iQn4),f(ircent,jrcent,11,iQn4),f(ircent,jrcent,20,iQn4)<a name='182'>
+      write(170,9000) istep,f(ircent,jrcent,1,iQn5),f(ircent,jrcent,6,iQn5),f(ircent,jrcent,11,iQn5),f(ircent,jrcent,20,iQn5)<a name='183'>
+      write(171,9000) istep,f(ircent,jrcent,1,iQn6),f(ircent,jrcent,6,iQn6),f(ircent,jrcent,11,iQn6),f(ircent,jrcent,20,iQn6)<a name='184'>
+      write(172,9000) istep,f(ircent,jrcent,1,iQp1),f(ircent,jrcent,6,iQp1),f(ircent,jrcent,11,iQp1),f(ircent,jrcent,20,iQp1)<a name='185'>
+      write(173,9000) istep,f(ircent,jrcent,1,iQp2),f(ircent,jrcent,6,iQp2),f(ircent,jrcent,11,iQp2),f(ircent,jrcent,20,iQp2)<a name='186'>
+      write(174,9000) istep,f(ircent,jrcent,1,iQp3),f(ircent,jrcent,6,iQp3),f(ircent,jrcent,11,iQp3),f(ircent,jrcent,20,iQp3)<a name='187'>
+      write(175,9000) istep,f(ircent,jrcent,1,iQp4),f(ircent,jrcent,6,iQp4),f(ircent,jrcent,11,iQp4),f(ircent,jrcent,20,iQp4)<a name='188'>
+      write(176,9000) istep,f(ircent,jrcent,1,iQp5),f(ircent,jrcent,6,iQp5),f(ircent,jrcent,11,iQp5),f(ircent,jrcent,20,iQp5)<a name='189'>
+      write(177,9000) istep,f(ircent,jrcent,1,iQp6),f(ircent,jrcent,6,iQp6),f(ircent,jrcent,11,iQp6),f(ircent,jrcent,20,iQp6)<a name='190'>
+      write(184,9000) istep,f(ircent,jrcent,1,iZ1),f(ircent,jrcent,6,iZ1),f(ircent,jrcent,11,iZ1),f(ircent,jrcent,20,iZ1)<a name='191'>
+      write(185,9000) istep,f(ircent,jrcent,1,iZ2),f(ircent,jrcent,6,iZ2),f(ircent,jrcent,11,iZ2),f(ircent,jrcent,20,iZ2)<a name='192'>
+      write(188,9000) istep,f(ircent,jrcent,1,iNO3),f(ircent,jrcent,6,iNO3),f(ircent,jrcent,11,iNO3),f(ircent,jrcent,20,iNO3)<a name='193'>
+      write(189,9000) istep,f(ircent,jrcent,1,iNH4),f(ircent,jrcent,6,iNH4),f(ircent,jrcent,11,iNH4),f(ircent,jrcent,20,iNH4)<a name='194'>
+      write(191,9000) istep,f(ircent,jrcent,1,iPO4),f(ircent,jrcent,6,iPO4),f(ircent,jrcent,11,iPO4),f(ircent,jrcent,20,iPO4)<a name='195'>
+      write(192,9000) istep,f(ircent,jrcent,1,iDIC),f(ircent,jrcent,6,iDIC),f(ircent,jrcent,11,iDIC),f(ircent,jrcent,20,iDIC)<a name='196'>
+      write(193,9000) istep,f(ircent,jrcent,1,iO2),f(ircent,jrcent,6,iO2),f(ircent,jrcent,11,iO2),f(ircent,jrcent,20,iO2)<a name='197'>
+      write(194,9000) istep,f(ircent,jrcent,1,iOM1_A),f(ircent,jrcent,6,iOM1_A),f(ircent,jrcent,11,iOM1_A),f(ircent,jrcent,20,iOM1_A)<a name='198'>
+      write(195,9000) istep,f(ircent,jrcent,1,iOM2_A),f(ircent,jrcent,6,iOM2_A),f(ircent,jrcent,11,iOM2_A),f(ircent,jrcent,20,iOM2_A)<a name='199'>
+      write(196,9000) istep,f(ircent,jrcent,1,iOM1_Z),f(ircent,jrcent,6,iOM1_Z),f(ircent,jrcent,11,iOM1_Z),f(ircent,jrcent,20,iOM1_Z)<a name='200'>
+      write(197,9000) istep,f(ircent,jrcent,1,iOM2_Z),f(ircent,jrcent,6,iOM2_Z),f(ircent,jrcent,11,iOM2_Z),f(ircent,jrcent,20,iOM2_Z)<a name='201'>
+      write(198,9000) istep,f(ircent,jrcent,1,iOM1_R),f(ircent,jrcent,6,iOM1_R),f(ircent,jrcent,11,iOM1_R),f(ircent,jrcent,20,iOM1_R)<a name='202'>
+      write(199,9000) istep,f(ircent,jrcent,1,iOM2_R),f(ircent,jrcent,6,iOM2_R),f(ircent,jrcent,11,iOM2_R),f(ircent,jrcent,20,iOM2_R)<a name='203'>
+      write(1100,9000) istep,f(ircent,jrcent,1,iCDOM),f(ircent,jrcent,6,iCDOM),f(ircent,jrcent,11,iCDOM),f(ircent,jrcent,20,iCDOM)<a name='204'>
+      write(1101,9000) istep,f(ircent,jrcent,1,iSi),f(ircent,jrcent,6,iSi),f(ircent,jrcent,11,iSi),f(ircent,jrcent,20,iSi)<a name='205'>
+      write(1102,9000) istep,f(ircent,jrcent,1,iOM1_BC),f(ircent,jrcent,6,iOM1_BC),f(ircent,jrcent,11,iOM1_BC),f(ircent,jrcent,20,iOM1_BC)<a name='206'>
+      write(1103,9000) istep,f(ircent,jrcent,1,iOM2_BC),f(ircent,jrcent,6,iOM2_BC),f(ircent,jrcent,11,iOM2_BC),f(ircent,jrcent,20,iOM2_BC)<a name='207'>
+      write(1104,9000) istep,f(ircent,jrcent,1,iALK),f(ircent,jrcent,6,iALK),f(ircent,jrcent,11,iALK),f(ircent,jrcent,20,iALK)<a name='208'>
+      write(1105,9000) istep,ph(ircent,jrcent,1),ph(ircent,jrcent,6),ph(ircent,jrcent,11),ph(ircent,jrcent,20)<a name='209'>
+      endif<a name='210'>
+#ENDIF<a name='211'>
+<a name='212'>
+      end subroutine Output_Data_1D_text <a name='213'>
+</pre></body></html>

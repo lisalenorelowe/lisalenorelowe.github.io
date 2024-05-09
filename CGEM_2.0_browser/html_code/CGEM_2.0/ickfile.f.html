@@ -1,0 +1,51 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>! ----------------------------------------------------------<a name='2'></font>
+<A NAME='ICKFILE'><A href='../../html_code/CGEM_2.0/ickfile.f.html#ICKFILE' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+      <font color=#993300>SUBROUTINE  </font><font color=#cc0000>ickfile</font> (fn, RES)        <A href='../../call_to/ICKFILE.html' TARGET='index'>3</A><a name='4'>
+<font color=#447700>!            written  by      D.S.Ko<a name='5'></font>
+<font color=#447700>!            modified by B.E. Herchenroder/EMVL, April 2010<a name='6'></font>
+<font color=#447700>!                                                May   2011<a name='7'></font>
+<font color=#447700>! ----------------------------------------------------------<a name='8'></font>
+<font color=#447700>!     Check file status (unix)<a name='9'></font>
+<font color=#447700>!<a name='10'></font>
+<font color=#447700>!     input:<a name='11'></font>
+<font color=#447700>!       fn - file name including dir<a name='12'></font>
+<font color=#447700>!     output:<a name='13'></font>
+<font color=#447700>!       RES = 0   fn not exist<a name='14'></font>
+<font color=#447700>!       RES = 1	  fn exist and uncompressed<a name='15'></font>
+<font color=#447700>!       RES =-1   fn exist but compressed<a name='16'></font>
+<font color=#447700>!--------------------------------------------------<a name='17'></font>
+      IMPLICIT NONE<a name='18'>
+      <a name='19'>
+<font color=#447700>!----------------------------      <a name='20'></font>
+<font color=#447700>! Declare interface variable      <a name='21'></font>
+<font color=#447700>!----------------------------       <a name='22'></font>
+      CHARACTER*(*), INTENT(IN)  ::  fn<a name='23'>
+      INTEGER      , INTENT(OUT) :: RES<a name='24'>
+<a name='25'>
+<font color=#447700>!-------------------------      <a name='26'></font>
+<font color=#447700>! Local variables      <a name='27'></font>
+<font color=#447700>!------------------------- <a name='28'></font>
+      INTEGER  ierr<a name='29'>
+      INTEGER  l                    <a name='30'>
+      INTEGER  stat<a name='31'>
+      INTEGER  statb(13)<a name='32'>
+      CHARACTER*128  fnZ<a name='33'>
+<font color=#447700>!----------------------------        <a name='34'></font>
+<a name='35'>
+      RES     = 1<a name='36'>
+      ierr = stat ( fn, statb )<a name='37'>
+      if (ierr.eq.0) RETURN	 <font color=#447700>! no error; file exit<a name='38'></font>
+<a name='39'>
+      RES     = -1<a name='40'>
+      l = index(fn,' ')-1<a name='41'>
+      fnZ = fn(:l)//'.Z'<a name='42'>
+      ierr = stat ( fnZ, statb )<a name='43'>
+      if (ierr.eq.0) RETURN	 <font color=#447700>! no error; compressed file<a name='44'></font>
+                                 <font color=#447700>! exit<a name='45'></font>
+<a name='46'>
+      RES = 0                    <font color=#447700>! error<a name='47'></font>
+<a name='48'>
+      RETURN<a name='49'>
+      END SUBROUTINE ickfile<a name='50'>
+</pre></body></html>

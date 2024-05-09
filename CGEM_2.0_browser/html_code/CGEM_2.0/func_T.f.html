@@ -1,0 +1,68 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!---------------------------------------------------------------------------<a name='2'></font>
+<A NAME='FUNC_T'><A href='../../html_code/CGEM_2.0/func_T.f.html#FUNC_T' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>func_T</font>( T, Tadj )    <A href='../../call_to/FUNC_T.html' TARGET='index'>3</A>,<A href='../../call_from/FUNC_T.html' TARGET='index'>3</A><a name='4'>
+<font color=#447700>!---------------------------------------------------------------------------<a name='5'></font>
+<a name='6'>
+  USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/func_T.f.html#FUNC_T' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_20"><a name='7'>
+  USE <A href='../../html_code/CGEM_2.0/TEMP_VARS.f.html#TEMP_VARS'>TEMP_VARS</A><A href='../../html_code/CGEM_2.0/func_T.f.html#FUNC_T' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TEMP_VARS_1">     <a name='8'>
+      <a name='9'>
+  <font color=#447700>!--------------------------------------------------------------------------<a name='10'></font>
+  <font color=#447700>! INPUT:  <a name='11'></font>
+  <font color=#447700>!   T = temperature [degree C]<a name='12'></font>
+  <font color=#447700>!<a name='13'></font>
+  <font color=#447700>! OUTPUT:<a name='14'></font>
+  <font color=#447700>!   Temperature Adjustment <a name='15'></font>
+  <font color=#447700>! <a name='16'></font>
+  <font color=#447700>! REFERENCES:<a name='17'></font>
+  <font color=#447700>!------------------------------------------------------------------------<a name='18'></font>
+    IMPLICIT NONE<a name='19'>
+<a name='20'>
+    REAL, INTENT(IN) :: T    <font color=#447700>! Temperature (deg C)<a name='21'></font>
+    REAL, INTENT(OUT), DIMENSION(nospA+nospZ) :: Tadj <a name='22'>
+    REAL, PARAMETER  :: f0    = 0.1<a name='23'>
+    REAL, PARAMETER  :: r     = 0.3<a name='24'>
+    REAL, PARAMETER  :: f1    = 1.0/f0 - 1.0  <a name='25'>
+    REAL, PARAMETER  :: r1    = r*(46.5/18.0) <a name='26'>
+    REAL             :: denom(nospA+nospZ)<a name='27'>
+    REAL             :: T_in_K,Tref_in_K(nospA+nospZ)<a name='28'>
+    REAL, save       :: N(nospA+nospZ) <font color=#447700>!Normalizing Factor<a name='29'></font>
+    INTEGER          :: i<a name='30'>
+    INTEGER, save    :: init=0<a name='31'>
+<a name='32'>
+    if(init.eq.0) then <font color=#447700>!Find normalizing factor for Arrhenius:<a name='33'></font>
+     if (Which_temperature.eq.3) then <font color=#447700>!Decrease in growth rate at threshold T (Arrhenius form, Geider 1997)<a name='34'></font>
+      T_in_K  = 34. + 273.15 <font color=#447700>!Temp. in Kelvin of approximate highest temp in GOM<a name='35'></font>
+      Tref_in_K(:) = Tref(:) + 273.15 <font color=#447700>!Temp. in Kelvin<a name='36'></font>
+      N(:) = exp ( -Ea_R(:) * ( 1./T_in_K - 1./Tref_in_K(:) ) )<a name='37'>
+     endif<a name='38'>
+     init=1<a name='39'>
+    endif<a name='40'>
+<a name='41'>
+<a name='42'>
+    if (Which_temperature.eq.1) then <font color=#447700>!Sigmoidal <a name='43'></font>
+      denom(:) = 1.0 + f1*exp(-r1*( T - Tref(:))) <a name='44'>
+      Tadj(:)  = 0.3 *(1.0/denom(:)) + 0.7            <a name='45'>
+    else if (Which_temperature.eq.2) then <font color=#447700>!Optimum temperature threshold T (Cerco and Noel, 2004)<a name='46'></font>
+         do i=1,nospA+nospZ<a name='47'>
+           if(T.le.Tref(i)) then<a name='48'>
+             Tadj(i) = exp( -KTg1(i) * (T - Tref(i))**2 )           <a name='49'>
+           else<a name='50'>
+             Tadj(i) = exp( -KTg2(i) * (Tref(i) - T)**2 )<a name='51'>
+           endif<a name='52'>
+         enddo<a name='53'>
+    else if (Which_temperature.eq.3) then <font color=#447700>!Decrease in growth rate at threshold T (Arrhenius form, Geider 1997)<a name='54'></font>
+      T_in_K  = T + 273.15 <font color=#447700>!Water temp. in Kelvin<a name='55'></font>
+      Tref_in_K(:) = Tref(:) + 273.15 <font color=#447700>!Reference temp. in Kelvin <a name='56'></font>
+      Tadj(:) = exp ( -Ea_R(:) * ( 1./T_in_K - 1./Tref_in_K(:) ) )<a name='57'>
+      Tadj(:) = Tadj(:) / N(:) <font color=#447700>!Normalize so that value at maximal temperature is 1. <a name='58'></font>
+    else if (Which_temperature.eq.4) then <font color=#447700>!GoMDOM temperature functions<a name='59'></font>
+      call <A href='../../html_code/CGEM_2.0/T_GoMDOM.f.html#T_GOMDOM'>T_GoMDOM</A><A href='../../html_code/CGEM_2.0/func_T.f.html#FUNC_T' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="T_GOMDOM_1">(T, Tadj)<a name='60'>
+    else  <font color=#447700>!Make Original GEM Sigmoidal the default<a name='61'></font>
+      denom(:)   = 1.0 + f1*exp(-r1*( T - Tref(:)))<a name='62'>
+      Tadj(:) = 0.3 *(1.0/denom(:)) + 0.7<a name='63'>
+    endif<a name='64'>
+ <a name='65'>
+    RETURN<a name='66'>
+  END SUBROUTINE func_T  <a name='67'>
+</pre></body></html>

@@ -1,0 +1,509 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!******************************************************************************<a name='2'></font>
+<font color=#447700>! PURPOSE: NETCDF_UTILITIES.F90 - Helper routines for writing to a NetCDF file.<a name='3'></font>
+<font color=#447700>! NOTES:   Non-ADT module.<a name='4'></font>
+<font color=#447700>! HISTORY: 2010/04/26, Todd Plessel, plessel.todd@epa.gov, Created.<a name='5'></font>
+<font color=#447700>!******************************************************************************<a name='6'></font>
+<a name='7'>
+<A NAME='NETCDF_UTILITIES'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#NETCDF_UTILITIES' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='8'>
+<font color=#993300>MODULE </font><font color=#cc0000>NETCDF_UTILITIES</font> <A href='../../call_to/NETCDF_UTILITIES.html' TARGET='index'>2</A><a name='9'>
+<a name='10'>
+  USE pnetcdf <font color=#447700>! For NFMPI_*<a name='11'></font>
+<a name='12'>
+  IMPLICIT NONE<a name='13'>
+  INCLUDE '<A href='../../html_code/include/mpif.h.html'>mpif.h</A>' <A NAME="mpif.h_1"><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#NETCDF_UTILITIES' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><font color=#447700>! For MPI_*<a name='14'></font>
+<a name='15'>
+PUBLIC CHKERR, DEFDIM, &amp;<a name='16'>
+       DEFVI1, DEFVR1, DEFVD1, DEFVI2, DEFVR2, DEFVI3, DEFVR3, DEFVR4, &amp;<a name='17'>
+       DEFVAR, DEFIAT, DEFRAT, DEFRAT2, DEFRAT6, DEFRAT8, DEFTAT, &amp;<a name='18'>
+       READIAT, READRAT, CHECKIAT, CHECKRAT, CONVERT_LONGITUDES<a name='19'>
+<a name='20'>
+PRIVATE<a name='21'>
+CONTAINS<a name='22'>
+<a name='23'>
+  <font color=#447700>! Public<a name='24'></font>
+<a name='25'>
+  <font color=#447700>! Commands:<a name='26'></font>
+<a name='27'>
+  <font color=#447700>! CHKERR: Check error status and if not ok, print explanation &amp; stop (UGLY).<a name='28'></font>
+  <font color=#447700>!<a name='29'></font>
+<A NAME='CHKERR'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='30'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>CHKERR</font>( ERR, MESSAGE ) <A href='../../call_to/CHKERR.html' TARGET='index'>142</A><a name='31'>
+    IMPLICIT NONE<a name='32'>
+    INTEGER,INTENT(IN):: ERR<a name='33'>
+    CHARACTER(LEN=*),INTENT(IN):: MESSAGE<a name='34'>
+<a name='35'>
+    IF ( ERR .NE. 0 ) THEN<a name='36'>
+      PRINT *, 'PROBLEM: Failed to ', MESSAGE<a name='37'>
+      PRINT *, NFMPI_STRERROR( ERR )<a name='38'>
+      STOP<a name='39'>
+    END IF<a name='40'>
+<a name='41'>
+    RETURN<a name='42'>
+  END SUBROUTINE CHKERR<a name='43'>
+<a name='44'>
+<a name='45'>
+<a name='46'>
+  <font color=#447700>! Define dimensions in a NetCDF file.<a name='47'></font>
+  <font color=#447700>!<a name='48'></font>
+<A NAME='DEFDIM'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFDIM' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='49'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFDIM</font>( FILEID, DIM_ID, NAME, VALUE ) <A href='../../call_to/DEFDIM.html' TARGET='index'>8</A>,<A href='../../call_from/DEFDIM.html' TARGET='index'>1</A><a name='50'>
+    IMPLICIT NONE<a name='51'>
+    INTEGER,INTENT(IN):: FILEID, VALUE<a name='52'>
+    INTEGER,INTENT(OUT):: DIM_ID<a name='53'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='54'>
+    <font color=#447700>! Locals:<a name='55'></font>
+    INTEGER ERR<a name='56'>
+    INTEGER(MPI_OFFSET_KIND):: VALUE_COPY<a name='57'>
+<a name='58'>
+    VALUE_COPY = VALUE<a name='59'>
+    ERR = NFMPI_DEF_DIM( FILEID, TRIM( NAME ), VALUE_COPY, DIM_ID )<a name='60'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFDIM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_32">( ERR, 'create dimension ' // NAME )<a name='61'>
+    RETURN<a name='62'>
+  END SUBROUTINE DEFDIM<a name='63'>
+<a name='64'>
+<a name='65'>
+<a name='66'>
+  <font color=#447700>! Define a integer 1D variable in a NetCDF file.<a name='67'></font>
+  <font color=#447700>!<a name='68'></font>
+<A NAME='DEFVI1'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI1' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='69'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVI1</font>( FILEID, DIMID, VARID, VARNAM, VARDES, UNITS ),<A href='../../call_from/DEFVI1.html' TARGET='index'>2</A><a name='70'>
+    IMPLICIT NONE<a name='71'>
+    INTEGER,INTENT(IN):: FILEID, DIMID<a name='72'>
+    INTEGER,INTENT(OUT):: VARID<a name='73'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='74'>
+    <font color=#447700>! Locals:<a name='75'></font>
+    INTEGER ERR<a name='76'>
+    INTEGER TEMP(1) <font color=#447700>! Must use a temp array for NetCDF call.<a name='77'></font>
+<a name='78'>
+    TEMP( 1 ) = DIMID<a name='79'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 4, 1, TEMP, VARID )<a name='80'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI1' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_33">( ERR, 'create variable ' // VARNAM )<a name='81'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI1' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_1">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='82'>
+    RETURN<a name='83'>
+  END SUBROUTINE DEFVI1<a name='84'>
+<a name='85'>
+<a name='86'>
+<a name='87'>
+  <font color=#447700>! Define a real 1D variable in a NetCDF file.<a name='88'></font>
+  <font color=#447700>!<a name='89'></font>
+<A NAME='DEFVR1'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR1' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='90'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVR1</font>( FILEID, DIMID, VARID, VARNAM, VARDES, UNITS ) <A href='../../call_to/DEFVR1.html' TARGET='index'>7</A>,<A href='../../call_from/DEFVR1.html' TARGET='index'>2</A><a name='91'>
+    IMPLICIT NONE<a name='92'>
+    INTEGER,INTENT(IN):: FILEID, DIMID<a name='93'>
+    INTEGER,INTENT(OUT):: VARID<a name='94'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='95'>
+    <font color=#447700>! Locals:<a name='96'></font>
+    INTEGER ERR<a name='97'>
+    INTEGER TEMP(1) <font color=#447700>! Must use a temp array for NetCDF call.<a name='98'></font>
+<a name='99'>
+    TEMP( 1 ) = DIMID<a name='100'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 5, 1, TEMP, VARID )<a name='101'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR1' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_34">( ERR, 'create variable ' // VARNAM )<a name='102'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR1' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_2">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='103'>
+    RETURN<a name='104'>
+  END SUBROUTINE DEFVR1<a name='105'>
+<a name='106'>
+<a name='107'>
+<a name='108'>
+  <font color=#447700>! Define a double 1D variable in a NetCDF file.<a name='109'></font>
+  <font color=#447700>!<a name='110'></font>
+<A NAME='DEFVD1'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVD1' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='111'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVD1</font>( FILEID, DIMID, VARID, VARNAM, VARDES, UNITS ) <A href='../../call_to/DEFVD1.html' TARGET='index'>2</A>,<A href='../../call_from/DEFVD1.html' TARGET='index'>2</A><a name='112'>
+    IMPLICIT NONE<a name='113'>
+    INTEGER,INTENT(IN):: FILEID, DIMID<a name='114'>
+    INTEGER,INTENT(OUT):: VARID<a name='115'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='116'>
+    <font color=#447700>! Locals:<a name='117'></font>
+    INTEGER ERR<a name='118'>
+    INTEGER TEMP(1) <font color=#447700>! Must use a temp array for NetCDF call.<a name='119'></font>
+<a name='120'>
+    TEMP( 1 ) = DIMID<a name='121'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 6, 1, TEMP, VARID )<a name='122'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVD1' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_35">( ERR, 'create variable ' // VARNAM )<a name='123'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVD1' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_3">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='124'>
+    RETURN<a name='125'>
+  END SUBROUTINE DEFVD1<a name='126'>
+<a name='127'>
+<a name='128'>
+<a name='129'>
+  <font color=#447700>! Define an integer 2D variable in a NetCDF file.<a name='130'></font>
+  <font color=#447700>!<a name='131'></font>
+<A NAME='DEFVI2'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='132'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVI2</font>( FILEID, DIMID1, DIMID2, VARID, VARNAM, VARDES, UNITS ) <A href='../../call_to/DEFVI2.html' TARGET='index'>1</A>,<A href='../../call_from/DEFVI2.html' TARGET='index'>2</A><a name='133'>
+    IMPLICIT NONE<a name='134'>
+    INTEGER,INTENT(IN):: FILEID, DIMID1, DIMID2<a name='135'>
+    INTEGER,INTENT(OUT):: VARID<a name='136'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='137'>
+    <font color=#447700>! Locals:<a name='138'></font>
+    INTEGER ERR, DIM_IDS( 2 )<a name='139'>
+<a name='140'>
+    DIM_IDS( 1 ) = DIMID1<a name='141'>
+    DIM_IDS( 2 ) = DIMID2<a name='142'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 4, 2, DIM_IDS, VARID )<a name='143'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_36">( ERR, 'create variable ' // VARNAM )<a name='144'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_4">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='145'>
+    RETURN<a name='146'>
+  END SUBROUTINE DEFVI2<a name='147'>
+<a name='148'>
+<a name='149'>
+<a name='150'>
+  <font color=#447700>! Define a real 2D variable in a NetCDF file.<a name='151'></font>
+  <font color=#447700>!<a name='152'></font>
+<A NAME='DEFVR2'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='153'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVR2</font>( FILEID, DIMID1, DIMID2, VARID, VARNAM, VARDES, UNITS ),<A href='../../call_from/DEFVR2.html' TARGET='index'>2</A><a name='154'>
+    IMPLICIT NONE<a name='155'>
+    INTEGER,INTENT(IN):: FILEID, DIMID1, DIMID2<a name='156'>
+    INTEGER,INTENT(OUT):: VARID<a name='157'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='158'>
+    <font color=#447700>! Locals:<a name='159'></font>
+    INTEGER ERR, DIM_IDS( 2 )<a name='160'>
+<a name='161'>
+    DIM_IDS( 1 ) = DIMID1<a name='162'>
+    DIM_IDS( 2 ) = DIMID2<a name='163'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 5, 2, DIM_IDS, VARID )<a name='164'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_37">( ERR, 'create variable ' // VARNAM )<a name='165'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_5">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='166'>
+    RETURN<a name='167'>
+  END SUBROUTINE DEFVR2<a name='168'>
+<a name='169'>
+<a name='170'>
+<a name='171'>
+  <font color=#447700>! Define an integer 3D variable in a NetCDF file.<a name='172'></font>
+  <font color=#447700>!<a name='173'></font>
+<A NAME='DEFVI3'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI3' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='174'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVI3</font>( FILEID, DIMID1, DIMID2, DIMID3, VARID, VARNAM, VARDES, UNITS ) <A href='../../call_to/DEFVI3.html' TARGET='index'>1</A>,<A href='../../call_from/DEFVI3.html' TARGET='index'>2</A><a name='175'>
+    IMPLICIT NONE<a name='176'>
+    INTEGER,INTENT(IN):: FILEID, DIMID1, DIMID2, DIMID3<a name='177'>
+    INTEGER,INTENT(OUT):: VARID<a name='178'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='179'>
+    <font color=#447700>! Locals:<a name='180'></font>
+    INTEGER ERR, DIM_IDS( 3 )<a name='181'>
+<a name='182'>
+    DIM_IDS( 1 ) = DIMID1<a name='183'>
+    DIM_IDS( 2 ) = DIMID2<a name='184'>
+    DIM_IDS( 3 ) = DIMID3<a name='185'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 4, 3, DIM_IDS, VARID )<a name='186'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI3' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_38">( ERR, 'create variable ' // VARNAM )<a name='187'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVI3' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_6">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='188'>
+    RETURN<a name='189'>
+  END SUBROUTINE DEFVI3<a name='190'>
+<a name='191'>
+<a name='192'>
+<a name='193'>
+  <font color=#447700>! Define a real 3D variable in a NetCDF file.<a name='194'></font>
+  <font color=#447700>!<a name='195'></font>
+<A NAME='DEFVR3'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR3' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='196'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVR3</font>( FILEID, DIMID1, DIMID2, DIMID3, VARID, VARNAM, VARDES, &amp; <A href='../../call_to/DEFVR3.html' TARGET='index'>3</A>,<A href='../../call_from/DEFVR3.html' TARGET='index'>2</A><a name='197'>
+                     UNITS )<a name='198'>
+    IMPLICIT NONE<a name='199'>
+    INTEGER,INTENT(IN):: FILEID, DIMID1, DIMID2, DIMID3<a name='200'>
+    INTEGER,INTENT(OUT):: VARID<a name='201'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='202'>
+    <font color=#447700>! Locals:<a name='203'></font>
+    INTEGER ERR, DIM_IDS( 3 )<a name='204'>
+<a name='205'>
+    DIM_IDS( 1 ) = DIMID1<a name='206'>
+    DIM_IDS( 2 ) = DIMID2<a name='207'>
+    DIM_IDS( 3 ) = DIMID3<a name='208'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 5, 3, DIM_IDS, VARID )<a name='209'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR3' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_39">( ERR, 'create variable ' // VARNAM )<a name='210'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR3' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_7">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='211'>
+    RETURN<a name='212'>
+  END SUBROUTINE DEFVR3<a name='213'>
+<a name='214'>
+<a name='215'>
+<a name='216'>
+  <font color=#447700>! Define a real 4D variable in a NetCDF file.<a name='217'></font>
+  <font color=#447700>!<a name='218'></font>
+<A NAME='DEFVR4'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR4' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='219'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVR4</font>( FILEID, DIMIDS, VARID, VARNAM, VARDES, UNITS ) <A href='../../call_to/DEFVR4.html' TARGET='index'>3</A>,<A href='../../call_from/DEFVR4.html' TARGET='index'>2</A><a name='220'>
+    IMPLICIT NONE<a name='221'>
+    INTEGER,INTENT(IN):: FILEID<a name='222'>
+    INTEGER,DIMENSION(4),INTENT(IN):: DIMIDS<a name='223'>
+    INTEGER,INTENT(OUT):: VARID<a name='224'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='225'>
+    <font color=#447700>! Locals:<a name='226'></font>
+    INTEGER ERR<a name='227'>
+<a name='228'>
+    ERR = NFMPI_DEF_VAR( FILEID, VARNAM, 5, 4, DIMIDS, VARID )<a name='229'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR4' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_40">( ERR, 'create variable ' // VARNAM )<a name='230'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR'>DEFVAR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVR4' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEFVAR_8">( FILEID, VARID, VARNAM, VARDES, UNITS )<a name='231'>
+    RETURN<a name='232'>
+  END SUBROUTINE DEFVR4<a name='233'>
+<a name='234'>
+<a name='235'>
+<a name='236'>
+  <font color=#447700>! Define rest of a real variable in a NetCDF file.<a name='237'></font>
+  <font color=#447700>!<a name='238'></font>
+<A NAME='DEFVAR'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='239'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFVAR</font>( FILEID, VARID, VARNAM, VARDES, UNITS ) <A href='../../call_to/DEFVAR.html' TARGET='index'>8</A>,<A href='../../call_from/DEFVAR.html' TARGET='index'>2</A><a name='240'>
+    IMPLICIT NONE<a name='241'>
+    INTEGER,INTENT(IN):: FILEID, VARID<a name='242'>
+    CHARACTER(LEN=*),INTENT(IN):: VARNAM, VARDES, UNITS<a name='243'>
+    <font color=#447700>! Locals:<a name='244'></font>
+    INTEGER ERR<a name='245'>
+    INTEGER(MPI_OFFSET_KIND):: LEN_COPY<a name='246'>
+<a name='247'>
+    LEN_COPY = LEN( VARDES )<a name='248'>
+    ERR = NFMPI_PUT_ATT_TEXT( FILEID, VARID, 'description', LEN_COPY, &amp;<a name='249'>
+                              VARDES )<a name='250'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_41">( ERR, 'create description attribute for ' // VARNAM )<a name='251'>
+<a name='252'>
+    IF ( LEN( UNITS ) &gt; 0 ) THEN<a name='253'>
+      LEN_COPY = LEN( UNITS )<a name='254'>
+      ERR = NFMPI_PUT_ATT_TEXT( FILEID, VARID, 'units', LEN_COPY, UNITS )<a name='255'>
+      CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFVAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_42">( ERR, 'create units attribute for ' // VARNAM )<a name='256'>
+    END IF<a name='257'>
+<a name='258'>
+    RETURN<a name='259'>
+  END SUBROUTINE DEFVAR<a name='260'>
+<a name='261'>
+<a name='262'>
+<a name='263'>
+  <font color=#447700>! Define an integer attribute in a NetCDF file.<a name='264'></font>
+  <font color=#447700>!<a name='265'></font>
+<A NAME='DEFIAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='266'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFIAT</font>( FILEID, NAME, VALUE ) <A href='../../call_to/DEFIAT.html' TARGET='index'>51</A>,<A href='../../call_from/DEFIAT.html' TARGET='index'>1</A><a name='267'>
+    IMPLICIT NONE<a name='268'>
+    INTEGER,INTENT(IN):: FILEID<a name='269'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='270'>
+    INTEGER,INTENT(IN):: VALUE<a name='271'>
+    <font color=#447700>! Locals:<a name='272'></font>
+    INTEGER(MPI_OFFSET_KIND) ONE<a name='273'>
+    INTEGER ERR, TEMP(1)<a name='274'>
+<a name='275'>
+    ONE = 1<a name='276'>
+    TEMP(1) = VALUE <font color=#447700>! Must copy for NetCDF call.<a name='277'></font>
+    ERR = NFMPI_PUT_ATT_INT( FILEID, 0, TRIM( NAME ), 4, ONE, TEMP )<a name='278'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFIAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_43">( ERR, 'create integer attribute ' // NAME )<a name='279'>
+<a name='280'>
+    RETURN<a name='281'>
+  END SUBROUTINE DEFIAT<a name='282'>
+<a name='283'>
+<a name='284'>
+<a name='285'>
+  <font color=#447700>! Define a real attribute in a NetCDF file.<a name='286'></font>
+  <font color=#447700>!<a name='287'></font>
+<A NAME='DEFRAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='288'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFRAT</font>( FILEID, NAME, VALUE ) <A href='../../call_to/DEFRAT.html' TARGET='index'>58</A>,<A href='../../call_from/DEFRAT.html' TARGET='index'>1</A><a name='289'>
+    IMPLICIT NONE<a name='290'>
+    INTEGER,INTENT(IN):: FILEID<a name='291'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='292'>
+    REAL,INTENT(IN):: VALUE<a name='293'>
+    <font color=#447700>! Locals:<a name='294'></font>
+    INTEGER(MPI_OFFSET_KIND) ONE<a name='295'>
+    INTEGER ERR<a name='296'>
+    REAL TEMP(1)<a name='297'>
+<a name='298'>
+    ONE = 1<a name='299'>
+    TEMP( 1 ) = VALUE <font color=#447700>! Must copy for NetCDF call.<a name='300'></font>
+    ERR = NFMPI_PUT_ATT_REAL( FILEID, 0, TRIM( NAME ), 5, ONE, TEMP )<a name='301'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_44">( ERR, 'create real attribute ' // NAME )<a name='302'>
+<a name='303'>
+    RETURN<a name='304'>
+  END SUBROUTINE DEFRAT<a name='305'>
+<a name='306'>
+<a name='307'>
+<a name='308'>
+  <font color=#447700>! Define a real attribute of 2 values in a NetCDF file.<a name='309'></font>
+  <font color=#447700>!<a name='310'></font>
+<A NAME='DEFRAT2'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='311'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFRAT2</font>( FILEID, NAME, VALUE ) <A href='../../call_to/DEFRAT2.html' TARGET='index'>11</A>,<A href='../../call_from/DEFRAT2.html' TARGET='index'>1</A><a name='312'>
+    IMPLICIT NONE<a name='313'>
+    INTEGER,INTENT(IN):: FILEID<a name='314'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='315'>
+    REAL,INTENT(IN):: VALUE(2)<a name='316'>
+    <font color=#447700>! Locals:<a name='317'></font>
+    INTEGER(MPI_OFFSET_KIND) TWO<a name='318'>
+    INTEGER ERR<a name='319'>
+    REAL TEMP(2)<a name='320'>
+<a name='321'>
+    TWO = 2<a name='322'>
+    TEMP = VALUE <font color=#447700>! Must copy for NetCDF call.<a name='323'></font>
+    ERR = NFMPI_PUT_ATT_REAL( FILEID, 0, TRIM( NAME ), 5, TWO, TEMP )<a name='324'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_45">( ERR, 'create 2 real attributes ' // NAME )<a name='325'>
+<a name='326'>
+    RETURN<a name='327'>
+  END SUBROUTINE DEFRAT2<a name='328'>
+<a name='329'>
+<a name='330'>
+<a name='331'>
+  <font color=#447700>! Define a real attribute of 6 values in a NetCDF file.<a name='332'></font>
+  <font color=#447700>!<a name='333'></font>
+<A NAME='DEFRAT6'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT6' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='334'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFRAT6</font>( FILEID, NAME, VALUE ) <A href='../../call_to/DEFRAT6.html' TARGET='index'>26</A>,<A href='../../call_from/DEFRAT6.html' TARGET='index'>1</A><a name='335'>
+    IMPLICIT NONE<a name='336'>
+    INTEGER,INTENT(IN):: FILEID<a name='337'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='338'>
+    REAL,INTENT(IN):: VALUE(6)<a name='339'>
+    <font color=#447700>! Locals:<a name='340'></font>
+    INTEGER(MPI_OFFSET_KIND) SIX<a name='341'>
+    INTEGER ERR<a name='342'>
+    REAL TEMP(6)<a name='343'>
+<a name='344'>
+    SIX = 6<a name='345'>
+    TEMP = VALUE <font color=#447700>! Must copy for NetCDF call.<a name='346'></font>
+    ERR = NFMPI_PUT_ATT_REAL( FILEID, 0, TRIM( NAME ), 5, SIX, TEMP )<a name='347'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT6' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_46">( ERR, 'create 6 real attributes ' // NAME )<a name='348'>
+<a name='349'>
+    RETURN<a name='350'>
+  END SUBROUTINE DEFRAT6<a name='351'>
+<a name='352'>
+<a name='353'>
+<a name='354'>
+  <font color=#447700>! Define a real attribute of 8 values in a NetCDF file.<a name='355'></font>
+  <font color=#447700>!<a name='356'></font>
+<A NAME='DEFRAT8'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT8' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='357'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFRAT8</font>( FILEID, NAME, VALUE ) <A href='../../call_to/DEFRAT8.html' TARGET='index'>4</A>,<A href='../../call_from/DEFRAT8.html' TARGET='index'>1</A><a name='358'>
+    IMPLICIT NONE<a name='359'>
+    INTEGER,INTENT(IN):: FILEID<a name='360'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='361'>
+    REAL,INTENT(IN):: VALUE(8)<a name='362'>
+    <font color=#447700>! Locals:<a name='363'></font>
+    INTEGER(MPI_OFFSET_KIND) EIGHT<a name='364'>
+    INTEGER ERR<a name='365'>
+    REAL TEMP(8)<a name='366'>
+<a name='367'>
+    EIGHT = 8<a name='368'>
+    TEMP = VALUE <font color=#447700>! Must copy for NetCDF call.<a name='369'></font>
+    ERR = NFMPI_PUT_ATT_REAL( FILEID, 0, TRIM( NAME ), 5, EIGHT, TEMP )<a name='370'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFRAT8' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_47">( ERR, 'create 8 real attributes ' // NAME )<a name='371'>
+<a name='372'>
+    RETURN<a name='373'>
+  END SUBROUTINE DEFRAT8<a name='374'>
+<a name='375'>
+<a name='376'>
+<a name='377'>
+  <font color=#447700>! Define a text attribute in a NetCDF file.<a name='378'></font>
+  <font color=#447700>!<a name='379'></font>
+<A NAME='DEFTAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='380'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>DEFTAT</font>( FILEID,  NAME, VALUE ) <A href='../../call_to/DEFTAT.html' TARGET='index'>49</A>,<A href='../../call_from/DEFTAT.html' TARGET='index'>1</A><a name='381'>
+    IMPLICIT NONE<a name='382'>
+    INTEGER,INTENT(IN):: FILEID<a name='383'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME, VALUE<a name='384'>
+    <font color=#447700>! Locals:<a name='385'></font>
+    INTEGER ERR<a name='386'>
+    INTEGER(MPI_OFFSET_KIND):: LEN_VALUE<a name='387'>
+    LEN_VALUE = LEN( VALUE )<a name='388'>
+<a name='389'>
+    ERR = NFMPI_PUT_ATT_TEXT( FILEID, 0, TRIM( NAME ), LEN_VALUE , VALUE )<a name='390'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#DEFTAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_48">( ERR, 'create text attribute ' // NAME )<a name='391'>
+<a name='392'>
+    RETURN<a name='393'>
+  END SUBROUTINE DEFTAT<a name='394'>
+<a name='395'>
+<a name='396'>
+<a name='397'>
+  <font color=#447700>! Read an integer attribute from a NetCDF file.<a name='398'></font>
+  <font color=#447700>!<a name='399'></font>
+<A NAME='READIAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='400'>
+  <font color=#993300>FUNCTION </font><font color=#cc0000>READIAT</font>( FILEID, NAME ) RESULT( RES ) <A href='../../call_to/READIAT.html' TARGET='index'>17</A>,<A href='../../call_from/READIAT.html' TARGET='index'>1</A><a name='401'>
+    IMPLICIT NONE<a name='402'>
+    INTEGER,INTENT(IN):: FILEID<a name='403'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='404'>
+    INTEGER RES<a name='405'>
+    <font color=#447700>! Locals:<a name='406'></font>
+    INTEGER ERR, TEMP(1)<a name='407'>
+<a name='408'>
+    ERR = NFMPI_GET_ATT_INT( FILEID, 0, TRIM( NAME ), TEMP )<a name='409'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_49">( ERR, 'read integer attribute ' // NAME )<a name='410'>
+    RES = TEMP( 1 )<a name='411'>
+    RETURN<a name='412'>
+  END FUNCTION READIAT<a name='413'>
+<a name='414'>
+<a name='415'>
+<a name='416'>
+  <font color=#447700>! Read a real attribute from a NetCDF file.<a name='417'></font>
+  <font color=#447700>!<a name='418'></font>
+<A NAME='READRAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READRAT' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='419'>
+  <font color=#993300>FUNCTION </font><font color=#cc0000>READRAT</font>( FILEID, NAME ) RESULT( RES ) <A href='../../call_to/READRAT.html' TARGET='index'>1</A>,<A href='../../call_from/READRAT.html' TARGET='index'>1</A><a name='420'>
+    IMPLICIT NONE<a name='421'>
+    INTEGER,INTENT(IN):: FILEID<a name='422'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='423'>
+    REAL RES<a name='424'>
+    <font color=#447700>! Locals:<a name='425'></font>
+    INTEGER ERR<a name='426'>
+    REAL TEMP(1)<a name='427'>
+<a name='428'>
+    ERR = NFMPI_GET_ATT_REAL( FILEID, 0, TRIM( NAME ), TEMP )<a name='429'>
+    CALL <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHKERR'>CHKERR</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READRAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CHKERR_50">( ERR, 'read real attribute ' // NAME )<a name='430'>
+    RES = TEMP( 1 )<a name='431'>
+    RETURN<a name='432'>
+  END FUNCTION READRAT<a name='433'>
+<a name='434'>
+<a name='435'>
+<a name='436'>
+  <font color=#447700>! Read and match an integer attribute from a NetCDF file.<a name='437'></font>
+  <font color=#447700>!<a name='438'></font>
+<A NAME='CHECKIAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHECKIAT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='439'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>CHECKIAT</font>( FILEID, NAME, VALUE ) <A href='../../call_to/CHECKIAT.html' TARGET='index'>19</A>,<A href='../../call_from/CHECKIAT.html' TARGET='index'>1</A><a name='440'>
+    IMPLICIT NONE<a name='441'>
+    INTEGER,INTENT(IN):: FILEID, VALUE<a name='442'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='443'>
+    <font color=#447700>! Locals:<a name='444'></font>
+    INTEGER FILE_VALUE<a name='445'>
+<a name='446'>
+    FILE_VALUE = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READIAT'>READIAT</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHECKIAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READIAT_9">( FILEID, NAME )<a name='447'>
+<a name='448'>
+    IF ( VALUE .NE. VALUE ) THEN<a name='449'>
+      PRINT *, 'PROBLEM: Unmatched file attribute: ', TRIM( NAME ), &amp;<a name='450'>
+               ' ', VALUE, ' does not match ', VALUE<a name='451'>
+      STOP<a name='452'>
+    END IF<a name='453'>
+<a name='454'>
+    RETURN<a name='455'>
+  END SUBROUTINE CHECKIAT<a name='456'>
+<a name='457'>
+<a name='458'>
+<a name='459'>
+  <font color=#447700>! Read and match a real attribute from a NetCDF file.<a name='460'></font>
+  <font color=#447700>!<a name='461'></font>
+<A NAME='CHECKRAT'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHECKRAT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='462'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>CHECKRAT</font>( FILEID, NAME, VALUE ),<A href='../../call_from/CHECKRAT.html' TARGET='index'>1</A><a name='463'>
+    IMPLICIT NONE<a name='464'>
+    INTEGER,INTENT(IN):: FILEID<a name='465'>
+    CHARACTER(LEN=*),INTENT(IN):: NAME<a name='466'>
+    REAL,INTENT(IN):: VALUE<a name='467'>
+    <font color=#447700>! Locals:<a name='468'></font>
+    REAL FILE_VALUE<a name='469'>
+<a name='470'>
+    FILE_VALUE = <A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#READRAT'>READRAT</A><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CHECKRAT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="READRAT_1">( FILEID, NAME )<a name='471'>
+<a name='472'>
+    IF ( FILE_VALUE .NE. VALUE ) THEN<a name='473'>
+      PRINT *, 'PROBLEM: Unmatched file attribute: ', TRIM( NAME ), &amp;<a name='474'>
+               ' ', VALUE, ' does not match ', VALUE<a name='475'>
+      STOP<a name='476'>
+    END IF<a name='477'>
+<a name='478'>
+    RETURN<a name='479'>
+  END SUBROUTINE CHECKRAT<a name='480'>
+<a name='481'>
+<a name='482'>
+<a name='483'>
+  <font color=#447700>! CONVERT_LONGITUDE: Convert longitudes from [0, 360] to [-180, 180].<a name='484'></font>
+  <font color=#447700>!<a name='485'></font>
+<A NAME='CONVERT_LONGITUDES'><A href='../../html_code/CGEM_2.0/NETCDF_UTILITIES.f.html#CONVERT_LONGITUDES' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='486'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>CONVERT_LONGITUDES</font>( COUNT, LONGITUDES ) <A href='../../call_to/CONVERT_LONGITUDES.html' TARGET='index'>2</A><a name='487'>
+    IMPLICIT NONE<a name='488'>
+    INTEGER,INTENT(IN):: COUNT<a name='489'>
+    REAL,DIMENSION(COUNT),INTENT(INOUT):: LONGITUDES<a name='490'>
+    <font color=#447700>! Locals:<a name='491'></font>
+    INTEGER INDEX<a name='492'>
+<a name='493'>
+    DO INDEX = 1, COUNT<a name='494'>
+<a name='495'>
+      IF ( LONGITUDES( INDEX ) .GT. 180.0 ) THEN<a name='496'>
+        LONGITUDES( INDEX ) = LONGITUDES( INDEX ) - 360.0<a name='497'>
+      END IF<a name='498'>
+    END DO<a name='499'>
+<a name='500'>
+    RETURN<a name='501'>
+  END SUBROUTINE CONVERT_LONGITUDES<a name='502'>
+<a name='503'>
+<a name='504'>
+<a name='505'>
+END MODULE NETCDF_UTILITIES<a name='506'>
+<a name='507'>
+<a name='508'>
+</pre></body></html>

@@ -1,0 +1,33 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='DEPTH_KH_MASK'><A href='../../html_code/CGEM_2.0/Depth_Kh_Mask.f.html#DEPTH_KH_MASK' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+<font color=#993300>Subroutine </font><font color=#cc0000>Depth_Kh_Mask</font>(fm,d,khm) <A href='../../call_to/DEPTH_KH_MASK.html' TARGET='index'>2</A>,<A href='../../call_from/DEPTH_KH_MASK.html' TARGET='index'>2</A><a name='3'>
+<a name='4'>
+USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Depth_Kh_Mask.f.html#DEPTH_KH_MASK' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_15"><a name='5'>
+USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Depth_Kh_Mask.f.html#DEPTH_KH_MASK' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_12">, ONLY: Kh_coeff<a name='6'>
+<a name='7'>
+IMPLICIT NONE<a name='8'>
+<a name='9'>
+integer,intent(in) :: fm(im,jm) <font color=#447700>! Land (=0) , Sea (=1) Mask<a name='10'></font>
+real,intent(in) :: d(im,jm)   <font color=#447700>! Depth, surface to bottom, of each water column <a name='11'></font>
+real,intent(out):: khm(im,jm,nz)   <font color=#447700>! Kh mask, =1 everywhere except at less than  <a name='12'></font>
+                                   <font color=#447700>! 30m depths, where it is set to Kh_coeff <a name='13'></font>
+integer :: i, j, k<a name='14'>
+<a name='15'>
+khm = 1.<a name='16'>
+<a name='17'>
+do k = 1,nz<a name='18'>
+ do j = 1,jm<a name='19'>
+  do i = 1,im<a name='20'>
+    if(fm(i,j).eq.1) then<a name='21'>
+     if(d(i,j).le.10. ) then<a name='22'>
+       khm(i,j,k) = Kh_coeff<a name='23'>
+     endif<a name='24'>
+    endif<a name='25'>
+   enddo<a name='26'>
+  enddo<a name='27'>
+enddo<a name='28'>
+<a name='29'>
+return<a name='30'>
+<a name='31'>
+END Subroutine Depth_Kh_Mask <a name='32'>
+</pre></body></html>

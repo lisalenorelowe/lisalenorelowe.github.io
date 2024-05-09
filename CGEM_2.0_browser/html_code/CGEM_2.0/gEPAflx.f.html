@@ -1,0 +1,375 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='GEPAFLX'><A href='../../html_code/CGEM_2.0/gEPAflx.f.html#GEPAFLX' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+  <font color=#993300>Subroutine </font><font color=#cc0000>gEPAflx</font>(iYr,iMon,iDay,iHr,ux,vx,wx,istatus)  <A href='../../call_to/GEPAFLX.html' TARGET='index'>5</A>,<A href='../../call_from/GEPAFLX.html' TARGET='index'>3</A><a name='3'>
+<a name='4'>
+<font color=#447700>!----------------------------------------------------------------<a name='5'></font>
+<font color=#447700>!           Written  by D.S.Ko/NRL<a name='6'></font>
+<font color=#447700>!           Modified by B.E. Herchenroder/EMVL, April/June 2010<a name='7'></font>
+<font color=#447700>!                                               May  /June 2011<a name='8'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='9'></font>
+<font color=#447700>!     To get (find &amp; read) flux files<a name='10'></font>
+<font color=#447700>!<a name='11'></font>
+<font color=#447700>!   Inputs:<a name='12'></font>
+<font color=#447700>!     iYr,iMon,iDay,iHr,iMin,iSec - date in year,month,day,hour,<a name='13'></font>
+<font color=#447700>!                                   minute, second (GMT)<a name='14'></font>
+<font color=#447700>!<a name='15'></font>
+<font color=#447700>!   Output:<a name='16'></font>
+<font color=#447700>!     ux,vx,wx - fluxes in full 3D <a name='17'></font>
+<font color=#447700>!     istatus = 1 - ok; = 0 - error<a name='18'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='19'></font>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/gEPAflx.f.html#GEPAFLX' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_25"><a name='20'>
+<a name='21'>
+      IMPLICIT NONE<a name='22'>
+<a name='23'>
+<font color=#447700>!-----------------------------------------------------<a name='24'></font>
+<font color=#447700>! Declare variables in subroutine Inteface<a name='25'></font>
+<font color=#447700>!------------------------------------------      <a name='26'></font>
+<font color=#447700>! --- Input:<a name='27'></font>
+      integer, INTENT(IN)  ::    iYr,iMon,iDay,iHr     <a name='28'>
+<a name='29'>
+<font color=#447700>! --- Output:-- <a name='30'></font>
+      real   , INTENT(OUT) ::  ux(im,jm,NSL),vx(im,jm,NSL),wx(im,jm,NSL)<a name='31'>
+            <a name='32'>
+      integer, INTENT(OUT) ::   istatus <font color=#447700>! = 1 : ok; = 0 : bad<a name='33'></font>
+<font color=#447700>!----------------------------------------------------------------------- <a name='34'></font>
+<a name='35'>
+<font color=#447700>!------------------------------<a name='36'></font>
+<font color=#447700>! integer parameter statements<a name='37'></font>
+<font color=#447700>!------------------------------<a name='38'></font>
+      INTEGER, PARAMETER ::  nso = nsl*no   <a name='39'>
+      INTEGER, PARAMETER ::  ntypes = 1<a name='40'>
+<font color=#447700>!-------------------------------------<a name='41'></font>
+<a name='42'>
+<font color=#447700>! --- Tmp variables:<a name='43'></font>
+<font color=#447700>!-----------------------------------------------<a name='44'></font>
+<font color=#447700>! Declare non-parameter  variables <a name='45'></font>
+<font color=#447700>!----------------------------------------------- <a name='46'></font>
+<a name='47'>
+<font color=#447700>!---------------------------<a name='48'></font>
+<font color=#447700>! integer scalar variables:<a name='49'></font>
+<font color=#447700>!--------------------------- <a name='50'></font>
+      integer    i <a name='51'>
+      integer    ij         <a name='52'>
+      integer    ijk       <a name='53'>
+                       <a name='54'>
+      integer    init<a name='55'>
+      data       init/1/<a name='56'>
+      save       init<a name='57'>
+      <a name='58'>
+      integer    ista<a name='59'>
+      integer    ity   <a name='60'>
+      <a name='61'>
+      integer    k      <a name='62'>
+<a name='63'>
+      integer    lf              <a name='64'>
+      <a name='65'>
+      integer    nd<a name='66'>
+      save       nd<a name='67'>
+<a name='68'>
+<font color=#447700>!---------------------------<a name='69'></font>
+<font color=#447700>! integer array variables:<a name='70'></font>
+<font color=#447700>!--------------------------- <a name='71'></font>
+      integer    ld(40)       <a name='72'>
+      save       ld<a name='73'>
+<a name='74'>
+<font color=#447700>!---------------------------<a name='75'></font>
+<font color=#447700>! real array variables:<a name='76'></font>
+<font color=#447700>!---------------------------<a name='77'></font>
+      real       u(nso),v(nso),w(nso)<a name='78'>
+      save       u,v,w<a name='79'>
+<a name='80'>
+<font color=#447700>!---------------------------<a name='81'></font>
+<font color=#447700>! character variables:<a name='82'></font>
+<font color=#447700>!---------------------------<a name='83'></font>
+      character  cmd*128          <a name='84'>
+      character  date*13<a name='85'>
+<a name='86'>
+      character  fn*120<a name='87'>
+      character  fnb(ntypes+1)*120          <a name='88'>
+      save       fnb<a name='89'>
+     <a name='90'>
+      character  ind(20)*120  <font color=#447700>! Note the variable name &amp; size change       <a name='91'></font>
+      save       ind            <a name='92'>
+      <a name='93'>
+<font color=#447700>! --------------------------------------------------------------------<a name='94'></font>
+<font color=#447700>! Begin main code. Note that changes have been made in this subroutine<a name='95'></font>
+<font color=#447700>! to make as close to subroutine gEPAnf as possible.<a name='96'></font>
+<font color=#447700>! --------------------------------------------------------------------<a name='97'></font>
+<a name='98'>
+      istatus = 0<a name='99'>
+      <a name='100'>
+      if (init.eq.1) then<a name='101'>
+<a name='102'>
+<font color=#447700>!--------------------------------------------------------------------<a name='103'></font>
+<font color=#447700>! ----- get output dirs, i.e. really the directory for hydrodynamic <a name='104'></font>
+<font color=#447700>!                             INPUT to EPACOM_GEM so a new subroutine<a name='105'></font>
+<font color=#447700>!                             was written, ghydro_inputdir, to better<a name='106'></font>
+<font color=#447700>!                             reflect, that we are getting input to<a name='107'></font>
+<font color=#447700>!                             NCOM_GEM<a name='108'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='109'></font>
+	<a name='110'>
+<font color=#447700>! ----- get hydrodynamic input dir --------------------------<a name='111'></font>
+<font color=#447700>!        Before doing so, set all elements in the ind character<a name='112'></font>
+<font color=#447700>!        array to blanks to make sure that no garbage gets <a name='113'></font>
+<font color=#447700>!        incorporated into the arrays. Also initialize all<a name='114'></font>
+<font color=#447700>!        elements of the ld integer array to 0 to allow bugs<a name='115'></font>
+<font color=#447700>!        to more easily be found <a name='116'></font>
+<font color=#447700>!------------------------------------------------------------<a name='117'></font>
+         DO i = 1, 20<a name='118'>
+            ind(i)  = ' '  <a name='119'>
+	 ENDDO	 <a name='120'>
+<a name='121'>
+<font color=#447700>!---------------------------------------------------------------------------<a name='122'></font>
+<font color=#447700>! In the subtroutine call below for ghydro_inputdir:<a name='123'></font>
+<font color=#447700>!<a name='124'></font>
+<font color=#447700>!        ind: on input , an array of 20 blank strings of length 120 chars<a name='125'></font>
+<font color=#447700>!<a name='126'></font>
+<font color=#447700>!             on output, ind(i) =  path, including an ending /, of the <a name='127'></font>
+<font color=#447700>!                                  ith directory, 1 &lt;= i &lt;= nd, nd &lt;= 20,<a name='128'></font>
+<font color=#447700>!                                  holding hydrodynamic input generated by<a name='129'></font>
+<font color=#447700>!                                  EPACOM v5 for the present run of<a name='130'></font>
+<font color=#447700>!                                  EPACOM_GEM_1D. <a name='131'></font>
+<font color=#447700>!---------------------------------------------------------------------------<a name='132'></font>
+        call <A href='../../html_code/CGEM_2.0/ghydro_inputdir.f.html#GHYDRO_INPUTDIR'>ghydro_inputdir</A><A href='../../html_code/CGEM_2.0/gEPAflx.f.html#GEPAFLX' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GHYDRO_INPUTDIR_3"> (ind , ld, nd) <font color=#447700>! ind is in/out<a name='133'></font>
+	                                      <font color=#447700>! ld is in/out<a name='134'></font>
+					      <font color=#447700>! nd is out<a name='135'></font>
+	<a name='136'>
+<font color=#447700>!-----------------------------------------------------------------<a name='137'></font>
+<font color=#447700>! Note that the array fnb below is a "flag array." It is set to: <a name='138'></font>
+<font color=#447700>!      "flux file in directory has not been opened" <a name='139'></font>
+<font color=#447700>! (without the quotes) when the flux file fn has not been opened yet and <a name='140'></font>
+<font color=#447700>! set to the file name fn when the file has been opened.<a name='141'></font>
+<font color=#447700>!-----------------------------------------------------------------		<a name='142'></font>
+<a name='143'>
+         DO i = 1, ntypes+1<a name='144'>
+<font color=#447700>!---------------------------         	<a name='145'></font>
+<font color=#447700>!	   fnb    = 'nodata'<a name='146'></font>
+<font color=#447700>!---------------------------<a name='147'></font>
+	   fnb(i) = 'flux file in directory has not been opened'<a name='148'>
+	                       <font color=#447700>! 'nodata' makes no sense in the <a name='149'></font>
+	                       <font color=#447700>! present context. fnb(i) is supposed<a name='150'></font>
+			       <font color=#447700>! to be a flag to let the code know<a name='151'></font>
+			       <font color=#447700>! whether the flux file fn has been opened,<a name='152'></font>
+			       <font color=#447700>! if fn lives in the directory i.<a name='153'></font>
+			       <font color=#447700>! A better phrase than 'nodata' is <a name='154'></font>
+			       <font color=#447700>! 'flux file in directory has not been opened'<a name='155'></font>
+         END DO		<a name='156'>
+	 	       	<a name='157'>
+        init = 0<a name='158'>
+      end if  <font color=#447700>! End of "if (init.eq.1)" block IF<a name='159'></font>
+  <a name='160'>
+      ity = 1   <font color=#447700>! one file type (flx) with 3 different variables   <a name='161'></font>
+<a name='162'>
+<font color=#447700>!-----------------------------------------      <a name='163'></font>
+<font color=#447700>!     The write below is an internal write. <a name='164'></font>
+<font color=#447700>!-----------------------------------------<a name='165'></font>
+<a name='166'>
+<font color=#447700>!----------------------------------------------------------------<a name='167'></font>
+<font color=#447700>! iMin and ISec is not used in the internal write below since data<a name='168'></font>
+<font color=#447700>! is for the date in the filename holding the desired NRL data and<a name='169'></font>
+<font color=#447700>! the filenames don't have any minutes or seconds since the data <a name='170'></font>
+<font color=#447700>! is available hourly--no minutes or seconds <a name='171'></font>
+<font color=#447700>! involved.<a name='172'></font>
+<font color=#447700>!----------------------------------------------------------------              <a name='173'></font>
+<a name='174'>
+      write (date,'(i4.4,3i2.2)') iYr,iMon,iDay,iHr  <font color=#447700>! internal write.<a name='175'></font>
+      <a name='176'>
+<a name='177'>
+<font color=#447700>!-------------------------------------------------------------------<a name='178'></font>
+<font color=#447700>! Loop thru the nd directory paths that are stored in the character<a name='179'></font>
+<font color=#447700>! array "ind" (without the quotes). <a name='180'></font>
+<font color=#447700>!<a name='181'></font>
+<font color=#447700>! For a given directory, say ind(i), construct the path that data <a name='182'></font>
+<font color=#447700>! files of type 'flx' would have if they were included in directory <a name='183'></font>
+<font color=#447700>! ind(i). Then try to open the data file. <a name='184'></font>
+<font color=#447700>!<a name='185'></font>
+<font color=#447700>! If an error occurs when trying to open the file, i.e. it doesn't <a name='186'></font>
+<font color=#447700>! exist in the directory ind(i), go back and read the next directory <a name='187'></font>
+<font color=#447700>! path (i.e. ind(i+1)) in the array, construct the path of the file <a name='188'></font>
+<font color=#447700>! if it is located in directory ind(i+1), and try to open the file. <a name='189'></font>
+<font color=#447700>!<a name='190'></font>
+<font color=#447700>! Keep doing these steps for each directory stored in the array ind <a name='191'></font>
+<font color=#447700>! until the file is found and opened successfully. If the file is <a name='192'></font>
+<font color=#447700>! never found, print an error message and abort run.<a name='193'></font>
+<font color=#447700>!-------------------------------------------------------------------  <a name='194'></font>
+<a name='195'>
+<font color=#447700>!--------------------------------------------------------------------      <a name='196'></font>
+<font color=#447700>!  Note that the notation <a name='197'></font>
+<font color=#447700>!     ind(i)(:ld(i)) <a name='198'></font>
+<font color=#447700>!  below is the same as<a name='199'></font>
+<font color=#447700>!     ind(i)(1:ld(i)) == characters 1-&gt; ld(i) of the ith string<a name='200'></font>
+<font color=#447700>!     in the character array variable ind which has a dimension of 20<a name='201'></font>
+<font color=#447700>!<a name='202'></font>
+<font color=#447700>!  Note also that the notation<a name='203'></font>
+<font color=#447700>!     ind(i)(ld(i):) <a name='204'></font>
+<font color=#447700>!  is the same as           <a name='205'></font>
+<font color=#447700>!     ind(i)(ld(i),20) == characters ld(i) -&gt; 20 of the ith string<a name='206'></font>
+<font color=#447700>!     in the character array variable ind which has a dimension of 20<a name='207'></font>
+<font color=#447700>!--------------------------------------------------------------------     <a name='208'></font>
+<a name='209'>
+      i = 1<a name='210'>
+7     fn = ind(i) (:ld(i))//'flx.'//TRIM(date)<a name='211'>
+<a name='212'>
+      lf = index(fn,' ')-1<a name='213'>
+      call <A href='../../html_code/CGEM_2.0/ickfile.f.html#ICKFILE'>ickfile</A><A href='../../html_code/CGEM_2.0/gEPAflx.f.html#GEPAFLX' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="ICKFILE_3">(fn, ista)  <font color=#447700>! ista =  0, file fn does not exist<a name='214'></font>
+                              <font color=#447700>! ista =  1, file fn exists &amp; is uncompressed<a name='215'></font>
+                              <font color=#447700>! ista = -1, file fn exists &amp; is compressed<a name='216'></font>
+<a name='217'>
+<a name='218'>
+#ifdef DEBUG   <a name='219'>
+       write(6, "(' ')")<a name='220'>
+       IF( ista == 0) then<a name='221'>
+          write(6, "('Since ista = 0, file at end of the path ')")<a name='222'>
+          write(6, "('   fn = ', A)") fn<a name='223'>
+          write(6, "('was not found. Try a different directory but ')")<a name='224'>
+          write(6, "('the same file and see if file is then found. ')")<a name='225'>
+          write(6, "(' ')")<a name='226'>
+       ELSEIF (ista == 1) THEN<a name='227'>
+          write(6, "('Since ista = 1, file at end of the path ')")<a name='228'>
+          write(6, "('   fn = ', A)") fn<a name='229'>
+          write(6, "('was found and is not compressed.')")<a name='230'>
+          write(6, "(' ')")<a name='231'>
+       ELSEIF (ista == -1) THEN<a name='232'>
+          write(6, "('Since ista = -1, file at end of the path ')")<a name='233'>
+          write(6, "('   fn = ', A)") fn<a name='234'>
+          write(6, "('was found and is compressed (.Z).')")<a name='235'>
+          write(6, "(' ')")<a name='236'>
+       ENDIF<a name='237'>
+#endif<a name='238'>
+      <a name='239'>
+<font color=#447700>! ***<a name='240'></font>
+      if (ista.ne.0) goto 8<a name='241'>
+         <font color=#447700>!---------------------------------------------------------------<a name='242'></font>
+         <font color=#447700>! If we get here, ista=0 and the file fn for directory ind(i) <a name='243'></font>
+         <font color=#447700>! does not exist. Try the next directory path ind(i+1) and see <a name='244'></font>
+	 <font color=#447700>! if the hydrodynamics input file with the same type and date <a name='245'></font>
+	 <font color=#447700>! exists in that directory<a name='246'></font>
+         <font color=#447700>!---------------------------------------------------------------       <a name='247'></font>
+      <a name='248'>
+         i = i + 1<a name='249'>
+         IF (i.le.nd) THEN<a name='250'>
+	     goto 7<a name='251'>
+	 ELSE      <a name='252'>
+	    <font color=#447700>!-------------------------------------------------------<a name='253'></font>
+	    <font color=#447700>! If we get here, i &gt; nd and there are no more directory<a name='254'></font>
+	    <font color=#447700>! paths to check for the hydrodynamics input file with <a name='255'></font>
+	    <font color=#447700>! type and date at the end, i.e. the file could not be <a name='256'></font>
+	    <font color=#447700>! found in any of the directories with paths stored in<a name='257'></font>
+	    <font color=#447700>! the ind array. Print an error message and abort run.<a name='258'></font>
+	    <font color=#447700>!-------------------------------------------------------      <a name='259'></font>
+            WRITE (6, "(' ')") 	    <a name='260'>
+            WRITE (6,*) '* In sub.gEPAflx, can not find a flx '<a name='261'>
+            WRITE (6,*) '* input file with flx.',date	    <a name='262'>
+            WRITE (6,*) '* in its name. Below are all the directories'   <a name='263'>
+            WRITE (6,*) '* that were unsuccessfuly checked for the'<a name='264'>
+            WRITE (6,*) '* file: '	    <a name='265'>
+            WRITE (6, "(' ')")	    	               <a name='266'>
+<a name='267'>
+            do i = 1, nd<a name='268'>
+               write (6,*)'  in ', ind(i)(:ld(i))	<a name='269'>
+            end do<a name='270'>
+            WRITE (6, "(' ')") <a name='271'>
+            WRITE (6, "('* Find and fix the problem. Now abort the  ')") 	<a name='272'>
+            WRITE (6, "('* present run ')") <a name='273'>
+            WRITE (6, "(' ')")	    	 	 <a name='274'>
+	 <a name='275'>
+	    STOP<a name='276'>
+	 ENDIF   <font color=#447700>! End of "IF (i.le.nd)" block IF  	 <a name='277'></font>
+<a name='278'>
+<font color=#447700>!-----------------------------------------------------------------<a name='279'></font>
+<font color=#447700>! The next block of code between labels 8 and 9 is for opening the <a name='280'></font>
+<font color=#447700>! unformatted file fn (if it is uncompressed) or decompressing the <a name='281'></font>
+<font color=#447700>! file fn with zcat (if it is compressed) and then opening the <a name='282'></font>
+<font color=#447700>! decompressed file    <a name='283'></font>
+<font color=#447700>!-----------------------------------------------------------------<a name='284'></font>
+<a name='285'>
+8      CONTINUE<a name='286'>
+      <a name='287'>
+       IF (fn .eq. fnb(ity)) goto 9<a name='288'>
+<a name='289'>
+         IF (ista.eq.-1) THEN   <font color=#447700>! file fn is compressed. Remove the<a name='290'></font>
+	                        <font color=#447700>! previously generated file <a name='291'></font>
+				<font color=#447700>! hydro_input.tmp if one exists<a name='292'></font>
+                                <font color=#447700>!-------------------------------------<a name='293'></font>
+                                <font color=#447700>! NOTE THAT: the file<a name='294'></font>
+                                <font color=#447700>!    hydro_input.tmp<a name='295'></font>
+                                <font color=#447700>! ,if it exists, will be in the local<a name='296'></font>
+                                <font color=#447700>! directory where the executable<a name='297'></font>
+                                <font color=#447700>! for this software is being run<a name='298'></font>
+                                <font color=#447700>!--------------------------------------	<a name='299'></font>
+<a name='300'>
+         call system                                                   &amp;<a name='301'>
+	 &amp;    ('if(-e hydro_input.tmp) /bin/rm -f hydro_input.tmp')<a name='302'>
+	 <a name='303'>
+         write (cmd,'(''/bin/zcat '',a,''&gt; hydro_input.tmp'')') fn<a name='304'>
+<a name='305'>
+            call system (cmd)<a name='306'>
+            open (40,err=30,file='hydro_input.tmp',                    &amp;	<a name='307'>
+            &amp;        form='unformatted',status='old')<a name='308'>
+         ELSE<a name='309'>
+            open (40,err=30,file=fn, form='unformatted',status='old')<a name='310'>
+         END IF  <font color=#447700>! End of "if (ista.eq.-1)" block IF  <a name='311'></font>
+	 <a name='312'>
+         rewind(40)<a name='313'>
+      <a name='314'>
+<font color=#447700>!---------------------------------------------------------------<a name='315'></font>
+<font color=#447700>! Read the data on unit 40 for the timelevel associated with the<a name='316'></font>
+<font color=#447700>! variable "date" (without the quotes), i.e. for iYr,iMon,iDay,iHr<a name='317'></font>
+<font color=#447700>!--------------------------------------------------------------- <a name='318'></font>
+         read (40,err=40) u<a name='319'>
+         read (40,err=40) v<a name='320'>
+         read (40,err=40) w<a name='321'>
+      <a name='322'>
+         close(40)<a name='323'>
+      <a name='324'>
+         fnb(ity) = fn<a name='325'>
+<a name='326'>
+         if (ista.eq.-1)  call system                                  &amp;<a name='327'>
+         &amp; ('if(-e hydro_input.tmp) /bin/rm -f hydro_input.tmp')  <a name='328'>
+	      <a name='329'>
+9     CONTINUE<a name='330'>
+      <font color=#447700>!-----------------------------------<a name='331'></font>
+      <font color=#447700>! Copy 1D arrays to 3d output arrays<a name='332'></font>
+      <font color=#447700>!-----------------------------------<a name='333'></font>
+      <a name='334'>
+      ijk = 0      <a name='335'>
+      do ij = 1, no<a name='336'>
+	do k = 1, nsl      <a name='337'>
+	  ijk = ijk + 1<a name='338'>
+	 <a name='339'>
+            ux(io(ij),jo(ij),k) = u(ijk)<a name='340'>
+            vx(io(ij),jo(ij),k) = v(ijk)<a name='341'>
+            wx(io(ij),jo(ij),k) = w(ijk)<a name='342'>
+<a name='343'>
+        end do  <font color=#447700>! End of "do k = 1, nsl" block DO<a name='344'></font>
+      end do    <font color=#447700>! End of "do ij = 1, no" block DO<a name='345'></font>
+                      <a name='346'>
+      istatus = 1<a name='347'>
+<a name='348'>
+#ifdef DEBUG      <a name='349'>
+      WRITE (6, "(' ')")<a name='350'>
+      WRITE (6, "('In subroutine gEPAflx for type = flx,')")<a name='351'>
+      WRITE (6, "(' ')")       <a name='352'>
+#endif<a name='353'>
+<a name='354'>
+      RETURN<a name='355'>
+<a name='356'>
+30    CONTINUE<a name='357'>
+      WRITE (6, "(' ')") <a name='358'>
+      write (6,* )'* In subroutine gEPAflx, can not open: ',fn(:lf)<a name='359'>
+      WRITE (6, "('* Find &amp; fix the problem &amp; rerun. Now abort ')") <a name='360'>
+      WRITE (6, "('* present run. ')")<a name='361'>
+      WRITE (6, "(' ')")       <a name='362'>
+      STOP                  <a name='363'>
+      <a name='364'>
+40    CONTINUE<a name='365'>
+      WRITE (6, "(' ')")<a name='366'>
+      write (6,*)'* In subroutine gEPAflx, error when reading: ',fn(:lf)<a name='367'>
+      WRITE (6, "('* Find &amp; fix the problem &amp; rerun. Now abort ')") <a name='368'>
+      WRITE (6, "('* present run. ')")<a name='369'>
+      WRITE (6, "(' ')")        <a name='370'>
+      STOP                              <a name='371'>
+<a name='372'>
+      END Subroutine gEPAflx <a name='373'>
+<font color=#447700>!*************************************************************************<a name='374'></font>
+</pre></body></html>

@@ -1,0 +1,135 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='ADVNEIGHBORS'><A href='../../html_code/CGEM_2.0/AdvNeighborsOrdered.f.html#ADVNEIGHBORS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>AdvNeighbors</font>(f,myid,my_im,numprocs) <A href='../../call_to/ADVNEIGHBORS.html' TARGET='index'>1</A>,<A href='../../call_from/ADVNEIGHBORS.html' TARGET='index'>2</A><a name='3'>
+ <a name='4'>
+<font color=#447700>!--------------------------------------------------------------------------<a name='5'></font>
+<font color=#447700>! Exchange guard cells for f, need 0 and im+2 <a name='6'></font>
+<font color=#447700>!------------------------------------------------------------------------<a name='7'></font>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/AdvNeighborsOrdered.f.html#ADVNEIGHBORS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_4"><a name='8'>
+      USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/AdvNeighborsOrdered.f.html#ADVNEIGHBORS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_5"><a name='9'>
+<a name='10'>
+      IMPLICIT NONE<a name='11'>
+      include "mpif.h"<a name='12'>
+<a name='13'>
+      integer tag,myid,my_im,numprocs<a name='14'>
+      integer mpierr,i,j,k,ii,status(MPI_STATUS_SIZE)<a name='15'>
+      real f(myim+2,jm,nsl,nf),g(1,jm,nsl,nf)<a name='16'>
+<a name='17'>
+<a name='18'>
+      if(mod(myid,2).eq.0) then  <font color=#447700>!For even numbered processors<a name='19'></font>
+<font color=#447700>!Sending first array to processor below<a name='20'></font>
+        if(myid.ne.0) then<a name='21'>
+         i = 2<a name='22'>
+         tag = 1<a name='23'>
+         do j=1,jm<a name='24'>
+         do k=1,nsl<a name='25'>
+         do ii=1,nf<a name='26'>
+         g(1,j,k,ii) = f(i,j,k,ii)<a name='27'>
+         enddo<a name='28'>
+         enddo<a name='29'>
+         enddo<a name='30'>
+         call MPI_SEND(g,jm*nsl*nf,MPI_REAL,myid-1,tag,MPI_COMM_WORLD,mpierr)<a name='31'>
+       endif<a name='32'>
+<a name='33'>
+       if(myid.ne.(numprocs-1)) then<a name='34'>
+         i = my_im + 2 <a name='35'>
+         tag = 1<a name='36'>
+         call MPI_RECV(g,jm*nsl*nf,MPI_REAL,myid+1,tag,MPI_COMM_WORLD,status,mpierr)<a name='37'>
+        do j=1,jm<a name='38'>
+         do k=1,nsl<a name='39'>
+         do ii=1,nf<a name='40'>
+         f(i,j,k,ii) = g(1,j,k,ii)<a name='41'>
+        enddo<a name='42'>
+        enddo<a name='43'>
+        enddo<a name='44'>
+       endif<a name='45'>
+<a name='46'>
+<font color=#447700>!Sending last array to processor above<a name='47'></font>
+        if(myid.ne.(numprocs-1)) then<a name='48'>
+         i=my_im + 1<a name='49'>
+        tag = 0<a name='50'>
+        do j=1,jm<a name='51'>
+         do k=1,nsl<a name='52'>
+         do ii=1,nf<a name='53'>
+         g(1,j,k,ii) = f(i,j,k,ii)<a name='54'>
+        enddo<a name='55'>
+        enddo<a name='56'>
+        enddo<a name='57'>
+         call MPI_SEND(g,jm*nsl*nf,MPI_REAL,myid+1,tag,MPI_COMM_WORLD,mpierr)<a name='58'>
+       endif<a name='59'>
+<a name='60'>
+       if(myid.ne.0) then<a name='61'>
+         i = 1<a name='62'>
+         tag = 0 <a name='63'>
+         call MPI_RECV(g,jm*nsl*nf,MPI_REAL,myid-1,tag,MPI_COMM_WORLD,status,mpierr)<a name='64'>
+        do j=1,jm<a name='65'>
+         do k=1,nsl<a name='66'>
+         do ii=1,nf<a name='67'>
+         f(i,j,k,ii) = g(1,j,k,ii)<a name='68'>
+        enddo<a name='69'>
+        enddo<a name='70'>
+        enddo<a name='71'>
+       endif<a name='72'>
+<a name='73'>
+      else  <font color=#447700>!Odd numbered processors<a name='74'></font>
+<a name='75'>
+<font color=#447700>!Sending first array to processor below <a name='76'></font>
+       if(myid.ne.(numprocs-1)) then<a name='77'>
+         i = my_im + 2<a name='78'>
+         tag = 1<a name='79'>
+         call MPI_RECV(g,jm*nsl*nf,MPI_REAL,myid+1,tag,MPI_COMM_WORLD,status,mpierr)<a name='80'>
+        do j=1,jm<a name='81'>
+         do k=1,nsl<a name='82'>
+         do ii=1,nf<a name='83'>
+         f(i,j,k,ii) = g(1,j,k,ii)<a name='84'>
+        enddo<a name='85'>
+        enddo<a name='86'>
+        enddo<a name='87'>
+       endif<a name='88'>
+<a name='89'>
+        if(myid.ne.0) then<a name='90'>
+         i=2<a name='91'>
+         tag = 1<a name='92'>
+         do j=1,jm<a name='93'>
+         do k=1,nsl<a name='94'>
+         do ii=1,nf<a name='95'>
+         g(1,j,k,ii) = f(i,j,k,ii)<a name='96'>
+         enddo<a name='97'>
+         enddo<a name='98'>
+         enddo<a name='99'>
+         call MPI_SEND(g,jm*nsl*nf,MPI_REAL,myid-1,tag,MPI_COMM_WORLD,mpierr)<a name='100'>
+       endif<a name='101'>
+<a name='102'>
+<a name='103'>
+<font color=#447700>!Sending last array to processor above <a name='104'></font>
+       if(myid.ne.0) then<a name='105'>
+         i = 1<a name='106'>
+         tag = 0<a name='107'>
+         call MPI_RECV(g,jm*nsl*nf,MPI_REAL,myid-1,tag,MPI_COMM_WORLD,status,mpierr)<a name='108'>
+        do j=1,jm<a name='109'>
+         do k=1,nsl<a name='110'>
+         do ii=1,nf<a name='111'>
+         f(i,j,k,ii) = g(1,j,k,ii)<a name='112'>
+        enddo<a name='113'>
+        enddo<a name='114'>
+        enddo<a name='115'>
+       endif<a name='116'>
+<a name='117'>
+        if(myid.ne.(numprocs-1)) then<a name='118'>
+         i = my_im + 1<a name='119'>
+        tag = 0<a name='120'>
+        do j=1,jm<a name='121'>
+         do k=1,nsl<a name='122'>
+         do ii=1,nf<a name='123'>
+         g(1,j,k,ii) = f(i,j,k,ii)<a name='124'>
+        enddo<a name='125'>
+        enddo<a name='126'>
+        enddo<a name='127'>
+         call MPI_SEND(g,jm*nsl*nf,MPI_REAL,myid+1,tag,MPI_COMM_WORLD,mpierr)<a name='128'>
+       endif<a name='129'>
+ <a name='130'>
+      endif<a name='131'>
+<a name='132'>
+      RETURN<a name='133'>
+      END Subroutine AdvNeighbors <a name='134'>
+</pre></body></html>

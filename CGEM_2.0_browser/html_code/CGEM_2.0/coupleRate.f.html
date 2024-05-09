@@ -1,0 +1,2668 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!     Last change:  PME  17 Jan 2008    6:30 pm<a name='2'></font>
+<font color=#447700>!<a name='3'></font>
+<font color=#447700>!   PROGRAMMED by Dr. PETER M. ELDRIDGE, The initial archtecture of this<a name='4'></font>
+<font color=#447700>!   program was developed by Dr. Bernard P. Boudreau for OM and O2.<a name='5'></font>
+<font color=#447700>!   The program has been revised to include the other constituents below<a name='6'></font>
+<font color=#447700>!   variable porosity, and various input option. The reaction scheme<a name='7'></font>
+<font color=#447700>!   was revised from Dr. P. Vancapellen with help from Dr. John Morse.<a name='8'></font>
+<font color=#447700>!   CO2 system is from Whitfield and Turner.<a name='9'></font>
+<font color=#447700>!<a name='10'></font>
+<font color=#447700>!   New formulation from CANDI (Boudreau, 1997) for Tortuousty<a name='11'></font>
+<font color=#447700>!   relating it to porosity is now included in this model. To reduce<a name='12'></font>
+<font color=#447700>!   the number of free parameters in the model, we are assuming<a name='13'></font>
+<font color=#447700>!   'steady state' compaction.<a name='14'></font>
+<font color=#447700>! <a name='15'></font>
+<font color=#447700>!<a name='16'></font>
+<font color=#447700>!	Solves  DIAGENETIC Model with a finite <a name='17'></font>
+<font color=#447700>!	differencing using the depth variable x.<a name='18'></font>
+<font color=#447700>!       includes:<a name='19'></font>
+<font color=#447700>!            OM1    - organic matter 1<a name='20'></font>
+<font color=#447700>!            OM2    - organic matter 2<a name='21'></font>
+<font color=#447700>!            DOM    - dissolved organic matter<a name='22'></font>
+<font color=#447700>!            O2     - oxygen<a name='23'></font>
+<font color=#447700>!            NO3-   - nitrate<a name='24'></font>
+<font color=#447700>!            NH3    - ammonia<a name='25'></font>
+<font color=#447700>!            MnO2   - Manganese solid<a name='26'></font>
+<font color=#447700>!            Mn+2   - Manganese porewater<a name='27'></font>
+<font color=#447700>!            Fe+3   - ferric<a name='28'></font>
+<font color=#447700>!            Fe+2   - ferrous<a name='29'></font>
+<font color=#447700>!            SO4-2  - sulfate<a name='30'></font>
+<font color=#447700>!            HS-    - sulfide<a name='31'></font>
+<font color=#447700>!            FeS    - pyrite<a name='32'></font>
+<font color=#447700>!            TC     - Total inorganoc carbon<a name='33'></font>
+<font color=#447700>!            ALK    - Carbonate alkalinity<a name='34'></font>
+<font color=#447700>!<a name='35'></font>
+<font color=#447700>!	- irrigation can occur and is modelled as a nonlocal<a name='36'></font>
+<font color=#447700>!	  sink/source as per Boudreau (1984, JMR)<a name='37'></font>
+<font color=#447700>!	- transport processes for solutes are molecular diffusion, <a name='38'></font>
+<font color=#447700>!	  bioturbation, advection (burial) and irrigation<a name='39'></font>
+<font color=#447700>!	- transport processes for solids are bioturbation and burial<a name='40'></font>
+<font color=#447700>!<a name='41'></font>
+<font color=#447700>!	UNITS<a name='42'></font>
+<font color=#447700>!<a name='43'></font>
+<font color=#447700>!		- LENGTHS in CM<a name='44'></font>
+<font color=#447700>!		- TIME in YEARS <a name='45'></font>
+<font color=#447700>!		- CONC. of porewater in Micro-MOLES/CC of porewater<a name='46'></font>
+<font color=#447700>!		- CONC. of Organic Matter in % OF SOLIDS<a name='47'></font>
+<font color=#447700>!		- FLUX of Organic Matter in Micro-Mole/(cm^2)/yr<a name='48'></font>
+<a name='49'>
+<a name='50'>
+<font color=#447700>!<a name='51'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='52'></font>
+<font color=#447700>!  SUBROUTINE CASES: provides initial conditions from a steady state<a name='53'></font>
+<font color=#447700>!  model than at each designated output time provides a new input vector<a name='54'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='55'></font>
+<font color=#447700>!<a name='56'></font>
+<font color=#447700>!<a name='57'></font>
+<a name='58'>
+<A NAME='CASES'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#CASES' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='59'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>CASES</font>(value1,value2,Y,ISTATE,IFLAG,Ainp,myid,numprocs,   &amp; <A href='../../call_to/CASES.html' TARGET='index'>1</A>,<A href='../../call_from/CASES.html' TARGET='index'>2</A><a name='60'>
+     &amp; YY_init,ppH_init)<a name='61'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='62'>
+      EXTERNAL FEX2,JEX<a name='63'>
+      INTEGER IWORK,LRW,LIW,MU,ML,ITASK,ISTATE,IOPT,ITOL,IPAR<a name='64'>
+      INTEGER myid, numprocs<a name='65'>
+      PARAMETER (MAXNEQ=27000)<a name='66'>
+      PARAMETER (NSPECIES=17)<a name='67'>
+      PARAMETER (NCOMPART=17)<a name='68'>
+      PARAMETER (MXSTEP =30000)<a name='69'>
+      PARAMETER (MU=NCOMPART,ML=MU)<a name='70'>
+      PARAMETER (LRW=22+11*MAXNEQ+(3*ML+2*MU)*MAXNEQ)<a name='71'>
+C     PARAMETER (LRW=22+9*MAXNEQ+2*MAXNEQ**2)<a name='72'>
+      PARAMETER (LIW=30+MAXNEQ)<a name='73'>
+      DIMENSION Y(MAXNEQ),RWORK(LRW),IWORK(LIW),RPAR(MAXNEQ)<a name='74'>
+      DIMENSION YY(MAXNEQ),pH(2000),ppH(2000)<a name='75'>
+      DIMENSION Ainp(100)<a name='76'>
+      COMMON /SPECIES/ NS,NPOINTS<a name='77'>
+      COMMON /SROOT/ ZROOT, WROOT<a name='78'>
+      COMMON /TEMPERATURE/ TEMP, SAL, PRESS,pH0<a name='79'>
+      COMMON /GETY/ YY<a name='80'>
+      COMMON /pHes/ pH<a name='81'>
+      COMMON /GRIDPOINT/ NEQ<a name='82'>
+      COMMON /GETPH/ ppH<a name='83'>
+<a name='84'>
+<a name='85'>
+      NS = NSPECIES<a name='86'>
+      ITOL = 1<a name='87'>
+      RTOL = 1.0D-03<a name='88'>
+      ATOL = 1.0D-08<a name='89'>
+      ITASK = 1<a name='90'>
+      ISTATE = 1<a name='91'>
+      IOPT = 1<a name='92'>
+      IWORK(1) = ML<a name='93'>
+      IWORK(2) = MU<a name='94'>
+      MF = 25<a name='95'>
+      IWORK(6) = MXSTEP<a name='96'>
+<a name='97'>
+      IF (IFLAG .EQ. 1) THEN<a name='98'>
+        CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#FILEDATA2'>FILEDATA2</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#CASES' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="FILEDATA2_1">(RPAR,Ainp)<a name='99'>
+        DO I=1, NEQ<a name='100'>
+           Y(I)= YY(I)<a name='101'>
+        ENDDO<a name='102'>
+        IFLAG = 0<a name='103'>
+      ENDIF<a name='104'>
+<a name='105'>
+<a name='106'>
+<font color=#447700>!<a name='107'></font>
+<font color=#447700>! -------- provide new T and tout<a name='108'></font>
+<font color=#447700>!<a name='109'></font>
+<a name='110'>
+      T= value1<a name='111'>
+      TOUT= value2<a name='112'>
+<a name='113'>
+<font color=#447700>!<a name='114'></font>
+<font color=#447700>! --------  Provide pH profile <a name='115'></font>
+<font color=#447700>!<a name='116'></font>
+        DO I=1,NPOINTS<a name='117'>
+           pH(I) = ppH(I)<a name='118'>
+        ENDDO<a name='119'>
+<a name='120'>
+<font color=#447700>!----- Get DATA forthe water-column model<a name='121'></font>
+<a name='122'>
+<a name='123'>
+      CALL <A href='../../html_code/CGEM_2.0/vode.f.html#DVODE'>DVODE</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#CASES' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DVODE_1">(FEX2,NEQ,Y,T,TOUT,ITOL,RTOL,ATOL,ITASK,<a name='124'>
+     #    ISTATE,IOPT,RWORK,LRW,IWORK,LIW,JEX,MF,RPAR,IPAR)<a name='125'>
+<a name='126'>
+<a name='127'>
+      RETURN<a name='128'>
+      END<a name='129'>
+<a name='130'>
+<font color=#447700>!<a name='131'></font>
+<font color=#447700>!  FEX2	CONTAINS THE EQUATIONS TO BE SOLVED AT EACH POINT<a name='132'></font>
+<font color=#447700>!		FOR THE "PRESCRIBED FLUX" BOUNDARY OM1 AND OM2<a name='133'></font>
+<font color=#447700>!		CONDITION (X=0) FOR THE ORGANIC MATTER TYPES<a name='134'></font>
+      <a name='135'>
+<a name='136'>
+<A NAME='FEX2'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='137'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>FEX2</font>(NEQ,T,Y,YDOT,RPAR,IPAR),<A href='../../call_from/FEX2.html' TARGET='index'>82</A><a name='138'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='139'>
+      REAL*8 NO30,NH30,IRRIG,NH3I,MnO0,Mn20,O20,KANH4, KADS_p <a name='140'>
+      PARAMETER (MAXNEQ=27000)<a name='141'>
+      DIMENSION Y(NEQ),YDOT(NEQ),RATE(MAXNEQ)<a name='142'>
+      DIMENSION POROVEC(1500),rIRRO2(1500),rIRRTC(1500)<a name='143'>
+      DIMENSION rIRRNO(1500),rIRRNH(1500),rIRRSO(1500)<a name='144'>
+      DIMENSION RPAR(*)<a name='145'>
+      DIMENSION Rc(25)<a name='146'>
+      DIMENSION pH(2000),dy(2),FLUXES(9)<a name='147'>
+<a name='148'>
+      COMMON /SPECIES/ NS,NPOINTS<a name='149'>
+      COMMON /DEPTH/ XL,DH<a name='150'>
+      COMMON /TEMPERATURE/ TEMP, SAL, PRESS, pH0<a name='151'>
+      COMMON /MIX/ X1,X2<a name='152'>
+      COMMON /BIOT/ Db0<a name='153'>
+      COMMON /ADVEC/ W00<a name='154'>
+      COMMON /CONC/ DO20,NO30,NH30,SO40,HS0,NH3I<a name='155'>
+      COMMON /DESORB/ KANH4<a name='156'>
+      COMMON /CONC2/ MNO0,MN20,FE30,FE20,FES0,TC0,ALK0,DOM0,DOMI<a name='157'>
+      COMMON /DIFF/ DO2,DNO3,DNH3,DMN2,DFE2,DSO4,DHS,DTC,DALK<a name='158'>
+      COMMON /FLUXCOMMON/   FG1,FG2<a name='159'>
+      COMMON /SEDFLUX/ FLUXES<a name='160'>
+      COMMON /DISSOL/ a, PER_DIS<a name='161'>
+      COMMON /IRRIG/ ALPHAA,XIRRIG<a name='162'>
+      COMMON /FIRRG/ rIRRO2,rIRRTC,rIRRNO,rIRRNH,rIRRSO<a name='163'>
+<a name='164'>
+      COMMON /RATES/ RATE<a name='165'>
+      COMMON /pHes/ pH<a name='166'>
+<a name='167'>
+<a name='168'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/<a name='169'>
+      DATA FOUR/4.0D+00/,FIVE/5.0D+00/<a name='170'>
+<a name='171'>
+<a name='172'>
+      X = ZERO<a name='173'>
+      NPM1 = NPOINTS - 1<a name='174'>
+<a name='175'>
+      Os =  Y(16)    <font color=#447700>! gets the above ground biomass from vector<a name='176'></font>
+      Ob =  Y(17)    <font color=#447700>! gets the above ground biomass from vector<a name='177'></font>
+<a name='178'>
+      tt = t*365.+ 1           <font color=#447700>! gets relative time + 1 -&gt; dplant hates 0<a name='179'></font>
+      iday  = int(tt)<a name='180'>
+<a name='181'>
+      O20 = DO20<a name='182'>
+<a name='183'>
+<a name='184'>
+<font color=#447700>!     write(*,'(A4,2X,f12.2)') 'O2O',O20  ! check HS concentration<a name='185'></font>
+<font color=#447700>! Apply Q10 relationship to the irrigation parameter<a name='186'></font>
+<font color=#447700>!<a name='187'></font>
+<font color=#447700>!L3  Set dtemp as it is undefined<a name='188'></font>
+      dtemp = 25.<a name='189'>
+<font color=#447700>!      dtemp = 0.<a name='190'></font>
+<font color=#447700>!L3  end change<a name='191'></font>
+<a name='192'>
+      Tq1 = TEMP<a name='193'>
+      Tq2 = dtemp<a name='194'>
+      ALPHA0 = ALPHAA*exp(0.06*(Tq2-Tq1))<a name='195'>
+<a name='196'>
+<font color=#447700>!<a name='197'></font>
+<font color=#447700>!  Provide values and derivatives for porosity and tortuosity<a name='198'></font>
+<font color=#447700>!<a name='199'></font>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SED'>SED</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SED_1">(X,P,DPDX,U,W)<a name='200'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#TORT2'>TORT2</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TORT2_1">(T2,DT2DX,P,DPDX,X)<a name='201'>
+       PS = ONE - P<a name='202'>
+       F=   PS/P         <font color=#447700>! conversion dissolved to solids<a name='203'></font>
+       SW = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG'>SIG</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SIG_1">(X,U)<a name='204'>
+       SS = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG'>SIG</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SIG_2">(X,W)<a name='205'>
+       AGST = ONE/PS*(-DPDX*DB0+PS*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_1">(X)-PS*W)<a name='206'>
+       DDOM = DHS/TWO    <font color=#447700>! Estimate of DOM molecular diffusion <a name='207'></font>
+<font color=#447700>!    <a name='208'></font>
+<font color=#447700>!   Need C0 concentration from calculated from flux information<a name='209'></font>
+<font color=#447700>!<a name='210'></font>
+      GM1 = Y(18) + TWO*DH*(FG1-PS*W*Y(1))/PS/DB0<a name='211'>
+      GM2 = Y(19) + TWO*DH*(FG2-PS*W*Y(2))/PS/DB0<a name='212'>
+<a name='213'>
+        TESTOM1   = GM1<a name='214'>
+        TESTOM2   = GM2	<a name='215'>
+        TESTO2    = DO20<a name='216'>
+        TESTNIT   = NO30<a name='217'>
+        TESTNH3   = NH30<a name='218'>
+        TESTMNO   = MnO0<a name='219'>
+        TESTMN2   = Mn20<a name='220'>
+        TESTFE3   = FE30<a name='221'>
+        TESTFE2   = FE20<a name='222'>
+        TESTSO4   = SO40<a name='223'>
+        TESTTS    = HS0<a name='224'>
+        TESTFES   = FES0<a name='225'>
+        TESTTC    = TC0 <a name='226'>
+        TESTALK   = ALK0<a name='227'>
+        TESTDOM   = DOM0<a name='228'>
+<a name='229'>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM'>REACTION_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_SDM_1">(TESTOM1,TESTOM2,TESTDOM,TESTO2,TESTNIT,TESTNH3,<a name='230'>
+     *   TESTSO4,TESTTS,TESTFE3,TESTFE2,TESTMNO,TESTMN2,TESTFES,<a name='231'>
+     *   TESTTC,TESTALK,Rc,pH(1),F,dtemp)<a name='232'>
+<a name='233'>
+        RCH2O1= Rc(1)<a name='234'>
+        RCH2O2= Rc(2)<a name='235'>
+        RDOM=   Rc(3)<a name='236'>
+        RO2=    Rc(4)<a name='237'>
+        RNO3=   Rc(5)<a name='238'>
+        RNH4=   Rc(6)<a name='239'>
+        RMNO=   Rc(7)<a name='240'>
+        RMN2=   Rc(8)<a name='241'>
+        RFEOH3= Rc(9)<a name='242'>
+        RFE2=   Rc(10)<a name='243'>
+        RSO4=   Rc(12)<a name='244'>
+        RTS=    Rc(13)<a name='245'>
+        RFES=   Rc(11)<a name='246'>
+        RTC=    Rc(14)<a name='247'>
+        RALK=   Rc(15)<a name='248'>
+<a name='249'>
+<a name='250'>
+C.......................................................................<a name='251'>
+         totOM   = TESTOM1 + TESTOM2<a name='252'>
+         disOM1  = TESTOM1*PER_DIS*(ONE-DEXP(-DB0*a)) <a name='253'>
+         disOM2  = TESTOM2*PER_DIS*(ONE-DEXP(-DB0*a))<a name='254'>
+         disOM   = disOM1+disOM2<a name='255'>
+C<a name='256'>
+C OM1<a name='257'>
+C<a name='258'>
+      DIFF1 = DB0*(Y(18)-TWO*Y(1)+GM1)/DH/DH<a name='259'>
+      DGDX = (FG1-PS*W*Y(1))/PS/DB0<a name='260'>
+      ADV1 = AGST*DGDX<a name='261'>
+      YDOT(1) = DIFF1 + ADV1 + RCH2O1-disOM1<a name='262'>
+      RATE(1) = RCH2O1<a name='263'>
+C<a name='264'>
+C OM2<a name='265'>
+      DIFF1 = DB0*(Y(19)-TWO*Y(2)+GM2)/DH/DH<a name='266'>
+      DGDX = (FG2-PS*W*Y(2))/PS/DB0<a name='267'>
+      ADV1 = AGST*DGDX<a name='268'>
+      YDOT(2) = DIFF1 + ADV1 + RCH2O2-disOM2<a name='269'>
+      RATE(2) = RCH2O2<a name='270'>
+C      FOM= FOM1 + FOM2<a name='271'>
+C<a name='272'>
+C  Transport equations Grid-Point 1<a name='273'>
+C<a name='274'>
+       X = RPAR(1)<a name='275'>
+C<a name='276'>
+C  Provide values and derivatives for porosity and tortuosity<a name='277'>
+C<a name='278'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SED'>SED</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SED_2">(X,P,DPDX,U,W)<a name='279'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#TORT2'>TORT2</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TORT2_2">(T2,DT2DX,P,DPDX,X)<a name='280'>
+       PS = ONE - P<a name='281'>
+       F=   PS/P          <font color=#447700>! conversion dissolved to solids<a name='282'></font>
+       SW = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG'>SIG</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SIG_3">(X,U)<a name='283'>
+       SS = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG'>SIG</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SIG_4">(X,W)<a name='284'>
+C<a name='285'>
+C  Provides advective coefficents for solid and porewater species that<a name='286'>
+C  is general for all species at grid-point X.<a name='287'>
+C<a name='288'>
+       AGTG = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_1">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_2">(X) - P*U<a name='289'>
+       AGST = -DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_2">(X)+PS*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_3">(X)-PS*W<a name='290'>
+       ADVC = ONE/(T2**TWO)*(T2*DPDX-P*DT2DX)  <font color=#447700>! Expansion of diffusion terms (PWater)<a name='291'></font>
+C<a name='292'>
+C  Provide input for the reaction for the second grid point<a name='293'>
+C<a name='294'>
+       TESTOM1   = Y(1)<a name='295'>
+       TESTOM2   = Y(2)<a name='296'>
+       TESTO2    = Y(3)<a name='297'>
+       TESTNIT   = Y(4)<a name='298'>
+       TESTNH3   = Y(5)<a name='299'>
+       TESTMNO   = Y(6)<a name='300'>
+       TESTMN2   = Y(7)<a name='301'>
+       TESTFE3   = Y(8)<a name='302'>
+       TESTFE2   = Y(9)<a name='303'>
+       TESTSO4   = Y(10)<a name='304'>
+       TESTTS    = Y(11)<a name='305'>
+       TESTFES   = Y(12)<a name='306'>
+       TESTTC    = Y(13)<a name='307'>
+       TESTALK   = Y(14)<a name='308'>
+       TESTDOM   = Y(15)<a name='309'>
+C  711  format(5 f9.3)<a name='310'>
+C.......................................................................<a name='311'>
+<font color=#447700>!L3 "I" undefined, I will set it to one:<a name='312'></font>
+<font color=#447700>!      I = 1<a name='313'></font>
+       I = 0<a name='314'>
+<font color=#447700>!L3 end modification<a name='315'></font>
+<font color=#447700>!Sed pH to 1<a name='316'></font>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM'>REACTION_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_SDM_2"> (TESTOM1,TESTOM2,TESTDOM,TESTO2,TESTNIT,TESTNH3,<a name='317'>
+     *   TESTSO4,TESTTS,TESTFE3,TESTFE2,TESTMNO,TESTMN2,TESTFES,<a name='318'>
+     *   TESTTC,TESTALK,Rc,pH(1),F,dtemp)<a name='319'>
+        RCH2O1= Rc(1)<a name='320'>
+        RCH2O2= Rc(2)<a name='321'>
+        RDOM=   Rc(3)<a name='322'>
+        RO2=    Rc(4)<a name='323'>
+        RNO3=   Rc(5)<a name='324'>
+        RNH4=   Rc(6)<a name='325'>
+        RMNO=   Rc(7)<a name='326'>
+        RMN2=   Rc(8)<a name='327'>
+        RFEOH3= Rc(9)<a name='328'>
+        RFE2=   Rc(10)<a name='329'>
+        RSO4=   Rc(11)<a name='330'>
+        RTS=    Rc(12)<a name='331'>
+        RFES=   Rc(13)<a name='332'>
+        RTC=    Rc(14)<a name='333'>
+        RALK=   Rc(15)<a name='334'>
+        totOM   = TESTOM1 + TESTOM1<a name='335'>
+C<a name='336'>
+C O2<a name='337'>
+C<a name='338'>
+      FO2= DO2/T2*P*(Y(3) - Y(37))/TWO/DH + U*P*Y(20)<a name='339'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_3">(X)+DO2/T2)*(Y(20)-TWO*Y(3)+O20)/DH/DH<a name='340'>
+      DGDX = ((ONE-SW)*Y(20)+TWO*SW*Y(3)-(ONE+SW)*O20)/TWO/DH<a name='341'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='342'>
+      IF (X.LE.XIRRIG) THEN <a name='343'>
+         IRRIG = ALPHA0*(O20-Y(3))<a name='344'>
+      ELSE<a name='345'>
+         IRRIG = ZERO<a name='346'>
+      ENDIF<a name='347'>
+      YDOT(3) = DIFF2+ADV2+IRRIG+RO2<a name='348'>
+      RATE(3) = RO2<a name='349'>
+      rIRRO2(1) =IRRIG*DH<a name='350'>
+C <a name='351'>
+C NO3<a name='352'>
+      FNO3= DNO3/T2*P*(Y(4) - Y(38))/TWO/DH + W*P*Y(21)<a name='353'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_4">(X)+DNO3/T2)*(Y(21)-TWO*Y(4)+NO30)/DH/DH<a name='354'>
+      DGDX = ((ONE-SW)*Y(21)+TWO*SW*Y(4)-(ONE+SW)*NO30)/TWO/DH<a name='355'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='356'>
+      IF(X.LE.XIRRIG) THEN <a name='357'>
+         IRRIG = ALPHA0*(NO30-Y(4))<a name='358'>
+      ELSE<a name='359'>
+         IRRIG = ZERO<a name='360'>
+      ENDIF<a name='361'>
+      YDOT(4) = DIFF2 + ADV2 + IRRIG + RNO3<a name='362'>
+      RATE(4) = RNO3<a name='363'>
+      rIRRNO(1) =IRRIG*DH<a name='364'>
+C<a name='365'>
+C NH3<a name='366'>
+<font color=#447700>!     FNH3= DNH3/T2*(Y(5) - Y(39))/TWO/DH + U*P*Y(22)<a name='367'></font>
+<font color=#447700>!     DIFF2 = (DB(X)+DNH3/T2)*(Y(22)-TWO*Y(5)+NH30)/DH/DH<a name='368'></font>
+<font color=#447700>!     DGDX = ((ONE-SW)*Y(22)+TWO*SW*Y(5)-(ONE+SW)*NH30)/TWO/DH<a name='369'></font>
+<font color=#447700>!     ADV2 = (AGTG + ADVC)/P*DGDX<a name='370'></font>
+<font color=#447700>!     IF(X.LE.XIRRIG) THEN <a name='371'></font>
+<font color=#447700>!        IRRIG = ALPHA0*(NH3I-Y(5))<a name='372'></font>
+<font color=#447700>!     ELSE<a name='373'></font>
+<font color=#447700>!        IRRIG = ZERO<a name='374'></font>
+<font color=#447700>!     ENDIF<a name='375'></font>
+<font color=#447700>!     YDOT(5) = DIFF2 + ADV2 + IRRIG + RNH4<a name='376'></font>
+<font color=#447700>!     RATE(5) = RNH4<a name='377'></font>
+<font color=#447700>!     rIRRNH(1) =IRRIG*DH<a name='378'></font>
+<a name='379'>
+C NH3<a name='380'>
+      FNH3= DNH3/T2*(Y(5) - Y(39))/TWO/DH + U*P*Y(22)<a name='381'>
+      KADS_p = PS/P*KANH4<a name='382'>
+      DIFF2 = ONE/(ONE+KADS_p)*(KADS_p*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_5">(X)+DNH3/T2)*<a name='383'>
+     *       (Y(22)-TWO*Y(5)+NH30)/DH/DH<a name='384'>
+      DGDX = ((ONE-SW)*Y(22)+TWO*SW*Y(5)-(ONE+SW)*NH30)/TWO/DH<a name='385'>
+      AGAD = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_6">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_4">(X) - (P*U+ KADS_p*W)<a name='386'>
+      ADV2 = (AGAD + ADVC)/P*DGDX<a name='387'>
+      IRRIG = ALPHA0*(NH3I-Y(5))<a name='388'>
+      YDOT(5) = DIFF2 + ADV2 + IRRIG + RNH4<a name='389'>
+      RATE(5) = RNH4<a name='390'>
+      rIRRNH(1) =IRRIG*DH<a name='391'>
+<a name='392'>
+C<a name='393'>
+C MnO2 (SOLID PHASE)<a name='394'>
+      FMnO= DB0*PS*(Y(6) -Y(40))/TWO/DH + W*PS*Y(23)<a name='395'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_7">(X)*(Y(23)-TWO*Y(6)+MNO0)/DH/DH<a name='396'>
+      DGDX = ((ONE-SS)*Y(23)+TWO*SS*Y(6)-(ONE+SS)*MNO0)/TWO/DH<a name='397'>
+      ADV1 = AGST/PS*DGDX    <a name='398'>
+      YDOT(6) =  DIFF1 + ADV1 + RMNO<a name='399'>
+      RATE(6) =  RFEOH3<a name='400'>
+C<a name='401'>
+C.......................................................................<a name='402'>
+C MN+2 (DISSOLVED PHASE)<a name='403'>
+      FMN2= DMN2*P*(Y(7) - Y(41))/TWO/DH + U*P*Y(24)<a name='404'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_8">(X)+DMN2/T2)*(Y(24)-TWO*Y(7)+MN20)/DH/DH<a name='405'>
+      DGDX = ((ONE-SW)*Y(24)+TWO*SW*Y(7)-(ONE+SW)*MN20)/TWO/DH<a name='406'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='407'>
+      IF(X.LE.XIRRIG) THEN <a name='408'>
+         IRRIG = ALPHA0*(MN20-Y(7))<a name='409'>
+      ELSE<a name='410'>
+         IRRIG = ZERO<a name='411'>
+      ENDIF<a name='412'>
+      YDOT(7) = DIFF2+ADV2+IRRIG+RMN2<a name='413'>
+      RATE(7) = RFE2<a name='414'>
+<a name='415'>
+C FE+3 (SOLID PHASE)<a name='416'>
+      FFE3= DB0*PS*(Y(8) -Y(42))/TWO/DH + W*PS*Y(25)<a name='417'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_9">(X)*(Y(25)-TWO*Y(8)+FE30)/DH/DH<a name='418'>
+      DGDX = ((ONE-SS)*Y(25)+TWO*SS*Y(8)-(ONE+SS)*FE30)/TWO/DH<a name='419'>
+      ADV1 = AGST/PS*DGDX    <a name='420'>
+      YDOT(8) =  DIFF1 + ADV1 + RFEOH3<a name='421'>
+      RATE(8) =  RFEOH3<a name='422'>
+C<a name='423'>
+C.......................................................................<a name='424'>
+C FE+2 (DISSOLVED PHASE) <a name='425'>
+      FFE2= DFE2*P*(Y(9) - Y(43))/TWO/DH + U*P*Y(26)<a name='426'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_10">(X)+DFE2/T2)*(Y(26)-TWO*Y(9)+FE20)/DH/DH<a name='427'>
+      DGDX = ((ONE-SW)*Y(26)+TWO*SW*Y(9)-(ONE+SW)*FE20)/TWO/DH<a name='428'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='429'>
+      IF(X.LE.XIRRIG) THEN <a name='430'>
+         IRRIG = ALPHA0*(FE20-Y(9))<a name='431'>
+      ELSE<a name='432'>
+         IRRIG = ZERO<a name='433'>
+      ENDIF<a name='434'>
+      YDOT(9) = DIFF2+ADV2+IRRIG+RFE2<a name='435'>
+      RATE(9) = RFE2<a name='436'>
+<a name='437'>
+C<a name='438'>
+C SO4--<a name='439'>
+      FSO4= DSO4/T2*P*(Y(10) - Y(44))/TWO/DH + U*P*Y(27)<a name='440'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_11">(X)+DSO4/T2)*(Y(27)-TWO*Y(10)+SO40)/DH/DH<a name='441'>
+      DGDX = ((ONE-SW)*Y(27)+TWO*SW*Y(10)-(ONE+SW)*SO40)/TWO/DH<a name='442'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='443'>
+      IF(X.LE.XIRRIG) THEN <a name='444'>
+         IRRIG = ALPHA0*(SO40-Y(10))<a name='445'>
+      ELSE<a name='446'>
+         IRRIG = ZERO<a name='447'>
+      ENDIF<a name='448'>
+      YDOT(10) = DIFF2+ADV2+IRRIG+RSO4<a name='449'>
+      RATE(10) = RSO4<a name='450'>
+      rIRRSO(1) =IRRIG*DH<a name='451'>
+C<a name='452'>
+C TS <a name='453'>
+      FHS= DHS/T2*P*(Y(11) - Y(45))/TWO/DH + U*P*Y(28)<a name='454'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_12">(X)+DHS/T2)*(Y(28)-TWO*Y(11)+HS0)/DH/DH<a name='455'>
+      DGDX = ((ONE-SW)*Y(28)+TWO*SW*Y(11)-(ONE+SW)*HS0)/TWO/DH<a name='456'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='457'>
+      IF(X.LE.XIRRIG) THEN <a name='458'>
+          IRRIG = ALPHA0*(HS0-Y(11))<a name='459'>
+      ELSE<a name='460'>
+          IRRIG = ZERO<a name='461'>
+      ENDIF<a name='462'>
+      YDOT(11)=  DIFF2+ADV2+IRRIG+RTS<a name='463'>
+      RATE(11) = RTS<a name='464'>
+C<a name='465'>
+<a name='466'>
+C<a name='467'>
+C FES  (SOLID PHASE)<a name='468'>
+      FFES= DB0*PS*(Y(12) -Y(46))/TWO/DH + W*PS*Y(29)<a name='469'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_13">(X)*(Y(29)-TWO*Y(12)+FES0)/DH/DH<a name='470'>
+      DGDX = ((ONE-SS)*Y(29)+TWO*SS*Y(12)-(ONE+SS)*FES0)/TWO/DH<a name='471'>
+       ADV1 = AGST/PS*DGDX    <a name='472'>
+      YDOT(12) = DIFF1 + ADV1 + RFES<a name='473'>
+      RATE(12) = RFES<a name='474'>
+C<a name='475'>
+C TC<a name='476'>
+C<a name='477'>
+      FDIC= DTC/T2*P*(Y(13) - Y(47))/TWO/DH + U*P*Y(30)<a name='478'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_14">(X)+DTC/T2)*(Y(30)-TWO*Y(13)+TC0)/DH/DH<a name='479'>
+      DGDX = ((ONE-SW)*Y(30)+TWO*SW*Y(13)-(ONE+SW)*TC0)/TWO/DH<a name='480'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='481'>
+      IF(X.LE.XIRRIG) THEN <a name='482'>
+         IRRIG = ALPHA0*(TC0-Y(13))<a name='483'>
+      ELSE<a name='484'>
+         IRRIG = ZERO<a name='485'>
+      ENDIF<a name='486'>
+      YDOT(13) = DIFF2+ADV2+IRRIG+RTC<a name='487'>
+      RATE(13) = RTC<a name='488'>
+      rIRRTC(1) =IRRIG*DH<a name='489'>
+C<a name='490'>
+C ALKALINITY<a name='491'>
+C <a name='492'>
+      FALK= DALK/T2*P*(Y(14) - Y(48))/TWO/DH + U*P*Y(31)<a name='493'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_15">(X)+DALK/T2)*(Y(31)-TWO*Y(14)+ALK0)/DH/DH<a name='494'>
+      DGDX = ((ONE-SW)*Y(31)+TWO*SW*Y(14)-(ONE+SW)*ALK0)/TWO/DH<a name='495'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='496'>
+      IF(X.LE.XIRRIG) THEN <a name='497'>
+          IRRIG = ALPHA0*(ALK0-Y(14))<a name='498'>
+      ELSE<a name='499'>
+          IRRIG = ZERO<a name='500'>
+      ENDIF<a name='501'>
+      YDOT(14)=  DIFF2+ADV2+IRRIG+RALK<a name='502'>
+      RATE(14) = pH(1)<a name='503'>
+<font color=#447700>!<a name='504'></font>
+<font color=#447700>!  DOC (DISSOLVED PHASE) <a name='505'></font>
+<font color=#447700>!......................................................................<a name='506'></font>
+      FDOM= DDOM*P/T2*(Y(15) - Y(49))/TWO/DH + U*P*Y(32)<a name='507'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_16">(X)+DDOM/T2)*(Y(32)-TWO*Y(15)+DOM0)/DH/DH<a name='508'>
+      DGDX = ((ONE-SW)*Y(32)+TWO*SW*Y(15)-(ONE+SW)*DOM0)/TWO/DH<a name='509'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='510'>
+      IF(X.LE.XIRRIG) THEN <a name='511'>
+         IRRIG = ALPHA0*(DOMI-Y(15))<a name='512'>
+      ELSE<a name='513'>
+         IRRIG = ZERO<a name='514'>
+      ENDIF<a name='515'>
+      YDOT(15) = DIFF2+ADV2+IRRIG+RDOM+disOM<a name='516'>
+      RATE(15) = RDOM<a name='517'>
+<a name='518'>
+<font color=#447700>!<a name='519'></font>
+<font color=#447700>!   ABV (above pycnocline water)<a name='520'></font>
+<font color=#447700>!<a name='521'></font>
+      YDOT(16) = dy(1)<a name='522'>
+      RATE(16) = -9.<a name='523'>
+<font color=#447700>!<a name='524'></font>
+<font color=#447700>!   BEL (subpycnocline water)<a name='525'></font>
+<font color=#447700>!<a name='526'></font>
+      YDOT(17) = dy(2)<a name='527'>
+      RATE(17) = -9.<a name='528'>
+<a name='529'>
+<font color=#447700>!<a name='530'></font>
+<font color=#447700>! OM<a name='531'></font>
+<font color=#447700>!<a name='532'></font>
+      FOM1= DB0*PS*(Y(1) -Y(35))/TWO/DH + W*PS*Y(18)<a name='533'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_17">(X)*(Y(35)-TWO*Y(18)+Y(1))/DH/DH<a name='534'>
+      DGDX=((ONE-SS)*Y(35)+TWO*SS*Y(18)-(ONE+SS)*Y(1))/TWO/DH<a name='535'>
+      ADV1 = AGST/PS*DGDX    <a name='536'>
+      YDOT(18) = DIFF1 + ADV1 + RCH2O1 - disOM1<a name='537'>
+      RATE(18) = RCH2O1<a name='538'>
+<font color=#447700>!<a name='539'></font>
+<font color=#447700>! OM<a name='540'></font>
+      FOM2= DB0*PS*(Y(2) -Y(36))/TWO/DH + W*PS*Y(19)<a name='541'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_18">(X)*(Y(36)-TWO*Y(19)+Y(2))/DH/DH<a name='542'>
+      DGDX = ((ONE-SS)*Y(36)+TWO*SS*Y(19)-(ONE+SS)*Y(2))/TWO/DH<a name='543'>
+      ADV1 = AGST/PS*DGDX    <a name='544'>
+      YDOT(19) = DIFF1 + ADV1 + RCH2O2 - disOM2<a name='545'>
+      RATE(19) = RCH2O2<a name='546'>
+<a name='547'>
+<font color=#447700>! Save surficial fluxes for output<a name='548'></font>
+<a name='549'>
+        FLUXES(1) = FO2<a name='550'>
+        FLUXES(2) = FNO3<a name='551'>
+        FLUXES(3) = FNH3<a name='552'>
+        FLUXES(4) = FSO4<a name='553'>
+        FLUXES(5) = FDIC<a name='554'>
+        FLUXES(6) = FOM1<a name='555'>
+        FLUXES(7) = FOM2<a name='556'>
+        FLUXES(9) = FALK<a name='557'>
+  <a name='558'>
+<font color=#447700>!      write(*,'(A4,2X,f12.2)') 'FO2',FO2  ! check HS concentrations<a name='559'></font>
+<font color=#447700>!  FOR THE INTERVENING POINTS IN THE GRID TO X2:<a name='560'></font>
+<font color=#447700>!  Following statements gives the # of midpoints NPOINTS -1<a name='561'></font>
+      DO 10 I=2,NPM1<a name='562'>
+       II = I<a name='563'>
+       X = RPAR(I)<a name='564'>
+       IF(X.GE.X2) GO TO 20<a name='565'>
+       M = I*NS              <font color=#447700>! starts at 18 for 9 species<a name='566'></font>
+<font color=#447700>!<a name='567'></font>
+<font color=#447700>!  Provide values and derivatives for porosity and tortuosity<a name='568'></font>
+<font color=#447700>!<a name='569'></font>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SED'>SED</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SED_3">(X,P,DPDX,U,W)<a name='570'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#TORT2'>TORT2</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TORT2_3">(T2,DT2DX,P,DPDX,X)<a name='571'>
+       SS = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG'>SIG</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SIG_5">(X,W)<a name='572'>
+       SW = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG'>SIG</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SIG_6">(X,U)<a name='573'>
+       PS = ONE - P<a name='574'>
+       F=   PS/P          <font color=#447700>! conversion dissolved to solids<a name='575'></font>
+C<a name='576'>
+C  Provides advective coefficents for solid and porewater species that <a name='577'>
+C  is general for all species at grid-point X.<a name='578'>
+C<a name='579'>
+       AGTG = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_19">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_5">(X) - P*U<a name='580'>
+       AGST = -DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_20">(X)+PS*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_6">(X)-PS*W<a name='581'>
+       ADVC = ONE/(T2**2)*(T2*DPDX-P*DT2DX)  <font color=#447700>! Expansion of diffusion terms (PWater)<a name='582'></font>
+<a name='583'>
+<a name='584'>
+C<a name='585'>
+C  Provide index for the the finite difference scheme<a name='586'>
+C<a name='587'>
+       MAX1  = M + 18        <font color=#447700>! G1max<a name='588'></font>
+       MAX2  = M + 19        <font color=#447700>! G2max<a name='589'></font>
+       MAX3  = M + 3         <font color=#447700>! Omax<a name='590'></font>
+       MAX4  = M + 4         <font color=#447700>! NO3max<a name='591'></font>
+       MAX5  = M + 5         <font color=#447700>! NH3max<a name='592'></font>
+       MAX6  = M + 6         <font color=#447700>! MNOmax<a name='593'></font>
+       MAX7  = M + 7         <font color=#447700>! MN2max<a name='594'></font>
+       MAX8  = M + 8         <font color=#447700>! FE3max<a name='595'></font>
+       MAX9  = M + 9         <font color=#447700>! FE2max<a name='596'></font>
+       MAX10 = M + 10         <font color=#447700>! SO4max<a name='597'></font>
+       MAX11 = M + 11        <font color=#447700>! TSmax<a name='598'></font>
+       MAX12 = M + 12        <font color=#447700>! FESmax<a name='599'></font>
+       MAX13 = M + 13        <font color=#447700>! TCmax<a name='600'></font>
+       MAX14 = M + 14        <font color=#447700>! ALKmax<a name='601'></font>
+       MAX15 = M + 15        <font color=#447700>! DOMmax<a name='602'></font>
+       MAX16 = M + 16        <font color=#447700>! Oamax<a name='603'></font>
+       MAX17 = M + 17        <font color=#447700>! Obmax<a name='604'></font>
+       MID1  = M + 1         <font color=#447700>! G1mid<a name='605'></font>
+       MID2  = M + 2         <font color=#447700>! G2mid<a name='606'></font>
+       MID3  = M - 14        <font color=#447700>! Omid<a name='607'></font>
+       MID4  = M - 13        <font color=#447700>! NO3mid<a name='608'></font>
+       MID5  = M - 12        <font color=#447700>! NH3mid<a name='609'></font>
+       MID6  = M - 11        <font color=#447700>! MNOmid<a name='610'></font>
+       MID7  = M - 10        <font color=#447700>! MN2mid<a name='611'></font>
+       MID8  = M - 9         <font color=#447700>! FE3mid<a name='612'></font>
+       MID9  = M - 8         <font color=#447700>! FE2mid<a name='613'></font>
+       MID10 = M - 7         <font color=#447700>! SO4mid<a name='614'></font>
+       MID11 = M - 6         <font color=#447700>! TSmid<a name='615'></font>
+       MID12 = M - 5         <font color=#447700>! FESmid<a name='616'></font>
+       MID13 = M - 4         <font color=#447700>! TCmid<a name='617'></font>
+       MID14 = M - 3         <font color=#447700>! ALKmid<a name='618'></font>
+       MID15 = M - 2         <font color=#447700>! DOMmid<a name='619'></font>
+       MID16 = M - 1         <font color=#447700>! Oamid<a name='620'></font>
+       MID17 = M             <font color=#447700>! Obmid<a name='621'></font>
+       MIN1 =  M - 16        <font color=#447700>! G1min<a name='622'></font>
+       MIN2 =  M - 15        <font color=#447700>! G2min<a name='623'></font>
+       MIN3 =  M - 31        <font color=#447700>! Omin<a name='624'></font>
+       MIN4 =  M - 30        <font color=#447700>! NO3min<a name='625'></font>
+       MIN5 =  M - 29        <font color=#447700>! NH3min<a name='626'></font>
+       MIN6 =  M - 28        <font color=#447700>! MNOmin<a name='627'></font>
+       MIN7 =  M - 27        <font color=#447700>! MN2min<a name='628'></font>
+       MIN8 =  M - 26        <font color=#447700>! FE3min<a name='629'></font>
+       MIN9 =  M - 25        <font color=#447700>! FE2min<a name='630'></font>
+       MIN10=  M - 24        <font color=#447700>! SO4min<a name='631'></font>
+       MIN11 = M - 23        <font color=#447700>! TSmin<a name='632'></font>
+       MIN12 = M - 22        <font color=#447700>! FESmin<a name='633'></font>
+       MIN13 = M - 21        <font color=#447700>! TCmin<a name='634'></font>
+       MIN14 = M - 20        <font color=#447700>! ALKmin<a name='635'></font>
+       MIN15 = M - 19        <font color=#447700>! DOMmin<a name='636'></font>
+       MIN16 = M - 18        <font color=#447700>! Oamin<a name='637'></font>
+       MIN17 = M - 17        <font color=#447700>! Obmin<a name='638'></font>
+C<a name='639'>
+C<a name='640'>
+C    Species w/ corrisponding gridpoints<a name='641'>
+C<a name='642'>
+       TESTOM1   = Y(MID1)<a name='643'>
+       TESTOM2   = Y(MID2)<a name='644'>
+       TESTO2    = Y(MID3)<a name='645'>
+       TESTNIT   = Y(MID4)<a name='646'>
+       TESTNH3   = Y(MID5)<a name='647'>
+       TESTMNO   = Y(MID6)<a name='648'>
+       TESTMN2   = Y(MID7)<a name='649'>
+       TESTFE3   = Y(MID8)<a name='650'>
+       TESTFE2   = Y(MID9)<a name='651'>
+       TESTSO4   = Y(MID10)<a name='652'>
+       TESTTS    = Y(MID11)<a name='653'>
+       TESTFES   = Y(MID12)<a name='654'>
+       TESTTC    = Y(MID13)<a name='655'>
+       TESTALK   = Y(MID14)<a name='656'>
+       TESTDOM   = Y(MID15)<a name='657'>
+C<a name='658'>
+C      IF (TESTOM1 .GT. 3.0D+03) write(*,*) ' 1 OM1 ',TESTOM1<a name='659'>
+C      IF (TESTOM2 .GT. 3.0D+03) write(*,*) ' 1 OM2 ',TESTOM2<a name='660'>
+C      IF (TESTO2  .GT. 3.0D+02) write(*,*) ' 1 O2 ',TESTO2<a name='661'>
+C      IF (TESTNIT .GT. 3.0D+02) write(*,*) ' 1 No3 ',TESTNIT<a name='662'>
+C      IF (TESTNH3 .GT. 3.0D+02) write(*,*) ' 1 NH3 ',TESTNH3<a name='663'>
+C      IF (TESTSO4 .GT. 3.0D+02) write(*,*) ' 1 SO4 ',TESTSO4<a name='664'>
+C      IF (TESTTS  .GT. 3.0D+02) write(*,*) ' 1 TS ',TESTTS<a name='665'>
+C      IF (TESTFE3 .GT. 3.0D+02) write(*,*) ' 1 FE3 ',TESTFE3<a name='666'>
+C      IF (TESTFE2 .GT. 3.0D+02) write(*,*) ' 1 FE2 ',TESTFE2<a name='667'>
+C      IF (TESTFES .GT. 3.0D+02) write(*,*) ' 1 FES ',TESTFES<a name='668'>
+C      IF (TESTFEC .GT. 3.0D+03) write(*,*) ' 1 FEC ',TESTFEC<a name='669'>
+C      IF (TESTTC  .GT. 8.0D+01) write(*,*) ' 1 TC ',TESTTC<a name='670'>
+C      IF (TESTALK .GT. 8.0D+01) write(*,*) ' 1 ALK ',TESTALK<a name='671'>
+C.......................................................................<a name='672'>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM'>REACTION_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_SDM_3"> (TESTOM1,TESTOM2,TESTDOM,TESTO2,TESTNIT,TESTNH3,<a name='673'>
+     *   TESTSO4,TESTTS,TESTFE3,TESTFE2,TESTMNO,TESTMN2,TESTFES,<a name='674'>
+     *   TESTTC,TESTALK,Rc,pH(I),F,dtemp)<a name='675'>
+        RCH2O1= Rc(1)<a name='676'>
+        RCH2O2= Rc(2)<a name='677'>
+        RDOM=   Rc(3)<a name='678'>
+        RO2=    Rc(4)<a name='679'>
+        RNO3=   Rc(5)<a name='680'>
+        RNH4=   Rc(6)<a name='681'>
+        RMNO=   Rc(7)<a name='682'>
+        RMN2=   Rc(8)<a name='683'>
+        RFEOH3= Rc(9)<a name='684'>
+        RFE2=   Rc(10)<a name='685'>
+        RSO4=   Rc(11)<a name='686'>
+        RTS=    Rc(12)<a name='687'>
+        RFES=   Rc(13)<a name='688'>
+        RTC=    Rc(14)<a name='689'>
+        RALK=   Rc(15)<a name='690'>
+        totOM   = TESTOM1 + TESTOM1<a name='691'>
+C<a name='692'>
+<a name='693'>
+        totOM   = TESTOM1 + TESTOM2<a name='694'>
+        disOM1  = TESTOM1*PER_DIS*(ONE-DEXP(-<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_21">(X)*a)) <a name='695'>
+        disOM2  = TESTOM2*PER_DIS*(ONE-DEXP(-<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_22">(X)*a))<a name='696'>
+        disOM   = disOM1+disOM2<a name='697'>
+ 125    FORMAT(4 F8.3)<a name='698'>
+C<a name='699'>
+C O2  Transport equations<a name='700'>
+C<a name='701'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_23">(X)+DO2/T2)*(Y(MAX3)-TWO*Y(MID3)+Y(MIN3))/DH/DH <a name='702'>
+      DGDX=((ONE-SW)*Y(MAX3)+TWO*SW*Y(MID3)-(ONE+SW)*Y(MIN3))/TWO/DH<a name='703'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='704'>
+      IF(X.LE.XIRRIG) THEN <a name='705'>
+         IRRIG = ALPHA0*(O20-Y(MID3))<a name='706'>
+      ELSE<a name='707'>
+        IRRIG = ZERO<a name='708'>
+      ENDIF<a name='709'>
+      YDOT(MID3) = DIFF2+ADV2+IRRIG+RO2<a name='710'>
+      RATE(MID3) = RO2<a name='711'>
+      rIRRO2(I) =IRRIG*DH<a name='712'>
+C<a name='713'>
+C NO3<a name='714'>
+C	<a name='715'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_24">(X)+DNO3/T2)*(Y(MAX4)-TWO*Y(MID4)+Y(MIN4))/DH/DH <a name='716'>
+      DGDX=((ONE-SW)*Y(MAX4)+TWO*SW*Y(MID4)-(ONE+SW)*Y(MIN4))/TWO/DH<a name='717'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='718'>
+      IF(X.LE.XIRRIG) THEN <a name='719'>
+         IRRIG = ALPHA0*(NO30-Y(MID4))<a name='720'>
+      ELSE<a name='721'>
+        IRRIG = ZERO<a name='722'>
+      ENDIF<a name='723'>
+      YDOT(MID4) = DIFF2 + ADV2 + IRRIG + RNO3<a name='724'>
+      RATE(MID4) = RNO3<a name='725'>
+      rIRRNO(I) =IRRIG*DH<a name='726'>
+C<a name='727'>
+C NH3<a name='728'>
+C	<a name='729'>
+<font color=#447700>!     DIFF2 = (DB(X)+DNH3/T2)*(Y(MAX5)-TWO*Y(MID5)+Y(MIN5))/DH/DH <a name='730'></font>
+<font color=#447700>!     DGDX=((ONE-SW)*Y(MAX5)+TWO*SW*Y(MID5)-(ONE+SW)*Y(MIN5))/TWO/DH<a name='731'></font>
+<font color=#447700>!     ADV2 = (AGTG + ADVC)/P*DGDX<a name='732'></font>
+<font color=#447700>!     IF(X.LE.XIRRIG) THEN <a name='733'></font>
+<font color=#447700>!        IRRIG = ALPHA0*(NH3I-Y(MID5))<a name='734'></font>
+<font color=#447700>!     ELSE<a name='735'></font>
+<font color=#447700>!        IRRIG = ZERO<a name='736'></font>
+<font color=#447700>!     ENDIF<a name='737'></font>
+<font color=#447700>!     YDOT(MID5) = DIFF2 + ADV2+ IRRIG + RNH4<a name='738'></font>
+<font color=#447700>!     RATE(MID5) = RNH4<a name='739'></font>
+<font color=#447700>!     rIRRNH(I) =IRRIG*DH<a name='740'></font>
+<a name='741'>
+C<a name='742'>
+C NH3<a name='743'>
+C<a name='744'>
+      KADS_p = PS/P*KANH4<a name='745'>
+      DIFF2 =  ONE/(ONE+KADS_p)*(KADS_p*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_25">(X)+DNH3/T2)*<a name='746'>
+     *         (Y(MAX5)-TWO*Y(MID5)+Y(MIN5))/DH/DH<a name='747'>
+      DGDX=((ONE-SW)*Y(MAX5)+TWO*SW*Y(MID5)-(ONE+SW)*Y(MIN5))/TWO/DH<a name='748'>
+      AGAD = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_26">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_7">(X) - (P*U+ KADS_p*W)<a name='749'>
+      ADV2 = (AGAD + ADVC)/P*DGDX<a name='750'>
+      IRRIG = ALPHA0*(NH3I-Y(MID5))<a name='751'>
+      YDOT(MID5) = DIFF2 + ADV2+ IRRIG + RNH4<a name='752'>
+      RATE(MID5) = RNH4<a name='753'>
+      rIRRNH(I) =IRRIG*DH<a name='754'>
+<a name='755'>
+C<a name='756'>
+C MNO2 (SOLID PHASE)<a name='757'>
+C......................................................................<a name='758'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_27">(X)*(Y(MAX6)-TWO*Y(MID6)+Y(MIN6))/DH/DH<a name='759'>
+      DGDX = ((ONE-SS)*Y(MAX6)+TWO*SS*Y(MID6)-(ONE+SS)*Y(MIN6))/TWO/DH<a name='760'>
+      ADV1= AGST/PS*DGDX<a name='761'>
+      YDOT(MID6) = DIFF1 + ADV1 + RMNO<a name='762'>
+      RATE(MID6) = RMNO<a name='763'>
+C<a name='764'>
+C MN+2 (DISSOLVED PHASE)<a name='765'>
+C<a name='766'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_28">(X)+DMN2/T2)*(Y(MAX7)-TWO*Y(MID7)+Y(MIN7))/DH/DH<a name='767'>
+      DGDX = ((ONE-SW)*Y(MAX7)+TWO*SW*Y(MID7)-(ONE+SW)*Y(MIN7))/TWO/DH<a name='768'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='769'>
+      IF(X.LE.XIRRIG) THEN <a name='770'>
+         IRRIG = ALPHA0*(MN20-Y(MID7))<a name='771'>
+      ELSE<a name='772'>
+         IRRIG = ZERO<a name='773'>
+      ENDIF<a name='774'>
+      YDOT(MID7) = DIFF2 + ADV2 + IRRIG + RMN2<a name='775'>
+      RATE(MID7) = RFE2<a name='776'>
+C<a name='777'>
+C FE+3 (SOLID PHASE)<a name='778'>
+C......................................................................<a name='779'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_29">(X)*(Y(MAX8)-TWO*Y(MID8)+Y(MIN8))/DH/DH<a name='780'>
+      DGDX = ((ONE-SS)*Y(MAX8)+TWO*SS*Y(MID8)-(ONE+SS)*Y(MIN8))/TWO/DH<a name='781'>
+      ADV1= AGST/PS*DGDX<a name='782'>
+      YDOT(MID8) = DIFF1 + ADV1 + RFEOH3<a name='783'>
+      RATE(MID8) = RFEOH3<a name='784'>
+C<a name='785'>
+C FE+2 (DISSOLVED PHASE) <a name='786'>
+C<a name='787'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_30">(X)+DFE2/T2)*(Y(MAX9)-TWO*Y(MID9)+Y(MIN9))/DH/DH <a name='788'>
+      DGDX = ((ONE-SW)*Y(MAX9)+TWO*SW*Y(MID9)-(ONE+SW)*Y(MIN9))/TWO/DH<a name='789'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='790'>
+      IF(X.LE.XIRRIG) THEN <a name='791'>
+         IRRIG = ALPHA0*(FE20-Y(MID9))<a name='792'>
+      ELSE<a name='793'>
+         IRRIG = ZERO<a name='794'>
+      ENDIF<a name='795'>
+      YDOT(MID9) = DIFF2 + ADV2 + IRRIG + RFE2<a name='796'>
+      RATE(MID9) = RFE2<a name='797'>
+C<a name='798'>
+C SO4--<a name='799'>
+C	<a name='800'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_31">(X)+DSO4/T2)*(Y(MAX10)-TWO*Y(MID10)+Y(MIN10))/DH/DH<a name='801'>
+      DGDX=((ONE-SW)*Y(MAX10)+TWO*SW*Y(MID10)-(ONE+SW)*Y(MIN10))/TWO/DH<a name='802'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='803'>
+      IF(X.LE.XIRRIG) THEN <a name='804'>
+         IRRIG = ALPHA0*(SO40-Y(MID10))<a name='805'>
+      ELSE<a name='806'>
+         IRRIG = ZERO<a name='807'>
+      ENDIF<a name='808'>
+      YDOT(MID10) = DIFF2 + ADV2 + IRRIG + RSO4<a name='809'>
+      RATE(MID10) = RSO4<a name='810'>
+      rIRRSO(I) =IRRIG*DH<a name='811'>
+C<a name='812'>
+C TS <a name='813'>
+C	<a name='814'>
+      DIFF2 = (<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_32">(X)+DHS/T2)*(Y(MAX11)-TWO*Y(MID11)+Y(MIN11))/DH/DH<a name='815'>
+      DGDX=((ONE-SW)*Y(MAX11)+TWO*SW*Y(MID11)-(ONE+SW)*Y(MIN11))/TWO/DH<a name='816'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='817'>
+      IF(X.LE.XIRRIG) THEN <a name='818'>
+        IRRIG = ALPHA0*(HS0-Y(MID11))<a name='819'>
+      ELSE<a name='820'>
+        IRRIG = ZERO<a name='821'>
+      ENDIF<a name='822'>
+      YDOT(MID11)=DIFF2+ADV2+IRRIG + RTS<a name='823'>
+      RATE(MID11) = RTS<a name='824'>
+C<a name='825'>
+C<a name='826'>
+C FES  (SOLID PHASE)<a name='827'>
+      DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_33">(X)*(Y(MAX12)-TWO*Y(MID12)+Y(MIN12))/DH/DH<a name='828'>
+      DGDX=((ONE-SS)*Y(MAX12)+TWO*SS*Y(MID12)-(ONE+SS)*Y(MIN12))/TWO/DH<a name='829'>
+      ADV1= AGST/PS*DGDX<a name='830'>
+      YDOT(MID12) = DIFF1 + ADV1 + RFES<a name='831'>
+      RATE(MID12) = RFES<a name='832'>
+C<a name='833'>
+C TC (DISSOLVED PHASE) <a name='834'>
+C<a name='835'>
+      DIFF2=(<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_34">(X)+DTC)*(Y(MAX13)-TWO*Y(MID13)+Y(MIN13))/DH/DH<a name='836'>
+      DGDX=((ONE-SW)*Y(MAX13)+TWO*SW*Y(MID13)-(ONE+SW)*Y(MIN13))/TWO/DH<a name='837'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='838'>
+      IF(X.LE.XIRRIG) THEN <a name='839'>
+         IRRIG = ALPHA0*(TC0-Y(MID13))<a name='840'>
+      ELSE<a name='841'>
+         IRRIG = ZERO<a name='842'>
+      ENDIF<a name='843'>
+      YDOT(MID13) = DIFF2+ADV2+IRRIG+RTC<a name='844'>
+      RATE(MID13) = RTC<a name='845'>
+      rIRRTC(I) =IRRIG*DH<a name='846'>
+C<a name='847'>
+C ALKALINITY (DISSOLVED PHASE) <a name='848'>
+C<a name='849'>
+      DIFF2=(<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_35">(X)+DALK/T2)*(Y(MAX14)-TWO*Y(MID14)+Y(MIN14))/DH/DH<a name='850'>
+      DGDX=((ONE-SW)*Y(MAX14)+TWO*SW*Y(MID14)-(ONE+SW)*Y(MIN14))/TWO/DH<a name='851'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='852'>
+      IF(X.LE.XIRRIG) THEN <a name='853'>
+         IRRIG = ALPHA0*(ALK0-Y(MID14))<a name='854'>
+      ELSE<a name='855'>
+         IRRIG = ZERO<a name='856'>
+      ENDIF<a name='857'>
+      YDOT(MID14) = DIFF2+ADV2+IRRIG+RALK<a name='858'>
+      RATE(MID14) = pH(I)<a name='859'>
+C<a name='860'>
+C DOC (DISSOLVED PHASE) <a name='861'>
+C......................................................................<a name='862'>
+C<a name='863'>
+      DIFF2=(<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_36">(X)+DDOM/T2)*(Y(MAX15)-TWO*Y(MID15)+Y(MIN15))/DH/DH<a name='864'>
+      DGDX=((ONE-SW)*Y(MAX15)+TWO*SW*Y(MID15)-(ONE+SW)*Y(MIN15))/TWO/DH<a name='865'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='866'>
+      IF(X.LE.XIRRIG) THEN <a name='867'>
+         IRRIG = ALPHA0*(DOMI-Y(MID15))<a name='868'>
+      ELSE<a name='869'>
+         IRRIG = ZERO<a name='870'>
+      ENDIF<a name='871'>
+      YDOT(MID15) = DIFF2+ADV2+IRRIG+RDOM +disOM<a name='872'>
+      RATE(MID15) = RDOM<a name='873'>
+<a name='874'>
+C<a name='875'>
+C   ABV (above pycnocline water)<a name='876'>
+C<a name='877'>
+      YDOT(MID16) = dy(1)<a name='878'>
+      RATE(MID16) = -9.<a name='879'>
+<a name='880'>
+C<a name='881'>
+C   BEL (subpycnocline water)<a name='882'>
+C<a name='883'>
+      YDOT(MID17) = dy(2)<a name='884'>
+      RATE(MID17) = -9.<a name='885'>
+<a name='886'>
+<a name='887'>
+C<a name='888'>
+C OM1<a name='889'>
+C<a name='890'>
+       DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_37">(X)*(Y(MAX1)-TWO*Y(MID1)+Y(MIN1))/DH/DH<a name='891'>
+       DGDX=((ONE-SS)*Y(MAX1)+TWO*SS*Y(MID1)-(ONE+SS)*Y(MIN1))/TWO/DH<a name='892'>
+       ADV1= AGST/PS*DGDX<a name='893'>
+       YDOT(MID1) = DIFF1 + ADV1 + RCH2O1 - disOM1<a name='894'>
+       RATE(MID1) = RCH2O1<a name='895'>
+       POROVEC(I)= P<a name='896'>
+C OM2<a name='897'>
+       DIFF1 = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_38">(X)*(Y(MAX2)-TWO*Y(MID2)+Y(MIN2))/DH/DH<a name='898'>
+       DGDX=((ONE-SS)*Y(MAX2)+TWO*SS*Y(MID2)-(ONE+SS)*Y(MIN2))/TWO/DH<a name='899'>
+       ADV1= AGST/PS*DGDX<a name='900'>
+       YDOT(MID2) = DIFF1 + ADV1 + RCH2O2 - disOM2<a name='901'>
+       RATE(MID2) = RCH2O2<a name='902'>
+   10 CONTINUE<a name='903'>
+C<a name='904'>
+C  FOR THE INTERVENING POINTS IN THE GRID FROM X2 TO XL-DH:<a name='905'>
+C<a name='906'>
+   20 CONTINUE<a name='907'>
+      DO 30 I=II,NPM1<a name='908'>
+       X = RPAR(I)<a name='909'>
+       M = I*NS<a name='910'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SED'>SED</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SED_4">(X,P,DPDX,U,W) <a name='911'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#TORT2'>TORT2</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TORT2_4">(T2,DT2DX,P,DPDX,X)<a name='912'>
+       PS = ONE - P<a name='913'>
+       F=   PS/P          <font color=#447700>! conversion dissolved to solids<a name='914'></font>
+       AGTG = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_39">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_8">(X) - P*U<a name='915'>
+       AGST = -DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_40">(X)+PS*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_9">(X)-PS*W<a name='916'>
+       ADVC = ONE/(T2**2)*(T2*DPDX-P*DT2DX)  <font color=#447700>! Expansion of diffusion terms (PWater)<a name='917'></font>
+<a name='918'>
+       MAX1  = M + 18        <font color=#447700>! G1max<a name='919'></font>
+       MAX2  = M + 19        <font color=#447700>! G2max<a name='920'></font>
+       MAX3  = M + 3         <font color=#447700>! Omax<a name='921'></font>
+       MAX4  = M + 4         <font color=#447700>! NO3max<a name='922'></font>
+       MAX5  = M + 5         <font color=#447700>! NH3max<a name='923'></font>
+       MAX6  = M + 6         <font color=#447700>! MNOmax<a name='924'></font>
+       MAX7  = M + 7         <font color=#447700>! MN2max<a name='925'></font>
+       MAX8  = M + 8         <font color=#447700>! FE3max<a name='926'></font>
+       MAX9  = M + 9         <font color=#447700>! FE2max<a name='927'></font>
+       MAX10 = M + 10         <font color=#447700>! SO4max<a name='928'></font>
+       MAX11 = M + 11        <font color=#447700>! TSmax<a name='929'></font>
+       MAX12 = M + 12        <font color=#447700>! FESmax<a name='930'></font>
+       MAX13 = M + 13        <font color=#447700>! TCmax<a name='931'></font>
+       MAX14 = M + 14        <font color=#447700>! ALKmax<a name='932'></font>
+       MAX15 = M + 15        <font color=#447700>! DOMmax<a name='933'></font>
+       MAX16 = M + 16        <font color=#447700>! Oamax<a name='934'></font>
+       MAX17 = M + 17        <font color=#447700>! Obmax<a name='935'></font>
+       MID1  = M + 1         <font color=#447700>! G1mid<a name='936'></font>
+       MID2  = M + 2         <font color=#447700>! G2mid<a name='937'></font>
+       MID3  = M - 14        <font color=#447700>! Omid<a name='938'></font>
+       MID4  = M - 13        <font color=#447700>! NO3mid<a name='939'></font>
+       MID5  = M - 12        <font color=#447700>! NH3mid<a name='940'></font>
+       MID6  = M - 11        <font color=#447700>! MNOmid<a name='941'></font>
+       MID7  = M - 10        <font color=#447700>! MN2mid<a name='942'></font>
+       MID8  = M - 9         <font color=#447700>! FE3mid<a name='943'></font>
+       MID9  = M - 8         <font color=#447700>! FE2mid<a name='944'></font>
+       MID10 = M - 7         <font color=#447700>! SO4mid<a name='945'></font>
+       MID11 = M - 6         <font color=#447700>! TSmid<a name='946'></font>
+       MID12 = M - 5         <font color=#447700>! FESmid<a name='947'></font>
+       MID13 = M - 4         <font color=#447700>! TCmid<a name='948'></font>
+       MID14 = M - 3         <font color=#447700>! ALKmid<a name='949'></font>
+       MID15 = M - 2         <font color=#447700>! DOMmid<a name='950'></font>
+       MID16 = M - 1         <font color=#447700>! Oamid<a name='951'></font>
+       MID17 = M             <font color=#447700>! Obmid<a name='952'></font>
+       MIN1 =  M - 16        <font color=#447700>! G1min<a name='953'></font>
+       MIN2 =  M - 15        <font color=#447700>! G2min<a name='954'></font>
+       MIN3 =  M - 31        <font color=#447700>! Omin<a name='955'></font>
+       MIN4 =  M - 30        <font color=#447700>! NO3min<a name='956'></font>
+       MIN5 =  M - 29        <font color=#447700>! NH3min<a name='957'></font>
+       MIN6 =  M - 28        <font color=#447700>! MNOmin<a name='958'></font>
+       MIN7 =  M - 27        <font color=#447700>! MN2min<a name='959'></font>
+       MIN8 =  M - 26        <font color=#447700>! FE3min<a name='960'></font>
+       MIN9 =  M - 25        <font color=#447700>! FE2min<a name='961'></font>
+       MIN10=  M - 24        <font color=#447700>! SO4min<a name='962'></font>
+       MIN11 = M - 23        <font color=#447700>! TSmin<a name='963'></font>
+       MIN12 = M - 22        <font color=#447700>! FESmin<a name='964'></font>
+       MIN13 = M - 21        <font color=#447700>! TCmin<a name='965'></font>
+       MIN14 = M - 20        <font color=#447700>! ALKmin<a name='966'></font>
+       MIN15 = M - 19        <font color=#447700>! DOMmin<a name='967'></font>
+       MIN16 = M - 18        <font color=#447700>! Oamin<a name='968'></font>
+       MIN17 = M - 17        <font color=#447700>! Obmin<a name='969'></font>
+C<a name='970'>
+C<a name='971'>
+C    Species w/ corrisponding gridpoints<a name='972'>
+       TESTOM1   = Y(MID1)	<a name='973'>
+       TESTOM2   = Y(MID2)	<a name='974'>
+       TESTO2    = Y(MID3)<a name='975'>
+       TESTNIT   = Y(MID4)<a name='976'>
+       TESTNH3   = Y(MID5)<a name='977'>
+       TESTMNO   = Y(MID6)<a name='978'>
+       TESTMN2   = Y(MID7)<a name='979'>
+       TESTFE3   = Y(MID8)<a name='980'>
+       TESTFE2   = Y(MID9)<a name='981'>
+       TESTSO4   = Y(MID10)<a name='982'>
+       TESTTS    = Y(MID11)<a name='983'>
+       TESTFES   = Y(MID12)<a name='984'>
+       TESTTC    = Y(MID13)<a name='985'>
+       TESTALK   = Y(MID14)<a name='986'>
+       TESTDOM   = Y(MID15)<a name='987'>
+C<a name='988'>
+C<a name='989'>
+C.......................................................................<a name='990'>
+C<a name='991'>
+<a name='992'>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM'>REACTION_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_SDM_4"> (TESTOM1,TESTOM2,TESTDOM,TESTO2,TESTNIT,TESTNH3,<a name='993'>
+     *   TESTSO4,TESTTS,TESTFE3,TESTFE2,TESTMNO,TESTMN2,TESTFES,<a name='994'>
+     *   TESTTC,TESTALK,Rc,pH(I),F,dtemp)<a name='995'>
+        RCH2O1= Rc(1)<a name='996'>
+        RCH2O2= Rc(2)<a name='997'>
+        RDOM=   Rc(3)<a name='998'>
+        RO2=    Rc(4)<a name='999'>
+        RNO3=   Rc(5)<a name='1000'>
+        RNH4=   Rc(6)<a name='1001'>
+        RMNO=   Rc(7)<a name='1002'>
+        RMN2=   Rc(8)<a name='1003'>
+        RFEOH3= Rc(9)<a name='1004'>
+        RFE2=   Rc(10)<a name='1005'>
+        RSO4=   Rc(11)<a name='1006'>
+        RTS=    Rc(12)<a name='1007'>
+        RFES=   Rc(13)<a name='1008'>
+        RTC=    Rc(14)<a name='1009'>
+        RALK=   Rc(15)<a name='1010'>
+<a name='1011'>
+        totOM   = TESTOM1 + TESTOM2<a name='1012'>
+        disOM1  = TESTOM1*PER_DIS*(ONE-DEXP(-<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_41">(X)*a)) <a name='1013'>
+        disOM2  = TESTOM2*PER_DIS*(ONE-DEXP(-<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_42">(X)*a))<a name='1014'>
+        disOM   = disOM1+disOM2<a name='1015'>
+C<a name='1016'>
+C  O2<a name='1017'>
+C<a name='1018'>
+      DIFF2 = DO2/T2*(Y(MAX3)-TWO*Y(MID3)+Y(MIN3))/DH/DH <a name='1019'>
+      DGDX =  (Y(MAX3)-Y(MIN3))/TWO/DH<a name='1020'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1021'>
+      IF(X.LE.XIRRIG) THEN <a name='1022'>
+         IRRIG = ALPHA0*(O20-Y(MID3))<a name='1023'>
+      ELSE<a name='1024'>
+         IRRIG = ZERO<a name='1025'>
+      ENDIF<a name='1026'>
+      YDOT(MID3) = DIFF2 + ADV2+IRRIG + RO2<a name='1027'>
+      RATE(MID3) = RO2<a name='1028'>
+      rIRRO2(I) =IRRIG*DH<a name='1029'>
+C<a name='1030'>
+C NO3<a name='1031'>
+      DIFF2 = DNO3/T2*(Y(MAX4)-TWO*Y(MID4)+Y(MIN4))/DH/DH <a name='1032'>
+      DGDX =  (Y(MAX4)-Y(MIN4))/TWO/DH<a name='1033'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1034'>
+      IF(X.LE.XIRRIG) THEN <a name='1035'>
+          IRRIG = ALPHA0*(NO30-Y(MID4))<a name='1036'>
+      ELSE<a name='1037'>
+          IRRIG = ZERO<a name='1038'>
+      ENDIF<a name='1039'>
+      YDOT(MID4) = DIFF2 + ADV2 + IRRIG + RNO3<a name='1040'>
+      RATE(MID4) = RNO3<a name='1041'>
+      rIRRNO(I) =IRRIG*DH<a name='1042'>
+C<a name='1043'>
+C NH4+<a name='1044'>
+C<a name='1045'>
+<font color=#447700>!     DIFF2 = DNH3/T2*(Y(MAX5)-TWO*Y(MID5)+Y(MIN5))/DH/DH <a name='1046'></font>
+<font color=#447700>!     DGDX =  (Y(MAX5)-Y(MIN5))/TWO/DH<a name='1047'></font>
+<font color=#447700>!     ADV2 = (AGTG + ADVC)/P*DGDX<a name='1048'></font>
+<font color=#447700>!     IF(X.LE.XIRRIG) THEN <a name='1049'></font>
+<font color=#447700>!         IRRIG = ALPHA0*(NH3I-Y(MID5))<a name='1050'></font>
+<font color=#447700>!     ELSE<a name='1051'></font>
+<font color=#447700>!         IRRIG = ZERO<a name='1052'></font>
+<font color=#447700>!     ENDIF<a name='1053'></font>
+<font color=#447700>!     YDOT(MID5) = DIFF2 + ADV2+IRRIG + RNH4<a name='1054'></font>
+<font color=#447700>!     RATE(MID5) = RNH4<a name='1055'></font>
+<font color=#447700>!     rIRRNH(I) =IRRIG*DH<a name='1056'></font>
+<a name='1057'>
+C<a name='1058'>
+C NH4+<a name='1059'>
+C<a name='1060'>
+      KADS_p = PS/P*KANH4<a name='1061'>
+      DIFF2 =  ONE/(ONE+KADS_p)*(KADS_p*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_43">(X)+DNH3/T2)*<a name='1062'>
+     *         (Y(MAX5)-TWO*Y(MID5)+Y(MIN5))/DH/DH<a name='1063'>
+      DGDX =  (Y(MAX5)-Y(MIN5))/TWO/DH<a name='1064'>
+      AGAD = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_44">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_10">(X) - (P*U+ KADS_p*W)<a name='1065'>
+      ADV2 = (AGAD + ADVC)/P*DGDX<a name='1066'>
+      IRRIG = ALPHA0*(NH3I-Y(MID5))<a name='1067'>
+      YDOT(MID5) = DIFF2 + ADV2+IRRIG + RNH4<a name='1068'>
+      RATE(MID5) = RNH4<a name='1069'>
+      rIRRNH(I) =IRRIG*DH<a name='1070'>
+<a name='1071'>
+<a name='1072'>
+C<a name='1073'>
+C MNO2 (SOLID PHASE)<a name='1074'>
+C<a name='1075'>
+      DGDX = (Y(MID6)-Y(MIN6))/DH<a name='1076'>
+      ADV1 = - W*DGDX<a name='1077'>
+      YDOT(MID6) = ADV1 + RMNO<a name='1078'>
+      RATE(MID6) = RMNO<a name='1079'>
+C<a name='1080'>
+C MN+2 (DISSOLVED PHASE)<a name='1081'>
+C<a name='1082'>
+      DIFF2 = DMN2/T2*(Y(MAX7)-TWO*Y(MID7)+Y(MIN7))/DH/DH<a name='1083'>
+      DGDX =  (Y(MAX7)-Y(MIN7))/TWO/DH<a name='1084'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1085'>
+      IF(X.LE.XIRRIG) THEN <a name='1086'>
+        IRRIG = ALPHA0*(MN20-Y(MID7))<a name='1087'>
+      ELSE<a name='1088'>
+        IRRIG = ZERO<a name='1089'>
+      ENDIF<a name='1090'>
+      YDOT(MID7) = DIFF2 + ADV2 + IRRIG + RMN2<a name='1091'>
+      RATE(MID7) = RMN2<a name='1092'>
+C<a name='1093'>
+C FE+3 (SOLID PHASE)<a name='1094'>
+C<a name='1095'>
+      DGDX = (Y(MID8)-Y(MIN8))/DH<a name='1096'>
+      ADV1 = - W*DGDX<a name='1097'>
+      YDOT(MID8) = ADV1 + RFEOH3<a name='1098'>
+      RATE(MID8) = RFEOH3<a name='1099'>
+C<a name='1100'>
+C FE+2 (DISSOLVED PHASE) <a name='1101'>
+C<a name='1102'>
+      DIFF2 = DFE2/T2*(Y(MAX9)-TWO*Y(MID9)+Y(MIN9))/DH/DH<a name='1103'>
+      DGDX =  (Y(MAX9)-Y(MIN9))/TWO/DH<a name='1104'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1105'>
+      IF(X.LE.XIRRIG) THEN <a name='1106'>
+        IRRIG = ALPHA0*(FE20-Y(MID9))<a name='1107'>
+      ELSE<a name='1108'>
+        IRRIG = ZERO<a name='1109'>
+      ENDIF<a name='1110'>
+      YDOT(MID9) = DIFF2 + ADV2 + IRRIG + RFE2<a name='1111'>
+      RATE(MID9) = RFE2<a name='1112'>
+C<a name='1113'>
+C SO4--<a name='1114'>
+C<a name='1115'>
+      DIFF2 = DSO4/T2*(Y(MAX10)-TWO*Y(MID10)+Y(MIN10))/DH/DH<a name='1116'>
+      DGDX =  (Y(MAX10)-Y(MIN10))/TWO/DH<a name='1117'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1118'>
+      IF(X.LE.XIRRIG) THEN <a name='1119'>
+         IRRIG = ALPHA0*(SO40-Y(MID10))<a name='1120'>
+      ELSE<a name='1121'>
+         IRRIG = ZERO<a name='1122'>
+      ENDIF<a name='1123'>
+      YDOT(MID10) = DIFF2 + ADV2 + IRRIG + RSO4<a name='1124'>
+      RATE(MID10) = RSO4<a name='1125'>
+      rIRRSO(I) =IRRIG*DH<a name='1126'>
+C<a name='1127'>
+C TS <a name='1128'>
+C<a name='1129'>
+      DIFF2 = DHS/T2*(Y(MAX11)-TWO*Y(MID11)+Y(MIN11))/DH/DH<a name='1130'>
+      DGDX =  (Y(MAX11)-Y(MIN11))/TWO/DH<a name='1131'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1132'>
+      IF(X.LE.XIRRIG) THEN <a name='1133'>
+          IRRIG = ALPHA0*(HS0-Y(MID11))<a name='1134'>
+      ELSE<a name='1135'>
+          IRRIG = ZERO<a name='1136'>
+      ENDIF<a name='1137'>
+      YDOT(MID11)=DIFF2 + ADV2+IRRIG + RTS<a name='1138'>
+      RATE(MID11) = RTS<a name='1139'>
+<a name='1140'>
+C<a name='1141'>
+C FES  (SOLID PHASE) <a name='1142'>
+C<a name='1143'>
+      DGDX = (Y(MID12)-Y(MIN12))/DH<a name='1144'>
+      ADV1 = - W*DGDX<a name='1145'>
+      YDOT(MID12) = ADV1 + RFES<a name='1146'>
+      RATE(MID12) = RFES<a name='1147'>
+C<a name='1148'>
+C TC  (DISSOLVED PHASE) <a name='1149'>
+C<a name='1150'>
+      DIFF2 = DTC/T2*(Y(MAX13)-TWO*Y(MID13)+Y(MIN13))/DH/DH<a name='1151'>
+      DGDX =  (Y(MAX13)-Y(MIN13))/TWO/DH<a name='1152'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1153'>
+      IF(X.LE.XIRRIG) THEN <a name='1154'>
+         IRRIG = ALPHA0*(TC0-Y(MID13))<a name='1155'>
+      ELSE<a name='1156'>
+         IRRIG = ZERO<a name='1157'>
+      ENDIF<a name='1158'>
+      YDOT(MID13) = DIFF2 + ADV2+IRRIG + RTC<a name='1159'>
+      RATE(MID13) = RTC<a name='1160'>
+      rIRRTC(I) =IRRIG*DH<a name='1161'>
+C<a name='1162'>
+C  ALKALINITY (DISSOLVED PHASE) <a name='1163'>
+C<a name='1164'>
+      DIFF2 = DALK/T2*(Y(MAX14)-TWO*Y(MID14)+Y(MIN14))/DH/DH<a name='1165'>
+      DGDX =  (Y(MAX14)-Y(MIN14))/TWO/DH<a name='1166'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1167'>
+      IF(X.LE.XIRRIG) THEN <a name='1168'>
+         IRRIG = ALPHA0*(ALK0-Y(MID14))<a name='1169'>
+      ELSE<a name='1170'>
+         IRRIG = ZERO<a name='1171'>
+      ENDIF<a name='1172'>
+      YDOT(MID14) = DIFF2 + ADV2+IRRIG + RALK<a name='1173'>
+      RATE(MID14) = pH(I)<a name='1174'>
+C<a name='1175'>
+C DOM (DISSOLVED PHASE) <a name='1176'>
+C<a name='1177'>
+      DIFF2 = DDOM/T2*(Y(MAX15)-TWO*Y(MID15)+Y(MIN15))/DH/DH<a name='1178'>
+      DGDX =  (Y(MAX15)-Y(MIN15))/TWO/DH<a name='1179'>
+      ADV2 = (AGTG + ADVC)/P*DGDX<a name='1180'>
+      IF(X.LE.XIRRIG) THEN <a name='1181'>
+         IRRIG = ALPHA0*(DOMI-Y(MID15))<a name='1182'>
+      ELSE<a name='1183'>
+         IRRIG = ZERO<a name='1184'>
+      ENDIF<a name='1185'>
+      YDOT(MID15) = DIFF2+ADV2+IRRIG+RDOM+disOM<a name='1186'>
+      RATE(MID15) = RDOM<a name='1187'>
+<a name='1188'>
+C<a name='1189'>
+C   ABV (above pycnocline water)<a name='1190'>
+C<a name='1191'>
+      YDOT(MID16) = dy(1)<a name='1192'>
+<a name='1193'>
+      RATE(MID16) = -9.<a name='1194'>
+C<a name='1195'>
+C   BEL (subpycnocline water)<a name='1196'>
+C<a name='1197'>
+      YDOT(MID17) = dy(2)<a name='1198'>
+      RATE(MID17) = -9.<a name='1199'>
+<a name='1200'>
+C<a name='1201'>
+C OM1<a name='1202'>
+C<a name='1203'>
+C......................................................................<a name='1204'>
+      DGDX = (Y(MID1)-Y(MIN1))/DH<a name='1205'>
+      ADV1 = - W*DGDX<a name='1206'>
+      YDOT(MID1) = ADV1 + RCH2O1 - disOM1<a name='1207'>
+      RATE(MID1) = RCH2O2<a name='1208'>
+      POROVEC(I) = P<a name='1209'>
+<a name='1210'>
+C<a name='1211'>
+C OM2<a name='1212'>
+C<a name='1213'>
+      DGDX = (Y(MID2)-Y(MIN2))/DH<a name='1214'>
+      ADV1 = - W*DGDX<a name='1215'>
+      YDOT(MID2) = ADV1 + RCH2O2 - disOM2<a name='1216'>
+      RATE(MID2) = RCH2O2<a name='1217'>
+   30 CONTINUE<a name='1218'>
+C<a name='1219'>
+C  FOR THE LAST POINT IN THE GRID:<a name='1220'>
+C<a name='1221'>
+       I = NPOINTS<a name='1222'>
+       X = RPAR(I)<a name='1223'>
+       M = I*NS<a name='1224'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SED'>SED</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SED_5">(X,P,DPDX,U,W) <a name='1225'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#TORT2'>TORT2</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TORT2_5">(T2,DT2DX,P,DPDX,X)<a name='1226'>
+       PS = ONE - P<a name='1227'>
+       F=   PS/P          <font color=#447700>! conversion dissolved to solids<a name='1228'></font>
+       AGTG = DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_45">(X) + P*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_11">(X) - P*U<a name='1229'>
+       AGST = -DPDX*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_46">(X)+PS*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB'>DDB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDB_12">(X)-PS*W<a name='1230'>
+       ADVC = ONE/(T2**2)*(T2*DPDX-P*DT2DX)  <font color=#447700>! Expansion of diffusion terms (PWater)<a name='1231'></font>
+<a name='1232'>
+C<a name='1233'>
+       MID1  = M + 1         <font color=#447700>! G1mid<a name='1234'></font>
+       MID2  = M + 2         <font color=#447700>! G2mid<a name='1235'></font>
+       MID3  = M - 14        <font color=#447700>! Omid<a name='1236'></font>
+       MID4  = M - 13        <font color=#447700>! NO3mid<a name='1237'></font>
+       MID5  = M - 12        <font color=#447700>! NH3mid<a name='1238'></font>
+       MID6  = M - 11        <font color=#447700>! MNOmid<a name='1239'></font>
+       MID7  = M - 10        <font color=#447700>! MN2mid<a name='1240'></font>
+       MID8  = M - 9         <font color=#447700>! FE3mid<a name='1241'></font>
+       MID9  = M - 8         <font color=#447700>! FE2mid<a name='1242'></font>
+       MID10 = M - 7         <font color=#447700>! SO4mid<a name='1243'></font>
+       MID11 = M - 6         <font color=#447700>! TSmid<a name='1244'></font>
+       MID12 = M - 5         <font color=#447700>! FESmid<a name='1245'></font>
+       MID13 = M - 4         <font color=#447700>! TCmid<a name='1246'></font>
+       MID14 = M - 3         <font color=#447700>! ALKmid<a name='1247'></font>
+       MID15 = M - 2         <font color=#447700>! DOMmid<a name='1248'></font>
+       MID16 = M - 1         <font color=#447700>! Oamid<a name='1249'></font>
+       MID17 = M             <font color=#447700>! Obmid<a name='1250'></font>
+       MIN1 =  M - 16        <font color=#447700>! G1min<a name='1251'></font>
+       MIN2 =  M - 15        <font color=#447700>! G2min<a name='1252'></font>
+       MIN3 =  M - 31        <font color=#447700>! Omin<a name='1253'></font>
+       MIN4 =  M - 30        <font color=#447700>! NO3min<a name='1254'></font>
+       MIN5 =  M - 29        <font color=#447700>! NH3min<a name='1255'></font>
+       MIN6 =  M - 28        <font color=#447700>! MNOmin<a name='1256'></font>
+       MIN7 =  M - 27        <font color=#447700>! MN2min<a name='1257'></font>
+       MIN8 =  M - 26        <font color=#447700>! FE3min<a name='1258'></font>
+       MIN9 =  M - 25        <font color=#447700>! FE2min<a name='1259'></font>
+       MIN10=  M - 24        <font color=#447700>! SO4min<a name='1260'></font>
+       MIN11 = M - 23        <font color=#447700>! TSmin<a name='1261'></font>
+       MIN12 = M - 22        <font color=#447700>! FESmin<a name='1262'></font>
+       MIN13 = M - 21        <font color=#447700>! TCmin<a name='1263'></font>
+       MIN14 = M - 20        <font color=#447700>! ALKmin<a name='1264'></font>
+       MIN15 = M - 19        <font color=#447700>! DOMmin<a name='1265'></font>
+       MIN16 = M - 18        <font color=#447700>! Oamin<a name='1266'></font>
+       MIN17 = M - 17        <font color=#447700>! Obmin<a name='1267'></font>
+C<a name='1268'>
+C    Species w/ corrisponding gridpoints<a name='1269'>
+C<a name='1270'>
+       TESTOM1   = Y(MID1)<a name='1271'>
+       TESTOM2   = Y(MID2)	<a name='1272'>
+       TESTO2    = Y(MID3)<a name='1273'>
+       TESTNIT   = Y(MID4)<a name='1274'>
+       TESTNH3   = Y(MID5)<a name='1275'>
+       TESTMNO   = Y(MID6)<a name='1276'>
+       TESTMN2   = Y(MID7)<a name='1277'>
+       TESTFE3   = Y(MID8)<a name='1278'>
+       TESTFE2   = Y(MID9)<a name='1279'>
+       TESTSO4   = Y(MID10)<a name='1280'>
+       TESTTS    = Y(MID11)<a name='1281'>
+       TESTFES   = Y(MID12)<a name='1282'>
+       TESTTC    = Y(MID13)<a name='1283'>
+       TESTALK   = Y(MID14)<a name='1284'>
+       TESTDOM   = Y(MID15)<a name='1285'>
+<a name='1286'>
+C<a name='1287'>
+C      IF (TESTOM1 .GT. 3.0D+03) write(*,*) ' 1 OM1 ',TESTOM1<a name='1288'>
+C      IF (TESTOM2 .GT. 3.0D+03) write(*,*) ' 1 OM2 ',TESTOM2<a name='1289'>
+C      IF (TESTO2  .GT. 3.0D+02) write(*,*) ' 1 O2 ',TESTO2<a name='1290'>
+C      IF (TESTNIT .GT. 3.0D+02) write(*,*) ' 1 No3 ',TESTNIT<a name='1291'>
+C      IF (TESTNH3 .GT. 3.0D+02) write(*,*) ' 1 NH3 ',TESTNH3<a name='1292'>
+C      IF (TESTSO4 .GT. 3.0D+02) write(*,*) ' 1 SO4 ',TESTSO4<a name='1293'>
+C      IF (TESTTS  .GT. 3.0D+02) write(*,*) ' 1 TS ',TESTTS<a name='1294'>
+C      IF (TESTFE3 .GT. 3.0D+02) write(*,*) ' 1 FE3 ',TESTFE3<a name='1295'>
+C      IF (TESTFE2 .GT. 3.0D+02) write(*,*) ' 1 FE2 ',TESTFE2<a name='1296'>
+C      IF (TESTFES .GT. 3.0D+02) write(*,*) ' 1 FES ',TESTFES<a name='1297'>
+C      IF (TESTTC .GT. 8.0D+01)  write(*,*) ' 1 TC ',TESTTC<a name='1298'>
+C      IF (TESTALK .GT. 8.0D+01) write(*,*) ' 1 ALK ',TESTALK<a name='1299'>
+C<a name='1300'>
+C.......................................................................<a name='1301'>
+       CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM'>REACTION_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="REACTION_SDM_5">(TESTOM1,TESTOM2,TESTDOM,TESTO2,TESTNIT,TESTNH3,<a name='1302'>
+     *   TESTSO4,TESTTS,TESTFE3,TESTFE2,TESTMNO,TESTMN2,TESTFES,<a name='1303'>
+     *   TESTTC,TESTALK,Rc,pH(I),F,dtemp)<a name='1304'>
+        RCH2O1= Rc(1)<a name='1305'>
+        RCH2O2= Rc(2)<a name='1306'>
+        RDOM=   Rc(3)<a name='1307'>
+        RO2=    Rc(4)<a name='1308'>
+        RNO3=   Rc(5)<a name='1309'>
+        RNH4=   Rc(6)<a name='1310'>
+        RMNO=   Rc(7)<a name='1311'>
+        RMN2=   Rc(8)<a name='1312'>
+        RFEOH3= Rc(9)<a name='1313'>
+        RFE2=   Rc(10)<a name='1314'>
+        RSO4=   Rc(11)<a name='1315'>
+        RTS=    Rc(12)<a name='1316'>
+        RFES=   Rc(13)<a name='1317'>
+        RTC=    Rc(14)<a name='1318'>
+        RALK=   Rc(15)<a name='1319'>
+<a name='1320'>
+        totOM   = TESTOM1 + TESTOM2<a name='1321'>
+        disOM1  = TESTOM1*PER_DIS*(ONE-DEXP(-<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_47">(X)*a)) <a name='1322'>
+        disOM2  = TESTOM2*PER_DIS*(ONE-DEXP(-<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_48">(X)*a))<a name='1323'>
+        disOM   = disOM1+disOM2<a name='1324'>
+C<a name='1325'>
+C O2<a name='1326'>
+C<a name='1327'>
+      FO2l= DO2*P/T2*(Y(MIN3-NS)-Y(MID3))/TWO/DH+U*P*Y(MID3)<a name='1328'>
+      DIFF2 = DO2/T2*TWO*(-Y(MID3)+Y(MIN3))/DH/DH <a name='1329'>
+      IF(X.LE.XIRRIG) THEN <a name='1330'>
+         IRRIG = ALPHA0*(O20-Y(MID3))<a name='1331'>
+      ELSE<a name='1332'>
+         IRRIG = ZERO<a name='1333'>
+      ENDIF<a name='1334'>
+      YDOT(MID3) =DIFF2+IRRIG + RO2<a name='1335'>
+      RATE(MID3) = RO2<a name='1336'>
+      rIRRO2(I) =IRRIG*DH<a name='1337'>
+<a name='1338'>
+C NO3<a name='1339'>
+       FNO3l= DNO3*P/T2*(Y(MIN4-NS)-Y(MID4))/TWO/DH+U*P*Y(MID4)<a name='1340'>
+       DIFF2 = DNO3/T2*TWO*(-Y(MID4)+Y(MIN4))/DH/DH <a name='1341'>
+       IF(X.LE.XIRRIG) THEN <a name='1342'>
+           IRRIG = ALPHA0*(NO30-Y(MID4))<a name='1343'>
+       ELSE<a name='1344'>
+           IRRIG = ZERO<a name='1345'>
+       ENDIF<a name='1346'>
+       YDOT(MID4) = DIFF2 + IRRIG + RNO3<a name='1347'>
+       RATE(MID4) = RNO3<a name='1348'>
+       rIRRNO(I) =IRRIG*DH<a name='1349'>
+<a name='1350'>
+C<a name='1351'>
+C NH3<a name='1352'>
+C<a name='1353'>
+<font color=#447700>!      FNH3l= DNH3*P/T2*(Y(MIN5-NS)-Y(MID5))/TWO/DH+U*P*Y(MID5)<a name='1354'></font>
+<font color=#447700>!      DIFF2 = DNH3/T2*TWO*(-Y(MID5)+Y(MIN5))/DH/DH <a name='1355'></font>
+<font color=#447700>!      IF(X.LE.XIRRIG) THEN <a name='1356'></font>
+<font color=#447700>!        IRRIG = ALPHA0*(NH3I-Y(MID5))<a name='1357'></font>
+<font color=#447700>!      ELSE<a name='1358'></font>
+<font color=#447700>!        IRRIG = ZERO<a name='1359'></font>
+<font color=#447700>!      ENDIF<a name='1360'></font>
+<font color=#447700>!      YDOT(MID5) = DIFF2 + IRRIG + RNH4<a name='1361'></font>
+<font color=#447700>!      RATE(MID5) = RNH4<a name='1362'></font>
+<font color=#447700>!      rIRRNH(I) =IRRIG*DH<a name='1363'></font>
+<a name='1364'>
+C<a name='1365'>
+C NH3<a name='1366'>
+C<a name='1367'>
+      FNH3l= DNH3*P/T2*(Y(MIN5-NS)-Y(MID5))/TWO/DH+U*P*Y(MID5)<a name='1368'>
+<a name='1369'>
+      KADS_p = PS/P*KANH4<a name='1370'>
+      DIFF2 = ONE/(ONE+KADS_p)*(KADS_p*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FEX2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_49">(X)+DNH3/T2)*<a name='1371'>
+     *        TWO*(-Y(MID5)+Y(MIN5))/DH/DH<a name='1372'>
+      IRRIG = ALPHA0*(NH3I-Y(MID5))<a name='1373'>
+      YDOT(MID5) = DIFF2 + IRRIG + RNH4<a name='1374'>
+      RATE(MID5) = RNH4<a name='1375'>
+      rIRRNH(I) =IRRIG*DH<a name='1376'>
+<a name='1377'>
+<a name='1378'>
+C<a name='1379'>
+C  MNO2 (SOLID PHASE)<a name='1380'>
+C<a name='1381'>
+      FFE3l= W*PS*Y(MID6)<a name='1382'>
+      DGDX = (Y(MID6)-Y(MIN6))/DH<a name='1383'>
+      ADV1 = - W*DGDX<a name='1384'>
+      YDOT(MID6) = ADV1 + RMNO<a name='1385'>
+      RATE(MID6) = RMNO<a name='1386'>
+C<a name='1387'>
+C MN+2  (DISSOLVED PHASE)<a name='1388'>
+C<a name='1389'>
+      FFE2l= DMN2*P/T2*(Y(MIN7-NS)-Y(MID7))/TWO/DH+U*P*Y(MID7)<a name='1390'>
+      DIFF2 = DMN2/T2*TWO*(-Y(MID7)+Y(MIN7))/DH/DH<a name='1391'>
+      IF(X.LE.XIRRIG) THEN <a name='1392'>
+         IRRIG = ALPHA0*(MN20-Y(MID7))<a name='1393'>
+      ELSE<a name='1394'>
+         IRRIG = ZERO<a name='1395'>
+      ENDIF<a name='1396'>
+      YDOT(MID7) = DIFF2+IRRIG+RMN2<a name='1397'>
+      RATE(MID7) = RMN2<a name='1398'>
+C<a name='1399'>
+C FE+3 (SOLID PHASE)<a name='1400'>
+C<a name='1401'>
+      FFE3l= W*PS*Y(MID8)<a name='1402'>
+      DGDX = (Y(MID8)-Y(MIN8))/DH<a name='1403'>
+      ADV1 = - W*DGDX<a name='1404'>
+      YDOT(MID8) = ADV1 + RFEOH3<a name='1405'>
+      RATE(MID8) = RFEOH3<a name='1406'>
+C<a name='1407'>
+C FE+2  (DISSOLVED PHASE)<a name='1408'>
+C<a name='1409'>
+      FFE2l= DFE2*P/T2*(Y(MIN9-NS)-Y(MID9))/TWO/DH+U*P*Y(MID9)<a name='1410'>
+      DIFF2 = DFE2/T2*TWO*(-Y(MID9)+Y(MIN9))/DH/DH <a name='1411'>
+      IF(X.LE.XIRRIG) THEN <a name='1412'>
+         IRRIG = ALPHA0*(FE20-Y(MID9))<a name='1413'>
+      ELSE<a name='1414'>
+         IRRIG = ZERO<a name='1415'>
+      ENDIF<a name='1416'>
+      YDOT(MID9) = DIFF2+IRRIG+RFE2<a name='1417'>
+      RATE(MID9) = RFE2<a name='1418'>
+C<a name='1419'>
+C SO4--<a name='1420'>
+C<a name='1421'>
+       FSO4l= DSO4*P/T2*(Y(MIN10-NS)-Y(MID10))/TWO/DH+U*P*Y(MID10)<a name='1422'>
+       DIFF2 = DSO4/T2*TWO*(-Y(MID10)+Y(MIN10))/DH/DH<a name='1423'>
+       IF(X.LE.XIRRIG) THEN <a name='1424'>
+           IRRIG = ALPHA0*(SO40-Y(MID10))<a name='1425'>
+       ELSE<a name='1426'>
+           IRRIG = ZERO<a name='1427'>
+       ENDIF<a name='1428'>
+       YDOT(MID10) = DIFF2 + IRRIG  + RSO4<a name='1429'>
+       RATE(MID10) = RSO4<a name='1430'>
+       rIRRSO(I) =IRRIG*DH<a name='1431'>
+C<a name='1432'>
+C TS (PORE WATER)<a name='1433'>
+C<a name='1434'>
+      FHSl= DHS*P/T2*(Y(MIN11-NS)-Y(MID11))/TWO/DH+U*P*Y(MID11)<a name='1435'>
+      DIFF2 = DHS/T2*TWO*(-Y(MID11)+Y(MIN11))/DH/DH<a name='1436'>
+      IF(X.LE.XIRRIG) THEN <a name='1437'>
+          IRRIG = ALPHA0*(HS0-Y(MID11))<a name='1438'>
+      ELSE<a name='1439'>
+          IRRIG = ZERO<a name='1440'>
+      ENDIF<a name='1441'>
+      YDOT(MID11) =DIFF2+IRRIG+RTS<a name='1442'>
+      RATE(MID11) = RTS<a name='1443'>
+C<a name='1444'>
+C FES  (SOLID PHASE) <a name='1445'>
+C<a name='1446'>
+      FFESl= W*PS*Y(MID12)<a name='1447'>
+      DGDX = (Y(MID12)-Y(MIN12))/DH<a name='1448'>
+      ADV1 = - W*DGDX<a name='1449'>
+      YDOT(MID12) = ADV1 + RFES<a name='1450'>
+      RATE(MID12) = RFES<a name='1451'>
+C<a name='1452'>
+C TC  (DISSOLVED PHASE) <a name='1453'>
+C <a name='1454'>
+      FDICl= DTC*P/T2*(Y(MIN13-NS)-Y(MID13))/TWO/DH+U*P*Y(MID13)<a name='1455'>
+      DIFF2 = DTC/T2*TWO*(-Y(MID13)+Y(MIN13))/DH/DH<a name='1456'>
+      IF(X.LE.XIRRIG) THEN <a name='1457'>
+         IRRIG = ALPHA0*(TC0-Y(MID13))<a name='1458'>
+      ELSE<a name='1459'>
+         IRRIG = ZERO<a name='1460'>
+      ENDIF<a name='1461'>
+      YDOT(MID13) = DIFF2+IRRIG + RTC<a name='1462'>
+      RATE(MID13) = RTC<a name='1463'>
+      rIRRTC(I) =IRRIG*DH<a name='1464'>
+C<a name='1465'>
+C ALKALINITY (DISSOLVED PHASE) <a name='1466'>
+C<a name='1467'>
+      FALKl= DALK*P/T2*(Y(MIN14-NS)-Y(MID14))/TWO/DH+U*P*Y(MID14)<a name='1468'>
+      DIFF2 = DALK/T2*TWO*(-Y(MID14)+Y(MIN14))/DH/DH<a name='1469'>
+      IF(X.LE.XIRRIG) THEN <a name='1470'>
+         IRRIG = ALPHA0*(ALK0-Y(MID14))<a name='1471'>
+      ELSE<a name='1472'>
+         IRRIG = ZERO<a name='1473'>
+      ENDIF<a name='1474'>
+      YDOT(MID14) = DIFF2+IRRIG + RALK<a name='1475'>
+      RATE(MID14) = pH(I)<a name='1476'>
+C<a name='1477'>
+C DOM (DISSOLVED PHASE) <a name='1478'>
+C<a name='1479'>
+C.......................................................................<a name='1480'>
+      FDOMl= DDOM*P/T2*(Y(MIN15-NS)-Y(MID15))/TWO/DH+U*P*Y(MID15)<a name='1481'>
+      DIFF2 = DDOM/T2*TWO*(-Y(MID15)+Y(MIN15))/DH/DH<a name='1482'>
+      IF(X.LE.XIRRIG) THEN <a name='1483'>
+         IRRIG = ALPHA0*(DOMI-Y(MID15))<a name='1484'>
+      ELSE<a name='1485'>
+         IRRIG = ZERO<a name='1486'>
+      ENDIF<a name='1487'>
+      YDOT(MID15) = DIFF2+IRRIG+RDOM+disOM<a name='1488'>
+      RATE(MID15) = RDOM<a name='1489'>
+<a name='1490'>
+C<a name='1491'>
+C   ABV (above pycnocline water)<a name='1492'>
+C<a name='1493'>
+      YDOT(MID16) = dy(1)<a name='1494'>
+      RATE(MID16) = -9.<a name='1495'>
+<a name='1496'>
+C<a name='1497'>
+C   BEL (subpycnocline water)<a name='1498'>
+C<a name='1499'>
+      YDOT(MID17) = dy(2)<a name='1500'>
+      RATE(MID17) = -9.<a name='1501'>
+<a name='1502'>
+C<a name='1503'>
+C OM1<a name='1504'>
+C<a name='1505'>
+       FOM1l= W*PS*Y(MID1)<a name='1506'>
+       DGDX = (Y(MID1)-Y(MIN1))/DH<a name='1507'>
+       ADV1 = - W*DGDX<a name='1508'>
+       YDOT(MID1) = ADV1 + RCH2O2-disOM1<a name='1509'>
+       RATE(MID1) = RCH2O2<a name='1510'>
+       POROVEC(I)=P<a name='1511'>
+C<a name='1512'>
+C OM2<a name='1513'>
+C<a name='1514'>
+       FOM2l= W*PS*Y(MID2)<a name='1515'>
+       DGDX = (Y(MID2)-Y(MIN2))/DH<a name='1516'>
+       ADV1 = - W*DGDX<a name='1517'>
+       YDOT(MID2) = ADV1 + RCH2O2-disOM2<a name='1518'>
+       RATE(MID2) = RCH2O2<a name='1519'>
+       RETURN<a name='1520'>
+       END<a name='1521'>
+C<a name='1522'>
+C<a name='1523'>
+C<a name='1524'>
+C   JEX	A DUMMY ROUTINE FOR THE JACOBIAN CALLED BY VODE.f<a name='1525'>
+C<a name='1526'>
+C<a name='1527'>
+<A NAME='JEX'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#JEX' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='1528'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>JEX</font> (NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)<a name='1529'>
+      DOUBLE PRECISION PD, RPAR, T, Y<a name='1530'>
+      DIMENSION Y(NEQ), PD(NRPD,NEQ)<a name='1531'>
+      RETURN<a name='1532'>
+      END<a name='1533'>
+	  <a name='1534'>
+C ----------------------------------------------------------------<a name='1535'>
+C REACTIONS<a name='1536'>
+C PURPOSE:  Provides all reaction rates for the model<a name='1537'>
+C ----------------------------------------------------------------<a name='1538'>
+C<a name='1539'>
+<A NAME='REACTION_SDM'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='1540'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>REACTION_SDM</font>(TESTOM1,TESTOM2,TESTOM3,TESTO2,TESTNIT, <A href='../../call_to/REACTION_SDM.html' TARGET='index'>5</A>,<A href='../../call_from/REACTION_SDM.html' TARGET='index'>6</A><a name='1541'>
+     *TESTNH3,TESTSO4,TESTTS,TESTFE3,TESTFE2,TESTMNO,TESTMN2,TESTFES,<a name='1542'>
+     *TESTTC,TESTALK,Rc,pH,F,dtemp)<a name='1543'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='1544'>
+      REAL*8 KG1,KG2,KDOM<a name='1545'>
+      REAL*8 KO2, KNO3, KMNO,  KFE3,  KSO4<a name='1546'>
+      REAL*8 k8,k10,k11,k12,k13,k14<a name='1547'>
+      REAL*8 k15,k23,k_23<a name='1548'>
+      REAL*8 KpFES<a name='1549'>
+      DIMENSION R(6),R1(6),R2(6),R3(6)<a name='1550'>
+      DIMENSION spc(9),Rc(25)<a name='1551'>
+      COMMON /CONSTANT2/ KpFES<a name='1552'>
+      COMMON /CONSTANT3/ k8,k10,k11,k12,k13,k14,k15,k23,k_23<a name='1553'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='1554'>
+      COMMON /STOIC/ SC1,SN1,SP1,SC2,SN2,SP2,SC3,SN3,SP3<a name='1555'>
+      COMMON /TEMPERATURE/ TEMP, SAL, PRESS,pH0<a name='1556'>
+C<a name='1557'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='1558'>
+      DATA THREE/3.0D+00/,FOUR/4.0D+00/,FIVE/5.0D+00/,EIGHT/8.0D+00/<a name='1559'>
+C<a name='1560'>
+C   STOICHIOMETRY (Cappellen and Wang 1996)<a name='1561'>
+C          (Primary reactants)<a name='1562'>
+C<a name='1563'>
+      x1=SC1<a name='1564'>
+      y1=SN1<a name='1565'>
+      z1=SP1<a name='1566'>
+      x2=SC2<a name='1567'>
+      y2=SN2<a name='1568'>
+      z2=SP2<a name='1569'>
+      x3=SC3<a name='1570'>
+      y3=SN3<a name='1571'>
+      z3=SP3<a name='1572'>
+C<a name='1573'>
+C......................................................................<a name='1574'>
+      IF (TESTO2  .LE. ZERO) TESTO2 = ZERO<a name='1575'>
+      IF (TESTSO4 .LE. ZERO) TESTSO4 = ZERO<a name='1576'>
+      IF (TESTMNO .LE. ZERO) TESTMNO= ZERO<a name='1577'>
+      IF (TESTMN2 .LE. ZERO) TESTMN2= ZERO<a name='1578'>
+      IF (TESTFE3 .LE. ZERO) TESTFE3= ZERO<a name='1579'>
+      IF (TESTFE2 .LE. ZERO) TESTFE2= ZERO<a name='1580'>
+      IF (TESTTS  .LE. ZERO) TESTTS= ZERO<a name='1581'>
+<a name='1582'>
+C<a name='1583'>
+C Use the Q10 relationship to determine the rates<a name='1584'>
+C Assume that TEMP is the maximum temperature<a name='1585'>
+C<a name='1586'>
+      rq1=  KG1<a name='1587'>
+      rq2=  KG2<a name='1588'>
+      rq3=  KDOM<a name='1589'>
+      Tq1 = TEMP<a name='1590'>
+      Tq2 = dtemp <a name='1591'>
+      rq21= LOG10(rq1)-LOG10(2.)*((Tq1-Tq2)/10.)<a name='1592'>
+      rq21= 10.0**rq21<a name='1593'>
+      rq22= LOG10(rq2)-LOG10(2.)*((Tq1-Tq2)/10.)<a name='1594'>
+      rq22= 10.0**rq22<a name='1595'>
+      rq23= LOG10(rq3)-LOG10(2.)*((Tq1-Tq2)/10.)<a name='1596'>
+      rq23= 10.0**rq23<a name='1597'>
+<a name='1598'>
+C<a name='1599'>
+C  ------ Now for the chemolithoautotrophic processes<a name='1600'>
+C<a name='1601'>
+      rq1= k11<a name='1602'>
+      rq2= k11<a name='1603'>
+      rq11= LOG10(rq1)-LOG10(2.)*((Tq1-Tq2)/10.)<a name='1604'>
+      rq11= 10.0**rq11<a name='1605'>
+      rq12= LOG10(rq2)-LOG10(2.)*((Tq1-Tq2)/10.)<a name='1606'>
+      rq12= 10.0**rq12<a name='1607'>
+<a name='1608'>
+C<a name='1609'>
+C lets oxidants determine the rate of organic<a name='1610'>
+C          degradation using the full Monod relationship<a name='1611'>
+C<a name='1612'>
+C Calculate the concentration of OMs from Flux<a name='1613'>
+C<a name='1614'>
+        RCt1= rq21*TESTOM1<a name='1615'>
+        RCt2= rq22*TESTOM2<a name='1616'>
+        RCt3= rq23*TESTOM3<a name='1617'>
+        R(1) = TESTO2/(KO2+TESTO2)<a name='1618'>
+        R(2) = TESTNIT/(KNO3+TESTNIT)*<A href='../../html_code/CGEM_2.0/coupleRate.f.html#RNITRATE_SDM'>RNITRATE_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RNITRATE_SDM_1">(TESTO2)<a name='1619'>
+        R(3) = TESTMNO/(KMNO+TESTMNO)*<a name='1620'>
+     &amp;         <A href='../../html_code/CGEM_2.0/coupleRate.f.html#RMANGANESE'>RMANGANESE</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RMANGANESE_1">(TESTO2,TESTNIT)<a name='1621'>
+        R(4) = TESTFE3/(KFE3+TESTFE3)*<a name='1622'>
+     &amp;         <A href='../../html_code/CGEM_2.0/coupleRate.f.html#RFERRIC'>RFERRIC</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RFERRIC_1">(TESTO2,TESTNIT,TESTFE3)<a name='1623'>
+        R(5) = TESTSO4/(KSO4+TESTSO4)*<a name='1624'>
+     &amp;         <A href='../../html_code/CGEM_2.0/coupleRate.f.html#RSULFATE'>RSULFATE</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RSULFATE_1">(TESTO2,TESTNIT,TESTMN0,TESTFE3)<a name='1625'>
+        R(1) = DMAX1(ZERO,R(1))<a name='1626'>
+        R(2) = DMAX1(ZERO,R(2))<a name='1627'>
+        R(3) = DMAX1(ZERO,R(3))<a name='1628'>
+        R(4) = DMAX1(ZERO,R(4))<a name='1629'>
+        R(5) = DMAX1(ZERO,R(5))<a name='1630'>
+        Rt  = R(1)+R(2)+R(3)+R(4)+ R(5)<a name='1631'>
+        IF (RT .LT. ZERO) write(*,*) 'RT', Rt, TESTO2, TESTNIT,<a name='1632'>
+     &amp;  TESTSO4<a name='1633'>
+C        write(*,811) R(1),R(2),R(3),R(4),R(5)<a name='1634'>
+        DO 10 j=1,5<a name='1635'>
+          R1(j)=  R(j)*RCt1<a name='1636'>
+          R2(j)=  R(j)*RCt2<a name='1637'>
+          R3(j)=  R(j)*RCt3<a name='1638'>
+   10   CONTINUE<a name='1639'>
+C<a name='1640'>
+C Call an updated salclosed to get the distribution of carbonate<a name='1641'>
+C alkalinity species and H+. This formulation is from Whitman and <a name='1642'>
+C Turner and is not appropriate for a sediment diagenetic model.<a name='1643'>
+C Van Cappellen and Wang, (1995) has a more appropriate formulation.<a name='1644'>
+C<a name='1645'>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#SALCLOSED_SDM'>salclosed_SDM</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SALCLOSED_SDM_1">(spc,SAL,TESTALK,TESTTC,TESTTS,TEMP,pH)<a name='1646'>
+      CO2aq = spc(1)<a name='1647'>
+      HCO3c = spc(2)<a name='1648'>
+      CO3c  = spc(3)<a name='1649'>
+      H2S   = spc(4)<a name='1650'>
+      HS    = spc(5)<a name='1651'>
+      H1    = spc(6)<a name='1652'>
+      alphe1= spc(7)<a name='1653'>
+      pH = -Dlog10(H1)<a name='1654'>
+      IF (HS .LE. ZERO) THEN<a name='1655'>
+         HS= ZERO<a name='1656'>
+      ENDIF<a name='1657'>
+      IF (HS .GE. TESTTS) HS = TESTTS<a name='1658'>
+      rKCO3 = 3.65D-01<a name='1659'>
+      rKH1o = 3.0D-08<a name='1660'>
+      fbCO3= CO3c/(CO3c + rKCO3)<a name='1661'>
+      fbH1 = H1/(H1 + rKH1o)<a name='1662'>
+      omegaFES= (TESTFE2*TWO*HS)/fbH1/KpFES  <font color=#447700>! 2x HS test<a name='1663'></font>
+      IF (omegaFES .GT. ONE) THEN<a name='1664'>
+        delta23  = ONE<a name='1665'>
+        delta_23 = ZERO<a name='1666'>
+      ELSE<a name='1667'>
+        delta23  = ZERO    <a name='1668'>
+        delta_23 = ONE<a name='1669'>
+      ENDIF<a name='1670'>
+C<a name='1671'>
+C Rate laws from Van Cappellen and Wang (table 3)<a name='1672'>
+C<a name='1673'>
+      R8   = k8*TESTFE2*TESTO2<a name='1674'>
+      R10  = k10*TESTMNO*TESTFE2<a name='1675'>
+      R11  = rq11*TESTNH3*TESTO2* <A href='../../html_code/CGEM_2.0/coupleRate.f.html#RMANDY'>rMandy</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#REACTION_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RMANDY_1">(TESTTS)<a name='1676'>
+      R12  = rq12*TESTTS*TESTO2<a name='1677'>
+      R13  = k13*TESTTS*TESTMNO      <font color=#447700>! R13 in Van Cappellan<a name='1678'></font>
+      R14  = k14*TESTTS*TESTFE3<a name='1679'>
+      R15  = k15*TESTFES*TESTO2<a name='1680'>
+      R23  = k23*delta23*(omegaFES-1.0)<a name='1681'>
+      R_23 = k_23*delta_23*TESTFES*(1.0-omegaFES)<a name='1682'>
+C<a name='1683'>
+C<a name='1684'>
+C  This section deals with solubility controlled reaction of the form<a name='1685'>
+C  H+ + FeSx -&gt; fe2+ +  HS-; giving Kspx= aFe2+ aHS-/aH+<a name='1686'>
+C  In rearrangement and substitution of gammaC mC for aC where<a name='1687'>
+C  aC is the activity of a species, mC is the molar concentration,<a name='1688'>
+C  and gammaC is the activity coefficient. We assume that gamma HS-<a name='1689'>
+C  is the same as that for gammaCl-<a name='1690'>
+C  For the moment we assume all HS-<a name='1691'>
+C<a name='1692'>
+C     rKspx=1.14e-3<a name='1693'>
+C     gammaFe= 0.17<a name='1694'>
+C     gammaHS= 0.63<a name='1695'>
+C     rmHS= TESTTS/1.0D3          <font color=#447700>! convert to M<a name='1696'></font>
+C     rmFE = rKspx/gammaFe/gammaHS * 10 **(-pH) /rmHS<a name='1697'>
+C     rmFE =  rmFE *1.0D3       <font color=#447700>! this is the max allowed by eq kintics<a name='1698'></font>
+C<a name='1699'>
+  811  format(5 f9.3)<a name='1700'>
+C        rKmax=10.0D2             <font color=#447700>! was 10.0D2<a name='1701'></font>
+C        k23_1= rKmax*(TESTFE2-rmFE)   <font color=#447700>! note change in K units<a name='1702'></font>
+C        IF (k23_1 .LE. ZERO) k23_1=ZERO<a name='1703'>
+C        R23  = k23_1*delta23*(omegaFES-1.0)<a name='1704'>
+C<a name='1705'>
+C  Reaction rates from TABLE 5 of Van Cappellen and Wang (1996)<a name='1706'>
+C<a name='1707'>
+C......................................................................<a name='1708'>
+      GAM13  = (x1+TWO*y1)/x1    <font color=#447700>! AEROBIC RESP O2/CH2O<a name='1709'></font>
+      GAM23  = (x2+TWO*y2)/x2    <font color=#447700>! AEROBIC RESP O2/CH2O<a name='1710'></font>
+      GAM33  = (x3+TWO*y3)/x3    <font color=#447700>! AEROBIC RESP O2/CH2O<a name='1711'></font>
+      GAM14 =(FOUR*x1+THREE*y1)/FIVE/x1 <font color=#447700>! DENITRIFICATION NO3-/ CH20<a name='1712'></font>
+      GAM24 =(FOUR*x2+THREE*y2)/FIVE/x2 <font color=#447700>! DENITRIFICATION NO3-/ CH20<a name='1713'></font>
+      GAM34 =(FOUR*x3+THREE*y3)/FIVE/x3 <font color=#447700>! DENITRIFICATION NO3-/ CH20<a name='1714'></font>
+      TMP1= -(GAM13*R1(1)+GAM23*R2(1)+ONE/F*GAM33*R3(1))-(TWO*R15)<a name='1715'>
+      RO2    = F*(TMP1)-(R8/FOUR+TWO*R11+TWO*R12)<a name='1716'>
+      TMP1= F*((y1/x1*R1(1)+y2/x2*R2(1)+ONE/F*y3/x3*R3(1))<a name='1717'>
+     *      -(GAM14*R1(2)+GAM24*R2(2)+ONE/F*GAM34*R3(2)))<a name='1718'>
+      RNO3  = TMP1+R11<a name='1719'>
+      RMN2  = F*(TWO*(R1(3)+R2(3)+R10))+TWO*R3(3)<a name='1720'>
+      RFE2  = F*(FOUR*(R1(4)+R2(4))+TWO*R14+R15<a name='1721'>
+     *        -R23+R_23)-R8 + FOUR*R3(4)<a name='1722'>
+      RSO4  = F*(-(R1(5)+R2(5))/TWO+R15)-R3(5)/TWO+R12<a name='1723'>
+      TMP1  = (y1/x1*(R1(4)+R1(5))+y2/x2*(R2(4)+R2(5)))<a name='1724'>
+      RNH4  = F*TMP1+y3/x3*(R3(4)+R3(5)+R3(5))-R11<a name='1725'>
+      RCH2O1= - (R1(1)+R1(2)+R1(3)+R1(4)+R1(5))<a name='1726'>
+      RCH2O2 = - (R2(1)+R2(2)+R2(3)+R2(4)+R2(5))<a name='1727'>
+      RDOM   = - (R3(1)+R3(2)+R3(3)+R3(4)+R2(5))<a name='1728'>
+      RMNO   = - TWO*(R1(3)+R2(3)+(R3(3)/F))-R10-R13<a name='1729'>
+      RFEOH3 = - FOUR*(R1(4)+R2(4)+R3(4)/F)+R8/F-TWO*R14<a name='1730'>
+      RFES   = -R15+R23-R_23<a name='1731'>
+      RTC    = F*(R1(1)+R1(2)+R1(3)+R1(4)+R1(5)+R2(1)+R2(2)<a name='1732'>
+     *         +R1(3)+R2(4)+R2(5))<a name='1733'>
+     *         +R3(1)+R3(2)+R3(3)+R3(4)+R3(5)<a name='1734'>
+C      RTS    = F*((R1(5)+R2(5))/TWO-R14-(TWO*(R23+R_23))+<a name='1735'>
+C     *         R3(5)/TWO-R12<a name='1736'>
+      RTS    = F*((R1(5)+R2(5))/TWO-R13-R14-R23+R_23)+<a name='1737'>
+     *         R3(5)/TWO-R12<a name='1738'>
+      IF (TESTALK .LE. ZERO) THEN<a name='1739'>
+       RALK = ZERO<a name='1740'>
+      ELSE<a name='1741'>
+      TMP1=-(Y1+TWO*Z1)/X1*R1(1)+(FOUR*X1+THREE*Y1-10.*Z1)/5./X1*R1(2)<a name='1742'>
+     *      +(FOUR*X1+Y1-TWO*Z1)/X1*R1(3)+(EIGHT*X1+Y1-TWO*Z1)/X1*R1(4)<a name='1743'>
+     *      +(X1+Y1-TWO*Z1)/X1*R1(5)<a name='1744'>
+      TMP2=-(Y2+TWO*Z2)/X2*R2(1)+(FOUR*X2+THREE*Y2-10.*Z2)/5./X2*R2(2)<a name='1745'>
+     *      +(FOUR*X2+Y2-TWO*Z2)/X2*R2(3)+(EIGHT*X2+Y2-TWO*Z2)/X2*R2(4)<a name='1746'>
+     *      +(X2+Y2-TWO*Z2)/X2*R2(5)<a name='1747'>
+      TMP3=-(Y3+TWO*Z3)/X3*R3(1)+(FOUR*X3+THREE*Y3-10.*Z3)/5./X3*R3(2)<a name='1748'>
+     *       +(FOUR*X3+Y3-TWO*Z3)/X3*R3(3)+(EIGHT*X3+Y3-TWO*Z3)/X3*R3(4)<a name='1749'>
+     *       +(X3+Y3-TWO*Z3)/X3*R3(5)<a name='1750'>
+      TMP4   = TMP1+TMP2+TMP3/F+TWO*R13+FOUR*R14<a name='1751'>
+     *       -TWO*R23+TWO*R_23<a name='1752'>
+      RALK   = F*TMP4-TWO*R8-TWO*R11-TWO*R12<a name='1753'>
+      IF (TESTALK .LE. ZERO) RALK = ZERO<a name='1754'>
+      ENDIF<a name='1755'>
+C    Set the reaction rates in a vector <a name='1756'>
+C<a name='1757'>
+C       Rc(1)=  ZERO<a name='1758'>
+C       Rc(2)=  ZERO<a name='1759'>
+C        Rc(3)=  ZERO<a name='1760'>
+C       Rc(4)=  ZERO<a name='1761'>
+C       Rc(5)=  ZERO<a name='1762'>
+C       Rc(6)=  ZERO<a name='1763'>
+C       Rc(7)=  ZERO<a name='1764'>
+C       Rc(8)=  ZERO<a name='1765'>
+C       Rc(9)=  ZERO<a name='1766'>
+C       Rc(10)= ZERO<a name='1767'>
+C       Rc(11)= ZERO<a name='1768'>
+C       Rc(12)= ZERO<a name='1769'>
+C       Rc(13)= ZERO<a name='1770'>
+C       Rc(14)= ZERO<a name='1771'>
+C       Rc(15)= ZERO<a name='1772'>
+        Rc(1)=   RCH2O1<a name='1773'>
+        Rc(2)=   RCH2O2<a name='1774'>
+        Rc(3)=   RDOM<a name='1775'>
+        Rc(4)=   RO2<a name='1776'>
+        Rc(5)=   RNO3<a name='1777'>
+        Rc(6)=   RNH4<a name='1778'>
+        Rc(7)=   RMNO<a name='1779'>
+        Rc(8)=   RMN2<a name='1780'>
+        Rc(9)=   RFEOH3<a name='1781'>
+        Rc(10)=  RFE2<a name='1782'>
+        Rc(11)=  RSO4<a name='1783'>
+        Rc(12)=  RTS<a name='1784'>
+        Rc(13)=  RFES<a name='1785'>
+        Rc(14)=  RTC<a name='1786'>
+        Rc(15)=  RALK<a name='1787'>
+      RETURN<a name='1788'>
+      END<a name='1789'>
+C ----------------------------------------------------------------<a name='1790'>
+C CARBON<a name='1791'>
+C PURPOSE: CLOSED SYSTEM CALCULATIONS<a name='1792'>
+C ----------------------------------------------------------------<a name='1793'>
+C<a name='1794'>
+<A NAME='SALCLOSED_SDM'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#SALCLOSED_SDM' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='1795'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>salclosed_SDM</font>(spc,s,ALK,TC,TS,t,pH) <A href='../../call_to/SALCLOSED_SDM.html' TARGET='index'>1</A>,<A href='../../call_from/SALCLOSED_SDM.html' TARGET='index'>1</A><a name='1796'>
+      IMPLICIT REAL*8 (A-Z)<a name='1797'>
+      DIMENSION rk(9),spc(9)<a name='1798'>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#THERMOWATER'>thermowater</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#SALCLOSED_SDM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="THERMOWATER_1">(rK,s,t)<a name='1799'>
+      rK1=rK(4)<a name='1800'>
+      rK2=rK(6)<a name='1801'>
+      rK1s=rK(9)<a name='1802'>
+C pH       <a name='1803'>
+      H1 = 10.**(-pH)<a name='1804'>
+      alphe0= 1.0/(1+rK1/H1 + rK1*rK2/H1**2)<a name='1805'>
+      alphe1= 1.0/(H1/rK1 + 1 +rK2/H1)<a name='1806'>
+      alphe2= 1.0/(H1**2/(rK1*rK2) + H1/rK2 +1)<a name='1807'>
+      alpheS1 = 1.0/(1.0 + H1/rK1s)<a name='1808'>
+      beta1=alphe1*TC/(alphe1*TC+2.0*alphe2*TC + alpheS1*TS)<a name='1809'>
+      beta2=alphe2*TC/((alphe1*TC+2.0*alphe2*TC) + alpheS1*TS)<a name='1810'>
+      beta1S=alpheS1*TS/(alphe1*TC+2.0*alphe2*TC+alpheS1*TS)<a name='1811'>
+C      <a name='1812'>
+      hco3c  = TC * alphe1<a name='1813'>
+      co3c   = TC * alphe2<a name='1814'>
+      h2co3c = TC * alphe0<a name='1815'>
+      ALKc = ALK*(1.0 - beta1S)<a name='1816'>
+      IF (TS .LE. 0.0D+00) THEN<a name='1817'>
+           h2s = 0.0D+00<a name='1818'>
+           hs  = 0.0D+00 <a name='1819'>
+      ELSE<a name='1820'>
+           h2s   = TS/(1.0 + rk1s/H1)<a name='1821'>
+           hs    = TS/(1.0 + H1/rk1s)<a name='1822'>
+      ENDIF<a name='1823'>
+<a name='1824'>
+C<a name='1825'>
+      spc(1) = h2co3c <a name='1826'>
+      spc(2) = hco3c<a name='1827'>
+      spc(3) = co3c<a name='1828'>
+      spc(4) = h2s<a name='1829'>
+      spc(5) = hs<a name='1830'>
+      spc(6) = h1<a name='1831'>
+      spc(7) = alphe1<a name='1832'>
+      RETURN<a name='1833'>
+      END<a name='1834'>
+<a name='1835'>
+<font color=#447700>!<a name='1836'></font>
+<font color=#447700>! ------------------------------------------------------------------<a name='1837'></font>
+<font color=#447700>! PURPOSE: Provides all the equilibrium constants for CO2 sytem<a name='1838'></font>
+<font color=#447700>!          These are temperature and salinity dependent from<a name='1839'></font>
+<font color=#447700>!          Whitfield and Turner (1986)<a name='1840'></font>
+<font color=#447700>! -----------------------------------------------------------------<a name='1841'></font>
+<A NAME='THERMOWATER'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#THERMOWATER' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='1842'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>thermowater</font>(rk,s,tz) <A href='../../call_to/THERMOWATER.html' TARGET='index'>2</A><a name='1843'>
+      IMPLICIT none<a name='1844'>
+      INTEGER i,j<a name='1845'>
+      REAL*8 a0, a1, a2, b0,s,rk,rk1s,tz,t<a name='1846'>
+      DIMENSION a0(8), a1(8), a2(8), b0(8),rk(9)<a name='1847'>
+      DATA (a0(i),i=1,8) /290.9097,207.6548,148.0248,0.0221,<a name='1848'>
+     * .5709, 0.9805, 1.4853, 0.5998/<a name='1849'>
+      DATA (a1(i),i=1,8) /14554.21, 11843.79, 8966.9, 34.02,<a name='1850'>
+     * -84.25,-92.65,-192.69,-75.25/<a name='1851'>
+      DATA (a2(i),i=1,8) / 45.0575, 33.6485, 24.4344,5*0.0/<a name='1852'>
+      DATA (b0(i),i=1,8) /0,0,0,0,-1.632,-3.294,-5.058,-1.767/<a name='1853'>
+      IF (s .LE. 0.0) THEN<a name='1854'>
+         s=0.0<a name='1855'>
+      ENDIF<a name='1856'>
+<a name='1857'>
+      t = tz+ 273.16     <font color=#447700>! absolute temperature<a name='1858'></font>
+<a name='1859'>
+<font color=#447700>! Temperature dependence of the thermodynamic stability<a name='1860'></font>
+      DO i=1,3<a name='1861'>
+         rk(i) = exp(a0(i) - a1(i)/t - a2(i)*log(t))  <font color=#447700>!Ko(i)<a name='1862'></font>
+      ENDDO<a name='1863'>
+<font color=#447700>! Sal. and temp. dependence of the stability constant K1<a name='1864'></font>
+      i=1<a name='1865'>
+      DO j=4,5<a name='1866'>
+         rk(j)= exp(log(rk(i)) + (a0(j) + a1(j)/t +<a name='1867'>
+     *   a2(j)*log(t))*SQRT(s) + b0(j)*s/100.0)<a name='1868'>
+      ENDDO<a name='1869'>
+      i=2  <a name='1870'>
+      DO j=6,7<a name='1871'>
+         rk(j)= exp(log(rk(i)) + (a0(j) + a1(j)/t +<a name='1872'>
+     *   a2(j)*log(t))*SQRT(s) + b0(j)*s/100.0)<a name='1873'>
+      ENDDO<a name='1874'>
+<font color=#447700>! Salinity and temperature dependence of K0<a name='1875'></font>
+       rk(8) = exp(-58.0931+90.5069*(100/t)+22.2940*log(t/100.0) +<a name='1876'>
+     *(0.027766 - 0.025888*(t/100.0) + 0.0050578*(t/100.0)**2)*s)<a name='1877'>
+ <a name='1878'>
+	rk1s=2.527+1359.96/t-0.206*s**(1.0/3.0)<a name='1879'>
+	rk1s=10.0**(-rk1s)<a name='1880'>
+       rk(9)= rk1s<a name='1881'>
+       RETURN<a name='1882'>
+       END<a name='1883'>
+<a name='1884'>
+<font color=#447700>!   NITRATE    Calculates the Monod type function and feedbacks for<a name='1885'></font>
+<font color=#447700>!   NO3- as an electron acceptor.<a name='1886'></font>
+<a name='1887'>
+<a name='1888'>
+<A NAME='RNITRATE_SDM'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#RNITRATE_SDM' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='1889'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>RNITRATE_SDM</font>(O20) <A href='../../call_to/RNITRATE_SDM.html' TARGET='index'>1</A><a name='1890'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='1891'>
+      REAL*8 KG1,KG2,KDOM, KPO2<a name='1892'>
+      REAL*8 KO2, KNO3, KMNO,  KFE3,  KSO4<a name='1893'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='1894'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='1895'>
+      DATA TEN/1.0D+01/<a name='1896'>
+C<a name='1897'>
+       KPO2= KO2/HUN<a name='1898'>
+       PO2=O20<a name='1899'>
+       IF (PO2 .LT. ZERO)  PO2 = ZERO<a name='1900'>
+       RNITRATE_SDM=KPO2/(KPO2 + PO2)<a name='1901'>
+C<a name='1902'>
+      RETURN<a name='1903'>
+      END<a name='1904'>
+C<a name='1905'>
+C   RMANGANESE    Calculates the Monod type function and feedbacks for<a name='1906'>
+C   FE+3 as an electron acceptor.<a name='1907'>
+C <a name='1908'>
+C<a name='1909'>
+C<a name='1910'>
+<A NAME='RMANGANESE'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#RMANGANESE' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='1911'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>RMANGANESE</font>(O20,NO30) <A href='../../call_to/RMANGANESE.html' TARGET='index'>1</A><a name='1912'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='1913'>
+      REAL*8 NO30<a name='1914'>
+      REAL*8 KG1,KG2,KDOM<a name='1915'>
+      REAL*8 KPO2,KPNO3<a name='1916'>
+      REAL*8 KO2, KNO3, KMNO,  KFE3,  KSO4<a name='1917'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='1918'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='1919'>
+      DATA TEN/1.0D+01/,TWENTY/2.0D+01/,FIFTY/3.0D+02/<a name='1920'>
+C<a name='1921'>
+      KPO2= KO2/FIFTY<a name='1922'>
+      KPNO3= KNO3/FIFTY<a name='1923'>
+      PO2=O20<a name='1924'>
+      IF (PO2 .LT. ZERO)  PO2 = ZERO<a name='1925'>
+      PNO3=NO30<a name='1926'>
+      IF (PNO3 .LT. ZERO)  PNO3 = ZERO<a name='1927'>
+      RMANGANESE=(KPO2/(KPO2+PO2))*(KPNO3/(KPNO3+PNO3))<a name='1928'>
+C<a name='1929'>
+      RETURN<a name='1930'>
+      END<a name='1931'>
+C<a name='1932'>
+C<a name='1933'>
+C<a name='1934'>
+C   RFERRIC    Calculates the Monod type function and feedbacks for<a name='1935'>
+C   FE+3 as an electron acceptor.<a name='1936'>
+C <a name='1937'>
+C<a name='1938'>
+C<a name='1939'>
+<A NAME='RFERRIC'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#RFERRIC' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='1940'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>RFERRIC</font>(O20,NO30,MNO) <A href='../../call_to/RFERRIC.html' TARGET='index'>1</A><a name='1941'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='1942'>
+      REAL*8 NO30,MNO<a name='1943'>
+      REAL*8 KG1,KG2,KDOM<a name='1944'>
+      REAL*8 KO2, KNO3, KMNO,  KFE3,  KSO4<a name='1945'>
+      REAL*8 KPO2,KPNO3,KPMNO<a name='1946'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='1947'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.5D+02/<a name='1948'>
+      DATA TEN/1.0D+01/,FIFTY/5.0D+01/,SEVENTY/7.0D+1/<a name='1949'>
+      DATA FIVEHUN/5.0D+02/<a name='1950'>
+C     was fifty<a name='1951'>
+      KPO2= KO2/HUN<a name='1952'>
+      KPNO3= KNO3/HUN<a name='1953'>
+      KPMNO= KMNO/HUN<a name='1954'>
+<a name='1955'>
+      PO2=O20<a name='1956'>
+      IF (PO2 .LT. ZERO)  PO2 = ZERO<a name='1957'>
+      PNO3=NO30<a name='1958'>
+      IF (PNO3 .LT. ZERO)  PNO3 = ZERO<a name='1959'>
+      PMNO=MNO<a name='1960'>
+      IF (PMNO .LT. ZERO)  PMNO = ZERO<a name='1961'>
+      RFERRIC=(KPO2/(KPO2+PO2))*(KPNO3/(KPNO3+PNO3))*<a name='1962'>
+     # (KPMNO/(KPMNO+PMNO))<a name='1963'>
+C<a name='1964'>
+      RETURN<a name='1965'>
+      END<a name='1966'>
+C<a name='1967'>
+C<a name='1968'>
+C<a name='1969'>
+C   SULFATE    Calculates the Monod type function and feedbacks for<a name='1970'>
+C   SO4-- as an electron acceptor.<a name='1971'>
+C<a name='1972'>
+C<a name='1973'>
+C<a name='1974'>
+<A NAME='RSULFATE'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#RSULFATE' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='1975'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>RSULFATE</font>(O20,NO30,MNO,FE30) <A href='../../call_to/RSULFATE.html' TARGET='index'>1</A><a name='1976'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='1977'>
+      REAL*8 KG1,KG2,KDOM,MNO<a name='1978'>
+      REAL*8 KPO2,KPNO3,KPMNO,KPFE3, NO30<a name='1979'>
+      REAL*8 KO2, KNO3, KMNO, KFE3, KSO4<a name='1980'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='1981'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='1982'>
+      DATA TEN/1.0D+01/,TWENTY/2.0D+01/,THIRTY/3.0D+01/<a name='1983'>
+C      was twenty<a name='1984'>
+      KPO2= KO2/THIRTY<a name='1985'>
+      KPNO3= KNO3/THIRTY<a name='1986'>
+      KPMNO= KMNO/THIRTY<a name='1987'>
+      KPFE3= KFE3/THIRTY<a name='1988'>
+C     KPO2= KO2<a name='1989'>
+C     KPNO3= KNO3<a name='1990'>
+C     KPFE3= KFE3<a name='1991'>
+      PO2=O20<a name='1992'>
+      IF (PO2 .LT. ZERO)  PO2 = ZERO<a name='1993'>
+      PNO3=NO30<a name='1994'>
+      IF (PNO3 .LT. ZERO) PNO3 = ZERO<a name='1995'>
+      PMNO=MNO<a name='1996'>
+      IF (PMNO .LT. ZERO)  PMNO = ZERO<a name='1997'>
+      PFE3= FE30<a name='1998'>
+      IF (PFE3 .LT. ZERO) PFE3 = ZERO<a name='1999'>
+      RSULFATE=(KPO2/(KPO2+PO2))*(KPNO3/(KPNO3+PNO3))*<a name='2000'>
+     # (KPMNO/(KPMNO+PMNO)) * (KPFE3/(KPFE3+PFE3))<a name='2001'>
+C<a name='2002'>
+      RETURN<a name='2003'>
+      END<a name='2004'>
+C<a name='2005'>
+C   FUNCTION: MANDY after guess who<a name='2006'>
+C   Sulfide inhibition TO nitrification. The result is a reduction<a name='2007'>
+C   in the amount of both NO3 and subsequently denitrification IN the<a name='2008'>
+C   presence of high Sulfide concentrations. Calculates the Monod type<a name='2009'>
+C   feedback function.<a name='2010'>
+C<a name='2011'>
+C<a name='2012'>
+<A NAME='RMANDY'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#RMANDY' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='2013'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>rMandy</font>(HS) <A href='../../call_to/RMANDY.html' TARGET='index'>1</A><a name='2014'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2015'>
+      REAL*8 KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='2016'>
+      REAL*8 KPSO4<a name='2017'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='2018'>
+      DATA ZERO/0.0D+00/,HUN/1.0D+02/<a name='2019'>
+C<a name='2020'>
+       KPSO4= KSO4/HUN<a name='2021'>
+       PHS=HS<a name='2022'>
+       IF (PHS .LT. ZERO)  PHS = ZERO<a name='2023'>
+       rMandy=KPSO4/(KPSO4 +  PHS)<a name='2024'>
+C<a name='2025'>
+      RETURN<a name='2026'>
+      END<a name='2027'>
+C<a name='2028'>
+C<a name='2029'>
+C<a name='2030'>
+C<a name='2031'>
+C<a name='2032'>
+C<a name='2033'>
+C<a name='2034'>
+C  SED  A subroutine for the sediment properties.<a name='2035'>
+C       Calculates the value of the depth-dependent porosity (P),<a name='2036'>
+C       derivative of the porosity with depth (DPDX), and the<a name='2037'>
+C       burial velocity (W) at a supplied depth.<a name='2038'>
+C<a name='2039'>
+C     P = porosity at depth X<a name='2040'>
+C     DPDX = spatial derivative of porosity at depth X<a name='2041'>
+C     W = solid burial velocity at depth X<a name='2042'>
+C     U = porewater advection velocity at depth X<a name='2043'>
+C<a name='2044'>
+C<a name='2045'>
+<A NAME='SED'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#SED' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2046'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>SED</font>(X,P,DPDX,U,W) <A href='../../call_to/SED.html' TARGET='index'>5</A><a name='2047'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2048'>
+      COMMON /POROS/ P0,P00,BP<a name='2049'>
+      COMMON /ADVEC/ W00<a name='2050'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/<a name='2051'>
+C<a name='2052'>
+      IF(BP.EQ.ZERO.OR.(P0-P00).EQ.ZERO) THEN<a name='2053'>
+           P = P0<a name='2054'>
+           DPDX = ZERO<a name='2055'>
+      ELSE<a name='2056'>
+           P = (P0-P00)*DEXP(-BP*X) + P00<a name='2057'>
+           DPDX = -BP*(P0-P00)*DEXP(-BP*X)<a name='2058'>
+      ENDIF<a name='2059'>
+C<a name='2060'>
+      PS = ONE - P<a name='2061'>
+      PS00 = ONE - P00<a name='2062'>
+      W = W00*PS00/PS<a name='2063'>
+      U = W00*P00/P<a name='2064'>
+      RETURN<a name='2065'>
+      END<a name='2066'>
+<a name='2067'>
+<a name='2068'>
+<font color=#447700>!   TORT2 Calculates the square of the tortuosity at an input depth X<a name='2069'></font>
+<a name='2070'>
+<a name='2071'>
+<font color=#447700>!         Currently it uses the "universal" correlation from<a name='2072'></font>
+<font color=#447700>!         Boudreau (1996, GCA, V. 60).  This can be replaced with any<a name='2073'></font>
+<font color=#447700>!         desired functionality.<a name='2074'></font>
+<font color=#447700>!<a name='2075'></font>
+<font color=#447700>!         T2 = the square of the tortuosity at depth X (as it appears<a name='2076'></font>
+<font color=#447700>!              in Berner's(1980) version of the diagenetic equations.<a name='2077'></font>
+<font color=#447700>!         DT2DX = spatial derivative of T2 at depth X.<a name='2078'></font>
+<a name='2079'>
+<a name='2080'>
+<A NAME='TORT2'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#TORT2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2081'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>TORT2</font>(T2,DT2DX,P,DPDX,X) <A href='../../call_to/TORT2.html' TARGET='index'>5</A><a name='2082'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2083'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,<a name='2084'>
+     #     FOUR/4.0D+00/<a name='2085'>
+<a name='2086'>
+      T2 = ONE - TWO*DLOG(P)<a name='2087'>
+      DT2DX = - FOUR/P*DPDX<a name='2088'>
+<a name='2089'>
+      RETURN<a name='2090'>
+      END<a name='2091'>
+<a name='2092'>
+<a name='2093'>
+<a name='2094'>
+<font color=#447700>!   DB	Contains the expressions for the depth-dependent<a name='2095'></font>
+<font color=#447700>!		mixing coefficient<a name='2096'></font>
+<a name='2097'>
+<a name='2098'>
+<A NAME='DB'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='2099'>
+        DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>DB</font>(X) <A href='../../call_to/DB.html' TARGET='index'>51</A>,<A href='../../call_from/DB.html' TARGET='index'>1</A><a name='2100'>
+        IMPLICIT REAL*8 (A-H,O-Z)<a name='2101'>
+        COMMON /MIX/ X1,X2<a name='2102'>
+        COMMON / BIOT/ Db0<a name='2103'>
+<a name='2104'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='2105'>
+C<a name='2106'>
+      IF(X.LE.X1) DB = DB0<a name='2107'>
+      IF(X.GT.X1.AND.X.LT.X2) DB = DB0*(X2-X)/(X2-X1)<a name='2108'>
+      IF(X.GE.X2) DB = ZERO<a name='2109'>
+C<a name='2110'>
+      RETURN<a name='2111'>
+      END<a name='2112'>
+C<a name='2113'>
+C<a name='2114'>
+C<a name='2115'>
+C<a name='2116'>
+C   DDB	Contains the depth derivatives of <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_50">(X)<a name='2117'>
+C<a name='2118'>
+C<a name='2119'>
+<A NAME='DDB'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#DDB' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='2120'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>DDB</font>(X) <A href='../../call_to/DDB.html' TARGET='index'>12</A><a name='2121'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2122'>
+      COMMON /MIX/ X1,X2<a name='2123'>
+        COMMON /BIOT/ Db0<a name='2124'>
+<a name='2125'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='2126'>
+C<a name='2127'>
+      IF(X.LE.X1) DDB = ZERO<a name='2128'>
+      IF(X.GT.X1.AND.X.LT.X2) DDB = -DB0/(X2-X1)<a name='2129'>
+      IF(X.GE.X2) DDB = ZERO<a name='2130'>
+C<a name='2131'>
+      RETURN<a name='2132'>
+      END<a name='2133'>
+<a name='2134'>
+<a name='2135'>
+<a name='2136'>
+<a name='2137'>
+<font color=#447700>!   SIG	Calculates the weighting for the finite difference<a name='2138'></font>
+<font color=#447700>!		approximation for the advective term (see Boudreau,<a name='2139'></font>
+<font color=#447700>!		1986, Amer. J. Sci., v. 286, p.192)<a name='2140'></font>
+<a name='2141'>
+<A NAME='SIG'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='2142'>
+      DOUBLE PRECISION <font color=#993300>FUNCTION </font><font color=#cc0000>SIG</font>(X,W) <A href='../../call_to/SIG.html' TARGET='index'>6</A>,<A href='../../call_from/SIG.html' TARGET='index'>1</A><a name='2143'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2144'>
+      COMMON /DEPTH/ XL,DH<a name='2145'>
+      DATA ZERO/0.0D+00/,ONE/1.0D+00/,TWO/2.0D+00/,HUN/1.0D+02/<a name='2146'>
+<a name='2147'>
+      D = <A href='../../html_code/CGEM_2.0/coupleRate.f.html#DB'>DB</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#SIG' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DB_51">(X)<a name='2148'>
+      IF(D.NE.ZERO) THEN<a name='2149'>
+      E = W*DH/D/TWO<a name='2150'>
+      IF(E.NE.ZERO) SIG = ONE/DTANH(E) - ONE/E<a name='2151'>
+      IF(E.EQ.ZERO) SIG = ZERO<a name='2152'>
+      RETURN<a name='2153'>
+      ENDIF<a name='2154'>
+      IF(D.EQ.ZERO) SIG = ONE<a name='2155'>
+      RETURN<a name='2156'>
+      END<a name='2157'>
+<a name='2158'>
+<a name='2159'>
+<a name='2160'>
+<font color=#447700>!   FILL_Y Parses output vector for each species<a name='2161'></font>
+<font color=#447700>!<a name='2162'></font>
+<font color=#447700>!***********************************************************************<a name='2163'></font>
+<a name='2164'>
+<A NAME='FILL_Y'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FILL_Y' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2165'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>FILL_Y</font>(NEQ,np,nss,Y,G1,G2,O2,rNO3,rNH4,rMN2,  <A href='../../call_to/FILL_Y.html' TARGET='index'>1</A><a name='2166'>
+     &amp;                  FE3,FE2,SO4,HS,FES,TC,ALK,DOM,Os,Ob)<a name='2167'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2168'>
+      PARAMETER (MAXNEQ=27000)<a name='2169'>
+      DIMENSION Y(NEQ+2)<a name='2170'>
+      DIMENSION G1(*),G2(*),O2(*),rNO3(*),rNH4(*),rMN2(*)<a name='2171'>
+      DIMENSION SO4(*),HS(*),FE3(*),FE2(*),FES(*),TC(*),ALK(*)<a name='2172'>
+      DIMENSION DOM(*), Os(*), Ob(*)<a name='2173'>
+      COMMON /SPECIES/ NS,NPOINTS<a name='2174'>
+C<a name='2175'>
+      NPM1 = NPOINTS - 1<a name='2176'>
+C<a name='2177'>
+C  Following statements gives the # of midpoints NPOINTS -1<a name='2178'>
+C     <a name='2179'>
+      DO  I=2,NPM1<a name='2180'>
+       M = I*NS              <font color=#447700>! starts at 18 for 9 species<a name='2181'></font>
+<a name='2182'>
+C<a name='2183'>
+C  Provide index for the the finite difference scheme<a name='2184'>
+C<a name='2185'>
+       MID1  = M + 1         <font color=#447700>! G1mid<a name='2186'></font>
+       MID2  = M + 2         <font color=#447700>! G2mid<a name='2187'></font>
+       MID3  = M - 14        <font color=#447700>! Omid<a name='2188'></font>
+       MID4  = M - 13        <font color=#447700>! NO3mid<a name='2189'></font>
+       MID5  = M - 12        <font color=#447700>! NH3mid<a name='2190'></font>
+       MID6  = M - 11        <font color=#447700>! MNOmid<a name='2191'></font>
+       MID7  = M - 10        <font color=#447700>! MN2mid<a name='2192'></font>
+       MID8  = M - 9         <font color=#447700>! FE3mid<a name='2193'></font>
+       MID9  = M - 8         <font color=#447700>! FE2mid<a name='2194'></font>
+       MID10 = M - 7         <font color=#447700>! SO4mid<a name='2195'></font>
+       MID11 = M - 6         <font color=#447700>! TSmid<a name='2196'></font>
+       MID12 = M - 5         <font color=#447700>! FESmid<a name='2197'></font>
+       MID13 = M - 4         <font color=#447700>! TCmid<a name='2198'></font>
+       MID14 = M - 3         <font color=#447700>! ALKmid<a name='2199'></font>
+       MID15 = M - 2         <font color=#447700>! DOMmid<a name='2200'></font>
+       MID16 = M - 1         <font color=#447700>! Oamid<a name='2201'></font>
+       MID17 = M             <font color=#447700>! Obmid<a name='2202'></font>
+<a name='2203'>
+<a name='2204'>
+       G1(I) =   Y(MID1) * 1000.<a name='2205'>
+       G2(I) =   Y(MID2) * 1000.<a name='2206'>
+       O2(I) =   Y(MID3) * 1000.<a name='2207'>
+       rNO3(I)=  Y(MID4) * 1000.<a name='2208'>
+       rNH4(I) = Y(MID5) * 1000.<a name='2209'>
+       rMN2(I)=  Y(MID7) * 1000.<a name='2210'>
+       FE2(I) =  Y(MID9) * 1000.<a name='2211'>
+       SO4(I) =  Y(MID10) * 1000.<a name='2212'>
+       HS(I) =   Y(MID11) * 1000.<a name='2213'>
+       FES(I) =  Y(MID12) * 1000.<a name='2214'>
+       TC(I) =   Y(MID13) * 1000.<a name='2215'>
+       ALK(I) =  Y(MID14) * 1000.<a name='2216'>
+       DOM(I) =  Y(MID15) * 1000.<a name='2217'>
+       Os(I)  =  Y(MID16)<a name='2218'>
+       Ob(I)  =  Y(MID17)<a name='2219'>
+      END DO<a name='2220'>
+      RETURN<a name='2221'>
+      END<a name='2222'>
+C<a name='2223'>
+C<a name='2224'>
+C<a name='2225'>
+C   ROOTINT Integrates and averages results over rootzone<a name='2226'>
+C<a name='2227'>
+<A NAME='ROOTINT'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#ROOTINT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2228'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>ROOTINT</font>(NPOINTS,G1,G2,O2,rNO3,rNH4,<a name='2229'>
+     *       rMN2,FE2,SO4,HS,FES,TC,ALK,DOM,Os,Ob,<a name='2230'>
+     * tempG1,tempG2,tempO2,tempNO3,tempNH4,tempMN2,<a name='2231'>
+     * tempFE2,tempSO4,tempHS,tempFES,tempTC,tempALK,tempDOM,<a name='2232'>
+     * tempOs,tempOb)<a name='2233'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2234'>
+      DIMENSION G1(*),G2(*),O2(*),rNO3(*),rNH4(*),rMN2(*)<a name='2235'>
+      DIMENSION FE2(*),SO4(*),HS(*),FES(*),TC(*),ALK(*),DOM(*)<a name='2236'>
+      DIMENSION Os(*),Ob(*)<a name='2237'>
+      COMMON /SROOT/ ZROOT, WROOT<a name='2238'>
+      COMMON /DEPTH/ XL,DH<a name='2239'>
+      DATA ZERO/0.0D+00/<a name='2240'>
+C<a name='2241'>
+C<a name='2242'>
+      NROOT  =  INT(ZROOT/DH)<a name='2243'>
+      NHALFR =  INT(WROOT/2./DH)<a name='2244'>
+      NLOW   =  NROOT - NHALFR<a name='2245'>
+      NHI    =  NROOT + NHALFR<a name='2246'>
+      NDIF   =  NHI   - NLOW<a name='2247'>
+      tempG1 =  ZERO<a name='2248'>
+      tempG2 =  ZERO<a name='2249'>
+      tempO2 =  ZERO<a name='2250'>
+      tempNO3 = ZERO<a name='2251'>
+      tempNH4 = ZERO<a name='2252'>
+      tempMN2 = ZERO<a name='2253'>
+      tempFE2 = ZERO<a name='2254'>
+      tempFES = ZERO<a name='2255'>
+      tempSO4 = ZERO<a name='2256'>
+      tempHS =  ZERO<a name='2257'>
+      tempTC =  ZERO<a name='2258'>
+      tempALK = ZERO<a name='2259'>
+      tempDOM = ZERO<a name='2260'>
+      tempOs  = ZERO<a name='2261'>
+      tempOb  = ZERO<a name='2262'>
+      DO I=NLOW,NHI<a name='2263'>
+          tempG1 =  tempG1+G1(I)<a name='2264'>
+          tempG2 =  tempG2+G2(I)<a name='2265'>
+          tempO2 =  tempO2+O2(I)<a name='2266'>
+          tempNO3 = tempNO3+rNO3(I)<a name='2267'>
+          tempNH4 = tempNH4+rNH4(I)<a name='2268'>
+          tempMN2 = tempMN2+rMN2(I)<a name='2269'>
+          tempSO4 = tempSO4+SO4(I)<a name='2270'>
+          tempHS =  tempHS+HS(I)<a name='2271'>
+          tempFE2 = tempFE2+FE2(I)<a name='2272'>
+          tempFES = tempFES+FES(I)<a name='2273'>
+          tempTC =  tempTC+TC(I)<a name='2274'>
+          tempALK = tempALK+ALK(I)<a name='2275'>
+          tempDOM = tempDOM+DOM(I)<a name='2276'>
+          tempOs  = tempOs + Os(I)<a name='2277'>
+          tempOb  = tempOb + Ob(I)<a name='2278'>
+       END DO<a name='2279'>
+       tempG1  = tempG1/FLOAT(NDIF)<a name='2280'>
+       tempG2  = tempG2/FLOAT(NDIF)<a name='2281'>
+       tempO2  = tempO2/FLOAT(NDIF)<a name='2282'>
+       tempNO3 = tempNO3/FLOAT(NDIF)<a name='2283'>
+       tempNH4 = tempNH4/FLOAT(NDIF)<a name='2284'>
+       tempMN2 = tempMN2/FLOAT(NDIF)<a name='2285'>
+       tempFE2 = tempFE2/FLOAT(NDIF)<a name='2286'>
+       tempSO4 = tempSO4/FLOAT(NDIF)<a name='2287'>
+       tempHS  = tempHS/FLOAT(NDIF)<a name='2288'>
+       tempFES = tempFES/FLOAT(NDIF)<a name='2289'>
+       tempTC  = tempTC/FLOAT(NDIF)<a name='2290'>
+       tempALK = tempALK/FLOAT(NDIF)<a name='2291'>
+       tempDOM = tempDOM/FLOAT(NDIF)<a name='2292'>
+       tempOs  = tempOs/FLOAT(NDIF)<a name='2293'>
+       tempOb  = tempOb/FLOAT(NDIF)<a name='2294'>
+       RETURN<a name='2295'>
+       END<a name='2296'>
+<a name='2297'>
+<a name='2298'>
+C<a name='2299'>
+C  OUTVEC Produces output for the the MATLAB program "rootzone"<a name='2300'>
+C<a name='2301'>
+C     -----------------------------------------------------------------<a name='2302'>
+C     FORMAT FOR MATLAB FILE<a name='2303'>
+C     -----------------------------------------------------------------<a name='2304'>
+<A NAME='OUTVEC'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#OUTVEC' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2305'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>OUTVEC</font>(rootG1,rootG2,rootO2,rootNO3,rootNH4,rootMN2,<a name='2306'>
+     * rootFE2,rootSO4,rootHS,rootFES,rootTC,rootALK,rootDOM,<a name='2307'>
+     * rootOs,rootOb,mm)<a name='2308'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2309'>
+      DIMENSION rootG1(*),rootG2(*),rootO2(*),rootNO3(*),rootNH4(*),<a name='2310'>
+     * rootMN2(*),rootFE2(*),rootSO4(*),rootHS(*),rootFES(*),rootTC(*),<a name='2311'>
+     * rootALK(*),rootDOM(*),rootOs(*),rootOb(*)<a name='2312'>
+<a name='2313'>
+C<a name='2314'>
+      OPEN (12,FILE='rootG1.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2315'>
+        WRITE(12,"(E12.4)") (rootG1(i),i=1,mm)<a name='2316'>
+      CLOSE(12)<a name='2317'>
+      OPEN (12,FILE='rootG2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2318'>
+        WRITE(12,"(E12.4)") (rootG2(i),i=1,mm)<a name='2319'>
+      CLOSE(12)<a name='2320'>
+      OPEN (12,FILE='rootO2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2321'>
+        WRITE(12,"(E12.4)") (rootO2(i),i=1,mm)<a name='2322'>
+      CLOSE(12)<a name='2323'>
+      OPEN (12,FILE='rootNO3.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2324'>
+        WRITE(12,"(E12.4)") (rootNO3(i),i=1,mm)<a name='2325'>
+      CLOSE(12)<a name='2326'>
+      OPEN (12,FILE='rootNH4.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2327'>
+        WRITE(12,"(E12.4)") (rootNH4(i),i=1,mm)<a name='2328'>
+      CLOSE(12)<a name='2329'>
+      OPEN (12,FILE='rootMN2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2330'>
+        WRITE(12,"(E12.4)") (rootMN2(i),i=1,mm)<a name='2331'>
+      CLOSE(12)<a name='2332'>
+      OPEN (12,FILE='rootFE2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2333'>
+        WRITE(12,"(E12.4)") (rootFE2(i),i=1,mm)<a name='2334'>
+      CLOSE(12)<a name='2335'>
+      OPEN (12,FILE='rootSO4.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2336'>
+        WRITE(12,"(E12.4)") (rootSO4(i),i=1,mm)<a name='2337'>
+      CLOSE(12)<a name='2338'>
+      OPEN (12,FILE='rootHS.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2339'>
+        WRITE(12,"(E12.4)") (rootHS(i),i=1,mm)<a name='2340'>
+      CLOSE(12)<a name='2341'>
+      OPEN (12,FILE='rootFES.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2342'>
+        WRITE(12,"(E12.4)") (rootFES(i),i=1,mm)<a name='2343'>
+      CLOSE(12)<a name='2344'>
+      OPEN (12,FILE='rootTC.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2345'>
+        WRITE(12,"(E12.4)") (rootTC(i),i=1,mm)<a name='2346'>
+      CLOSE(12)<a name='2347'>
+      OPEN (12,FILE='rootALK.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2348'>
+        WRITE(12,"(E12.4)") (rootALK(i),i=1,mm)<a name='2349'>
+      CLOSE(12)<a name='2350'>
+      OPEN (12,FILE='rootDOM.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2351'>
+        WRITE(12,"(E12.4)") (rootDOM(i),i=1,mm)<a name='2352'>
+      CLOSE(12)<a name='2353'>
+      OPEN (12,FILE='rootOs.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2354'>
+        WRITE(12,"(E12.4)") (rootOs(i),i=1,mm)<a name='2355'>
+      CLOSE(12)<a name='2356'>
+      OPEN (12,FILE='rootOb.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2357'>
+        WRITE(12,"(E12.4)") (rootOb(i),i=1,mm)<a name='2358'>
+      CLOSE(12)<a name='2359'>
+      END<a name='2360'>
+<a name='2361'>
+<a name='2362'>
+<a name='2363'>
+<font color=#447700>!  OUTFLUX  Produces output of interfacial fluxes for  MATLAB program "rootzone"<a name='2364'></font>
+<font color=#447700>!<a name='2365'></font>
+<font color=#447700>!     -----------------------------------------------------------------<a name='2366'></font>
+<font color=#447700>!     FORMAT FOR MATLAB FILE<a name='2367'></font>
+<font color=#447700>!     -----------------------------------------------------------------<a name='2368'></font>
+<A NAME='OUTFLUX'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#OUTFLUX' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2369'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>OUTFLUX</font>(sedO2,sedNO3,sedNH4,sedSO4,sedDIC,sedDOC,<a name='2370'>
+     * sedOM1,sedOM2, pycoO2,mm)<a name='2371'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2372'>
+      DIMENSION sedO2(*),sedNO3(*),sedNH4(*),sedSO4(*),sedDIC(*),<a name='2373'>
+     * sedDOC(*),sedOM1(*),sedOM2(*),pycoO2(*)<a name='2374'>
+<a name='2375'>
+C<a name='2376'>
+      OPEN (12,FILE='sedO2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2377'>
+        WRITE(12,"(E12.4)") (sedO2(i),i=1,mm)<a name='2378'>
+      CLOSE(12)<a name='2379'>
+      OPEN (12,FILE='sedNO3.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2380'>
+        WRITE(12,"(E12.4)") (sedNO3(i),i=1,mm)<a name='2381'>
+      CLOSE(12)<a name='2382'>
+      OPEN (12,FILE='sedNH4.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2383'>
+        WRITE(12,"(E12.4)") (sedNH4(i),i=1,mm)<a name='2384'>
+      CLOSE(12)<a name='2385'>
+      OPEN (12,FILE='sedSO4.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2386'>
+        WRITE(12,"(E12.4)") (sedSO4(i),i=1,mm)<a name='2387'>
+      CLOSE(12)<a name='2388'>
+      OPEN (12,FILE='sedDIC.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2389'>
+        WRITE(12,"(E12.4)") (sedDIC(i),i=1,mm)<a name='2390'>
+      CLOSE(12)<a name='2391'>
+      OPEN (12,FILE='pyco2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2392'>
+        WRITE(12,"(E12.4)") (pycoO2(i),i=1,mm)<a name='2393'>
+      CLOSE(12)<a name='2394'>
+<font color=#447700>!L3 Modification: Not outputting OMs...why?  Add here:  (1/12/2015)<a name='2395'></font>
+      OPEN (12,FILE='sedOM1.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2396'>
+        WRITE(12,"(E12.4)") (sedOM1(i),i=1,mm)<a name='2397'>
+      CLOSE(12)<a name='2398'>
+      OPEN (12,FILE='sedOM2.dat',STATUS='UNKNOWN',FORM='FORMATTED')<a name='2399'>
+        WRITE(12,"(E12.4)") (sedOM2(i),i=1,mm)<a name='2400'>
+      CLOSE(12)<a name='2401'>
+<font color=#447700>!L3 End modification<a name='2402'></font>
+      END<a name='2403'>
+<a name='2404'>
+<font color=#447700>!    ----- PROCEDURE provides input for diagenetic model<a name='2405'></font>
+<a name='2406'>
+<A NAME='DATAIN'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#DATAIN' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2407'>
+        <font color=#993300>subroutine </font><font color=#cc0000>datain</font>(A,mrow) <A href='../../call_to/DATAIN.html' TARGET='index'>1</A><a name='2408'>
+        IMPLICIT REAL*8 (A-H,O-Z)<a name='2409'>
+        DIMENSION A(100)<a name='2410'>
+        character*20 cdum1<a name='2411'>
+        character*35 cdum2<a name='2412'>
+        open(11,file='SDM/hypox_input.csv')<a name='2413'>
+<font color=#447700>!       first, skip over first five lines<a name='2414'></font>
+        read(11,*)<a name='2415'>
+        read(11,*)<a name='2416'>
+        read(11,*)<a name='2417'>
+        read(11,*)<a name='2418'>
+        read(11,*)<a name='2419'>
+        write(*,*)'mrow=',mrow<a name='2420'>
+        do ilin=1,mrow<a name='2421'>
+         read(11,*)dum1,cdum1,cdum2,cdum1, A(ilin)<a name='2422'>
+          write(*,*)'i=',ilin,cdum2,'A=',A(ilin)<a name='2423'>
+        enddo<a name='2424'>
+        close(11)<a name='2425'>
+      return<a name='2426'>
+      END<a name='2427'>
+<a name='2428'>
+<a name='2429'>
+<a name='2430'>
+<font color=#447700>!***************************************************************<a name='2431'></font>
+<font color=#447700>!<a name='2432'></font>
+<font color=#447700>!     SUBROUTINE FOR ENTERING DATA FROM A FILE.<a name='2433'></font>
+<font color=#447700>!     (ABB 16th April 1996)<a name='2434'></font>
+<font color=#447700>!<a name='2435'></font>
+<font color=#447700>!***************************************************************<a name='2436'></font>
+<a name='2437'>
+<A NAME='FILEDATA2'><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FILEDATA2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2438'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>FILEDATA2</font>(RPAR,Ainp) <A href='../../call_to/FILEDATA2.html' TARGET='index'>1</A>,<A href='../../call_from/FILEDATA2.html' TARGET='index'>2</A><a name='2439'>
+<a name='2440'>
+      IMPLICIT REAL*8 (A-H,O-Z)<a name='2441'>
+<a name='2442'>
+C<a name='2443'>
+      PARAMETER (MAXNEQ=27000)<a name='2444'>
+      DIMENSION RPAR(MAXNEQ)<a name='2445'>
+C<a name='2446'>
+      REAL*8 KG1,KG2,KDOM,NO30,NH30,KANH4<a name='2447'>
+      REAL*8 KO2, KNO3, KMNO,KFE3,KSO4<a name='2448'>
+      REAL*8 MNO0,MN20,NH3I<a name='2449'>
+      REAL*8 k8,k10,k11,k12,k13,k14<a name='2450'>
+      REAL*8 k15,k23,k_23,KpFES<a name='2451'>
+<a name='2452'>
+      DIMENSION Ainp(100)<a name='2453'>
+      DIMENSION :: DF(24),rk(9), ppH(2000),YY(MAXNEQ)<a name='2454'>
+      DIMENSION day(1100),gulfdo(1100)<a name='2455'>
+      COMMON /SPECIES/ NS,NPOINTS<a name='2456'>
+      COMMON /GRIDPOINT/ NEQ<a name='2457'>
+      COMMON /ADVEC/ W00<a name='2458'>
+      COMMON /DEPTH/ XL,DH<a name='2459'>
+      COMMON /TIMING/ T,TOUT,TOUT1,TOUT2,TOUT3,TOUT4,TOUT5,TOUT6<a name='2460'>
+      COMMON /MIX/ X1,X2<a name='2461'>
+      COMMON /BIOT/ Db0<a name='2462'>
+      COMMON /CONC/ DO20,NO30,NH30,SO40,HS0,NH3I<a name='2463'>
+      COMMON /CONC2/ MNO0,MN20,FE30,FE20,FES0,TC0,ALK0,DOM0,DOMI<a name='2464'>
+      COMMON /GULF/ gulfdo,day<a name='2465'>
+      COMMON /DIFF/ DO2,DNO3,DNH3,DMN2,DFE2,DSO4,DHS,DTC,DALK<a name='2466'>
+      COMMON /FLUXCOMMON/ FG1,FG2<a name='2467'>
+      COMMON /POROS/ P0,P00,BP<a name='2468'>
+      COMMON /SROOT/ ZROOT, WROOT<a name='2469'>
+      COMMON /IRRIG/ ALPHA0,XIRRIG<a name='2470'>
+      COMMON /KINETICS/ KG1,KG2,KDOM,KO2,KNO3,KMNO,KFE3,KSO4<a name='2471'>
+      COMMON /CONSTANT2/ KpFES<a name='2472'>
+      COMMON /CONSTANT3/ k8,k10,k11,k12,k13,k14,k15,k23,k_23<a name='2473'>
+      COMMON /DISSOL/ a, PER_DIS<a name='2474'>
+      COMMON /STOIC/ SC1,SN1,SP1,SC2,SN2,SP2,SC3,SN3,SP3<a name='2475'>
+      COMMON /TEMPERATURE/ TEMP, SAL, PRESS,pH0<a name='2476'>
+      COMMON /GETY/ YY<a name='2477'>
+      COMMON /GETPH/ ppH<a name='2478'>
+      COMMON /DESORB/ KANH4<a name='2479'>
+      COMMON /hydro/ aa, bb, gg, zz<a name='2480'>
+<a name='2481'>
+<font color=#447700>!       COMMON /TIMES/ T0,TL<a name='2482'></font>
+<font color=#447700>!       COMMON /DIN/ rKn, NH3I, NO3I<a name='2483'></font>
+<font color=#447700>!       COMMON /DEPDAY/ Nday, dep_mud<a name='2484'></font>
+<a name='2485'>
+<a name='2486'>
+C<a name='2487'>
+      DATA ZERO/0.0D+00/,HUN/1.0D+02/<a name='2488'>
+      DATA YEAR/3.156D+07/,THOU/1.0D+03/<a name='2489'>
+      NSPECIES = NS<a name='2490'>
+      yr_sec   = 1/(3600*24*365)<a name='2491'>
+      rho = 2.65<a name='2492'>
+<a name='2493'>
+C<a name='2494'>
+<a name='2495'>
+<font color=#447700>!     INPUT TEMP (oC), SALINITY AND PRESSURE (atm)<a name='2496'></font>
+<a name='2497'>
+       TEMP= Ainp(1)<a name='2498'>
+       SAL= Ainp(2)<a name='2499'>
+       PRESS= Ainp(3)<a name='2500'>
+       pH0= Ainp(4)<a name='2501'>
+<a name='2502'>
+      CALL <A href='../../html_code/CGEM_2.0/vode.f.html#DDIFCOEF'>DDIFCOEF</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FILEDATA2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DDIFCOEF_1">(V,DF,SAL,TEMP,PRESS)<a name='2503'>
+      DO2  = DF(2)*YEAR<a name='2504'>
+      DNO3 = DF(12)*YEAR<a name='2505'>
+      DMN2= DF(22)*YEAR<a name='2506'>
+      DNH3 = DF(10)*YEAR<a name='2507'>
+      DSO4 = DF(23)*YEAR<a name='2508'>
+      DHS  = DF(5)*YEAR<a name='2509'>
+      DFE2 = DF(21)*YEAR<a name='2510'>
+      DTC  = DF(8)*YEAR*1.5D00<a name='2511'>
+      DALK = DF(8)*YEAR*1.5D00<a name='2512'>
+<a name='2513'>
+<font color=#447700>!  Surface value of Bioturbation<a name='2514'></font>
+<a name='2515'>
+       DB0= Ainp(5)<a name='2516'>
+<a name='2517'>
+<font color=#447700>!  DEPTH FOR START OF DB DECREASE<a name='2518'></font>
+       X1 = Ainp(6)<a name='2519'>
+<a name='2520'>
+<font color=#447700>!  DEPTH FOR END OF DB DECREASE TO ZERO<a name='2521'></font>
+       X2 = Ainp(7)<a name='2522'>
+<a name='2523'>
+<font color=#447700>!  RATE CONSTANT FOR ORGANIC MATTER 1) DECAY<a name='2524'></font>
+       KG1 = Ainp(8)<a name='2525'>
+       KG2 = Ainp(9)<a name='2526'>
+       KDOM= Ainp(10)<a name='2527'>
+<a name='2528'>
+<font color=#447700>!  Conditional Equilibrium constant (unitless)<a name='2529'></font>
+       a = Ainp(11)<a name='2530'>
+       PER_DIS = Ainp(12)<a name='2531'>
+<a name='2532'>
+<font color=#447700>!  Conditional Equilibrium constant (unitless)<a name='2533'></font>
+        KpFES = Ainp(13)<a name='2534'>
+<a name='2535'>
+<font color=#447700>!  Rate constants (T-6, Van Cap &amp; Wang 1996 7-13)<a name='2536'></font>
+<font color=#447700>!  (M-1 yr-1)<a name='2537'></font>
+      k8  = Ainp(14)<a name='2538'>
+      k10 = Ainp(15)<a name='2539'>
+      k11 = Ainp(16)<a name='2540'>
+      k12 = Ainp(17)<a name='2541'>
+      k13 = Ainp(18)<a name='2542'>
+<a name='2543'>
+<font color=#447700>! Rate constants (T-6, Van Cap &amp; Wang 1996 14-_21)<a name='2544'></font>
+<font color=#447700>! (M-1 yr-1 conv to (umolcm-3)-1 yr-1)<a name='2545'></font>
+      k14 = Ainp(19)<a name='2546'>
+      k15 = Ainp(20)<a name='2547'>
+<a name='2548'>
+<a name='2549'>
+<font color=#447700>! Rate constants (T-6, Van Cap &amp; Wang 1996 22-13)<a name='2550'></font>
+      k23  = Ainp(21)<a name='2551'>
+      k_23 = Ainp(22)<a name='2552'>
+<a name='2553'>
+<font color=#447700>! STOICHIOMETRY OF THE ORGANIC MATTER OM1:<a name='2554'></font>
+<font color=#447700>! NUMBER OF CARBONS, NITROGEN PHOSPHORUS ATOMS<a name='2555'></font>
+      SC1 = Ainp(23)<a name='2556'>
+      SN1 = Ainp(24)<a name='2557'>
+      SP1 = Ainp(25)<a name='2558'>
+<a name='2559'>
+<font color=#447700>! STOICHIOMETRY OF THE ORGANIC MATTER OM2:<a name='2560'></font>
+<font color=#447700>! NUMBER OF CARBONS, NITROGEN, PHOSPHORUS ATOMS<a name='2561'></font>
+      SC2 = Ainp(26)<a name='2562'>
+      SN2 = Ainp(27)<a name='2563'>
+      SP2 = Ainp(28)<a name='2564'>
+<a name='2565'>
+<font color=#447700>! STOICHIOMETRY OF THE ORGANIC MATTER DOM:<a name='2566'></font>
+<font color=#447700>! NUMBER OF CARBONS, NITROGEN, PHOSPHORUS ATOMS<a name='2567'></font>
+      SC3 = Ainp(29)<a name='2568'>
+      SN3 = Ainp(30)<a name='2569'>
+      SP3 = Ainp(31)<a name='2570'>
+<a name='2571'>
+<font color=#447700>!     MONOD CONSTANT FOR O2, NO3-, KMnO, S042-, FE3, MN4+<a name='2572'></font>
+      KO2  = Ainp(32)<a name='2573'>
+      KNO3 = Ainp(33)<a name='2574'>
+      KMNO = Ainp(34)<a name='2575'>
+      KFE3 = Ainp(35)<a name='2576'>
+      KSO4 = Ainp(36)<a name='2577'>
+<a name='2578'>
+<font color=#447700>!     SET UP IRRIGATION: DEFAULT IS NO IRRIGATION<a name='2579'></font>
+      IRRG   = 0<a name='2580'>
+<font color=#447700>!     IS THERE IRRIGATION (INTEGER):YES = 1  NO=0<a name='2581'></font>
+      IRRG = INT(Ainp(37))<a name='2582'>
+      ALPHA0 = Ainp(38)<a name='2583'>
+      XIRRIG = Ainp(39)<a name='2584'>
+<a name='2585'>
+<font color=#447700>!     ADVECTIVE VELOCITY<a name='2586'></font>
+      W00 = Ainp(40)<a name='2587'>
+<a name='2588'>
+<font color=#447700>!     POROSITY AND TORTUOSITY CORRECTION<a name='2589'></font>
+      P0 = Ainp(41)<a name='2590'>
+      P00 = Ainp(42)<a name='2591'>
+      BP = Ainp(43)<a name='2592'>
+<a name='2593'>
+<a name='2594'>
+<font color=#447700>!     PARAMETERS NEEDED FOR THE NUMERICS<a name='2595'></font>
+<font color=#447700>!     NUMBER OF POINTS NEEDED (UP TO 400) INTEGER<a name='2596'></font>
+      NPOINTS = Ainp(44)<a name='2597'>
+      NEQ = NPOINTS*NSPECIES+2<a name='2598'>
+<a name='2599'>
+<font color=#447700>!     MAXIMUM DEPTH FOR CALCULATIONS<a name='2600'></font>
+      XL = Ainp(45)<a name='2601'>
+      DH = XL/FLOAT(NPOINTS)<a name='2602'>
+      DO 86 I=1,NPOINTS<a name='2603'>
+         RPAR(I) = FLOAT(I)*DH<a name='2604'>
+ 86   CONTINUE<a name='2605'>
+<a name='2606'>
+<font color=#447700>!     END TIME FOR THE CALCULATIONS (4000.)<a name='2607'></font>
+      T0 = ZERO<a name='2608'>
+      TL = Ainp(46)<a name='2609'>
+<a name='2610'>
+<font color=#447700>!   CONCENTRATION O2 NO3 NH3 S04 HS- FE3+ FE2+ FES MN4+ MN2+<a name='2611'></font>
+      DO20  = Ainp(47)/THOU<a name='2612'>
+      NO30 = Ainp(48)/THOU<a name='2613'>
+      NH30 = Ainp(49)/THOU<a name='2614'>
+      SO40 = Ainp(50)/THOU<a name='2615'>
+      HS0  = Ainp(51)/THOU<a name='2616'>
+      MNO0 = Ainp(52)/THOU<a name='2617'>
+      MN20 = Ainp(53)/THOU<a name='2618'>
+<a name='2619'>
+      FE30 = Ainp(54)/THOU<a name='2620'>
+      FE20 = Ainp(55)/THOU<a name='2621'>
+      FES0 = Ainp(56)/THOU<a name='2622'>
+      DOM0 = Ainp(57)/THOU<a name='2623'>
+      TC0  = Ainp(58)/THOU<a name='2624'>
+<a name='2625'>
+<font color=#447700>!     OVER LYING WATER CONCENTRATION SEEN BY IRRIGATORS<a name='2626'></font>
+      DOMI = Ainp(59)/THOU<a name='2627'>
+      NH3I = Ainp(60)/THOU<a name='2628'>
+<font color=#447700>!     NO3I = Ainp(56)/THOU<a name='2629'></font>
+<a name='2630'>
+<font color=#447700>!     TYPE OF BOUNDARY CONDITION AT X=0<a name='2631'></font>
+<font color=#447700>!       KNOWN CONCENTRATION (1)<a name='2632'></font>
+<font color=#447700>!       PRESCRIBED FLUX     (2)<a name='2633'></font>
+      IFG = INT(Ainp(61))<a name='2634'>
+<a name='2635'>
+<font color=#447700>!     FOR FLUX BOUNDARY CONDITIONS ON THE ORGANIC MATTER<a name='2636'></font>
+      IF(IFG.EQ.2) THEN<a name='2637'>
+<font color=#447700>!     INTERFACIAL FLUX OM1, OM2<a name='2638'></font>
+       FG1 = Ainp(62)*365./10000.*1000./12 <font color=#447700>! from mg C m-2 d &gt;umol C cm-2 y-1<a name='2639'></font>
+       FG2 = Ainp(63)*365./10000.*1000./12 <font color=#447700>! from mg C m-2 d &gt;umol C cm-2 y-1 <a name='2640'></font>
+      ENDIF<a name='2641'>
+<a name='2642'>
+<font color=#447700>!    SWICH options: USE initial guess 1<a name='2643'></font>
+      KANH4 = (Ainp(64))<a name='2644'>
+<a name='2645'>
+      YY = YY_init     <font color=#447700>!YY_init and ppH_init read in Flux.F90<a name='2646'></font>
+      ppH = ppH_init<a name='2647'>
+<a name='2648'>
+      CALL <A href='../../html_code/CGEM_2.0/coupleRate.f.html#THERMOWATER'>thermowater</A><A href='../../html_code/CGEM_2.0/coupleRate.f.html#FILEDATA2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="THERMOWATER_2">(rK,SAL,TEMP)<a name='2649'>
+      rK1=rK(4)<a name='2650'>
+      rK2=rK(6)<a name='2651'>
+      phl = 10.**(-pH0)<a name='2652'>
+      alphe0= 1.0/(1+rK1/phl + rK1*rK2/phl**2)<a name='2653'>
+      alphe1= 1.0/(phl/rK1 + 1 +rK2/phl)<a name='2654'>
+      alphe2= 1.0/(phl**2/(rK1*rK2) + phl/rK2 +1)<a name='2655'>
+C<a name='2656'>
+      hco3c  = TC0 * alphe1<a name='2657'>
+      co3c   = TC0 * alphe2<a name='2658'>
+      h2co3c = TC0 * alphe0<a name='2659'>
+C<a name='2660'>
+      ALK0 = hco3c + 2.*co3c<a name='2661'>
+C<a name='2662'>
+<a name='2663'>
+      RETURN<a name='2664'>
+      END<a name='2665'>
+<a name='2666'>
+<a name='2667'>
+</pre></body></html>

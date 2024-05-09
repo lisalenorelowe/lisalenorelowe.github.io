@@ -1,0 +1,121 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='CGEM_VARS'><A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='2'>
+<font color=#993300>Module </font><font color=#cc0000>CGEM_vars</font> <A href='../../call_to/CGEM_VARS.html' TARGET='index'>20</A>,<A href='../../call_from/CGEM_VARS.html' TARGET='index'>1</A><a name='3'>
+<a name='4'>
+USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_12">, ONLY: nospA, nospZ<a name='5'>
+<a name='6'>
+<font color=#447700>!---------------------------------------------------------      <a name='7'></font>
+<font color=#447700>!-A; Phytoplankton number density (cells/m3);<a name='8'></font>
+<font color=#447700>!---------------------------------------------------------  <a name='9'></font>
+      integer iA(nospA)<a name='10'>
+<font color=#447700>!---------------------------<a name='11'></font>
+      data iA/1,2,3,4,5,6/      <a name='12'>
+<font color=#447700>!-------------------------------------------------------------      <a name='13'></font>
+      integer, parameter :: iA1 = 1, iA2 = 2, iA3 = 3, iA4 = 4<a name='14'>
+      integer, parameter :: iA5 = 5, iA6 = 6          <a name='15'>
+<font color=#447700>!----------------------------------------------------------------------<a name='16'></font>
+<font color=#447700>!-Qn: Phytoplankton Nitrogen Quota (mmol-N/cell)<a name='17'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='18'></font>
+      integer iQn(nospA)<a name='19'>
+      data iQn/7,8,9,10,11,12/      <a name='20'>
+<font color=#447700>!----------------------------------------------------------------  <a name='21'></font>
+      integer, parameter :: iQn1 =  7, iQn2 =  8, iQn3 =  9, iQn4 = 10<a name='22'>
+      integer, parameter :: iQn5 = 11, iQn6 = 12      <a name='23'>
+<font color=#447700>!----------------------------------------------------------------------<a name='24'></font>
+<font color=#447700>!-Qp: Phytoplankton Phosphorus Quota (mmol-P/cell)<a name='25'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='26'></font>
+      integer iQp(nospA)<a name='27'>
+      data iQp/13,14,15,16,17,18/<a name='28'>
+<font color=#447700>!----------------------------------------------------------------<a name='29'></font>
+      integer, parameter :: iQp1 = 13, iQp2 = 14, iQp3 = 15, iQp4 = 16     <a name='30'>
+      integer, parameter :: iQp5 = 17, iQp6 = 18    <a name='31'>
+<font color=#447700>!--------------------------------------------------------------------<a name='32'></font>
+<font color=#447700>!-Z: Zooplankton number density (individuals/m3);<a name='33'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='34'></font>
+      integer iZ(nospZ)<a name='35'>
+      data iZ/19,20/     <a name='36'>
+      integer, parameter :: iZ1 = 19, iZ2 = 20       <a name='37'>
+<font color=#447700>!-------------------------------<a name='38'></font>
+<font color=#447700>!-NO3; Nitrate (mmol-N/m3)<a name='39'></font>
+<font color=#447700>!-------------------------------<a name='40'></font>
+      integer, parameter :: iNO3 = 21  <a name='41'>
+<font color=#447700>!--------------------------------      <a name='42'></font>
+<font color=#447700>!-NH4; Ammonium (mmol-N/m3)<a name='43'></font>
+<font color=#447700>!--------------------------------<a name='44'></font>
+      integer, parameter :: iNH4 = 22 <a name='45'>
+<font color=#447700>!-------------------------------------------        <a name='46'></font>
+<font color=#447700>!-PO4: Phosphate (mmol-P/m3)<a name='47'></font>
+<font color=#447700>!--------------------------------------<a name='48'></font>
+      integer, parameter :: iPO4 = 23<a name='49'>
+<font color=#447700>!---------------------------------------------------------<a name='50'></font>
+<font color=#447700>!-DIC: Dissolved Inorganic Carbon (mmol-C/m3) <a name='51'></font>
+<font color=#447700>!---------------------------------------------------------<a name='52'></font>
+      integer, parameter :: iDIC = 24 <a name='53'>
+<font color=#447700>!-------------------------------------------        <a name='54'></font>
+<font color=#447700>!-O2: Molecular Oxygen (mmol-O2/m3)<a name='55'></font>
+<font color=#447700>!------------------------------<a name='56'></font>
+      integer, parameter :: iO2 = 25 <a name='57'>
+<font color=#447700>!-------------------------------------------------------------<a name='58'></font>
+<font color=#447700>!-OM1_A: (mmol-C/m3--particulate)<a name='59'></font>
+<font color=#447700>!        -- Particulate Organic Matter arising from <a name='60'></font>
+<font color=#447700>!           dead Phytoplankton<a name='61'></font>
+<font color=#447700>!-------------------------------------------------------------<a name='62'></font>
+      integer, parameter :: iOM1_A = 26  <a name='63'>
+<font color=#447700>!-----------------------------------------------------------------<a name='64'></font>
+<font color=#447700>!-OM2_A: (mmol-C/m3--dissolved)<a name='65'></font>
+<font color=#447700>!        -- Dissolved Organic Matter arising from <a name='66'></font>
+<font color=#447700>!           dead Phytoplankton <a name='67'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='68'></font>
+      integer, parameter :: iOM2_A = 27 <a name='69'>
+<font color=#447700>!-------------------------------------------------------------<a name='70'></font>
+<font color=#447700>!-OM1_Z:(mmol-C/m3--particulate)<a name='71'></font>
+<font color=#447700>!        -- Particulate Organic Matter arising from <a name='72'></font>
+<font color=#447700>!           Zooplankton fecal pellets.<a name='73'></font>
+<font color=#447700>!-------------------------------------------------------------<a name='74'></font>
+      integer, parameter :: iOM1_Z = 28 <a name='75'>
+<font color=#447700>!-------------------------------------------------        <a name='76'></font>
+<font color=#447700>!-OM2_Z:(mmol-C/m3--dissolved)<a name='77'></font>
+<font color=#447700>!        -- Dissolved Organic Matter arising from <a name='78'></font>
+<font color=#447700>!          Zooplankton fecal pellets.<a name='79'></font>
+<font color=#447700>!-----------------------------------------------<a name='80'></font>
+      integer, parameter :: iOM2_Z = 29 <a name='81'>
+<font color=#447700>!--------------------------------------------------------------------<a name='82'></font>
+<font color=#447700>!-OM1_R: (mmol-C/m3--particulate)<a name='83'></font>
+<font color=#447700>!         -- Particulate Organic Matter arising from river outflow<a name='84'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='85'></font>
+      integer, parameter :: iOM1_R = 30   <a name='86'>
+<font color=#447700>!-------------------------------------------------      <a name='87'></font>
+<font color=#447700>!-OM2_R: (mmol-C/m3--dissolved)<a name='88'></font>
+<font color=#447700>!         -- Dissolved Organic Matter arising from river outflow<a name='89'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='90'></font>
+      integer, parameter :: iOM2_R = 31 <a name='91'>
+<font color=#447700>!-------------------------------------------<a name='92'></font>
+<font color=#447700>!-CDOM: (ppb) <a name='93'></font>
+<font color=#447700>!        -- Colored Dissolved Organic Matter<a name='94'></font>
+<font color=#447700>!-------------------------------------------<a name='95'></font>
+      integer, parameter :: iCDOM = 32 <a name='96'>
+<font color=#447700>!---------------------------------------------<a name='97'></font>
+<font color=#447700>!-Silica: (mmol-Si/m3) <a name='98'></font>
+<font color=#447700>!        -- Silica<a name='99'></font>
+<font color=#447700>!-------------------------------------------<a name='100'></font>
+      integer, parameter :: iSi = 33<a name='101'>
+<font color=#447700>!--------------------------------------------------------------------<a name='102'></font>
+<font color=#447700>!-OM1_BC: (mmol-C/m3--particulate)<a name='103'></font>
+<font color=#447700>!         -- Particulate Organic Matter in initial and boundary <a name='104'></font>
+<font color=#447700>!            conditions <a name='105'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='106'></font>
+      integer, parameter :: iOM1_BC = 34<a name='107'>
+<font color=#447700>!-------------------------------------------------<a name='108'></font>
+<font color=#447700>!-OM2_BC: (mmol-C/m3--dissolved)<a name='109'></font>
+<font color=#447700>!         -- Dissolved Organic Matter in initial and boundary<a name='110'></font>
+<font color=#447700>!            conditions<a name='111'></font>
+<font color=#447700>!--------------------------------------------------------------------<a name='112'></font>
+      integer, parameter :: iOM2_BC = 35<a name='113'>
+<font color=#447700>!-------------------------------------------<a name='114'></font>
+<font color=#447700>!-ALK:  (mmol-HCO3/m3)?<a name='115'></font>
+<font color=#447700>!        -- Alkalinity<a name='116'></font>
+<font color=#447700>!-------------------------------------------<a name='117'></font>
+      integer, parameter :: iALK = 36<a name='118'>
+<a name='119'>
+END MODULE CGEM_vars <a name='120'>
+</pre></body></html>

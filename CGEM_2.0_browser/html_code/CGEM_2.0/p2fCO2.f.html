@@ -1,0 +1,69 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!&gt; \file p2fCO2.f90<a name='2'></font>
+<font color=#447700>!! \BRIEF <a name='3'></font>
+<font color=#447700>!&gt;    Module with p2fCO2 subroutine - compute fCO2 from pCO2, in situ T, atm pressure, hydrostatic pressure<a name='4'></font>
+<A NAME='MP2FCO2'><A href='../../html_code/CGEM_2.0/p2fCO2.f.html#MP2FCO2' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='5'>
+<font color=#993300>MODULE </font><font color=#cc0000>mp2fCO2</font> <A href='../../call_to/MP2FCO2.html' TARGET='index'>1</A><a name='6'>
+CONTAINS<a name='7'>
+<font color=#447700>!&gt;    Compute fCO2 from arrays of pCO2, in situ temp, atm pressure, &amp; hydrostatic pressure<a name='8'></font>
+<A NAME='P2FCO2'><A href='../../html_code/CGEM_2.0/p2fCO2.f.html#P2FCO2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='9'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>p2fCO2</font>(pCO2, temp, Patm, p, N, fCO2) <A href='../../call_to/P2FCO2.html' TARGET='index'>1</A>,<A href='../../call_from/P2FCO2.html' TARGET='index'>1</A><a name='10'>
+  <font color=#447700>!    Purpose:<a name='11'></font>
+  <font color=#447700>!    Compute fCO2 from arrays of pCO2, in situ temp, atm pressure, &amp; hydrostatic pressure<a name='12'></font>
+<a name='13'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/p2fCO2.f.html#P2FCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_9"><a name='14'>
+  IMPLICIT NONE<a name='15'>
+<a name='16'>
+  <font color=#447700>!&gt; number of records<a name='17'></font>
+  INTEGER, INTENT(in) :: N<a name='18'>
+<a name='19'>
+<font color=#447700>! INPUT variables<a name='20'></font>
+  <font color=#447700>!&gt; oceanic partial pressure of CO2 [uatm]<a name='21'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: pCO2<a name='22'>
+  <font color=#447700>!&gt; in situ temperature [C]<a name='23'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: temp<a name='24'>
+  <font color=#447700>!&gt; atmospheric pressure [atm]<a name='25'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: Patm<a name='26'>
+  <font color=#447700>!&gt; hydrostatic pressure [db]<a name='27'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: p<a name='28'>
+<font color=#447700>!f2py optional , depend(pCO2) :: n=len(pCO2)<a name='29'></font>
+<a name='30'>
+<font color=#447700>! OUTPUT variables:<a name='31'></font>
+  <font color=#447700>!&gt; fugacity of CO2 [uatm] <a name='32'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: fCO2<a name='33'>
+<a name='34'>
+<font color=#447700>! LOCAL variables:<a name='35'></font>
+  REAL(kind=r8) :: dpCO2, dtemp, tk, dPatm, prb<a name='36'>
+  REAL(kind=r8) :: Ptot, Rgas_atm, B, Del, xCO2approx, xc2, fugcoeff<a name='37'>
+  REAL(kind=r8) :: dfCO2<a name='38'>
+<a name='39'>
+  INTEGER :: i<a name='40'>
+<a name='41'>
+<font color=#447700>! REAL(kind=r8) :: sw_ptmp<a name='42'></font>
+<font color=#447700>! EXTERNAL sw_ptmp<a name='43'></font>
+<a name='44'>
+  DO i = 1,N<a name='45'>
+     dpCO2     = DBLE(pCO2(i))<a name='46'>
+     dtemp     = DBLE(temp(i))<a name='47'>
+     dPatm     = DBLE(Patm(i))<a name='48'>
+     tk = 273.15d0 + DBLE(temp(i))     <font color=#447700>!Absolute temperature (Kelvin)<a name='49'></font>
+     prb = DBLE(p(i)) / 10.0d0         <font color=#447700>!Pressure effect (prb is in bars)<a name='50'></font>
+     Ptot = dPatm + prb/1.01325d0      <font color=#447700>!Total pressure (atmospheric + hydrostatic) [atm]<a name='51'></font>
+     Rgas_atm = 82.05736_r8            <font color=#447700>!R in (cm3 * atm) / (mol * K)  from CODATA (2006)<a name='52'></font>
+<font color=#447700>!    To compute fugcoeff, we need 3 other terms (B, Del, xc2) as well as 3 others above (tk, Ptot, Rgas_atm)<a name='53'></font>
+     B = -1636.75d0 + 12.0408d0*tk - 0.0327957d0*(tk*tk) + 0.0000316528d0*(tk*tk*tk)<a name='54'>
+     Del = 57.7d0 - 0.118d0*tk<a name='55'>
+<font color=#447700>!    "x2" term often neglected (assumed = 1) in applications of Weiss's (1974) equation 9<a name='56'></font>
+<font color=#447700>!    x2 = 1 - x1 = 1 - xCO2 (it is very close to 1, but not quite)<a name='57'></font>
+<font color=#447700>!    Let's assume that xCO2 = pCO2. Resulting fugcoeff is identical to 8th digit after the decimal.<a name='58'></font>
+     xCO2approx = dpCO2 * 1.e-6_r8<a name='59'>
+     xc2 = (1.0d0 - xCO2approx)**2 <a name='60'>
+     fugcoeff = EXP( Ptot*(B + 2.0d0*xc2*Del)/(Rgas_atm*tk) )<a name='61'>
+     dfCO2 = dpCO2 * fugcoeff<a name='62'>
+     fCO2(i) = REAL(dfCO2)<a name='63'>
+  END DO<a name='64'>
+<a name='65'>
+  RETURN<a name='66'>
+END SUBROUTINE p2fCO2<a name='67'>
+END MODULE mp2fCO2<a name='68'>
+</pre></body></html>

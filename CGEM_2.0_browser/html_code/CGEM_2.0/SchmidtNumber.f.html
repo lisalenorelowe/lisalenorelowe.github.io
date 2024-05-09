@@ -1,0 +1,67 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!---------------------------------------------------------------------------<a name='2'></font>
+<A NAME='SCHMIDTNUMBER'><A href='../../html_code/CGEM_2.0/SchmidtNumber.f.html#SCHMIDTNUMBER' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='3'>
+      <font color=#993300>FUNCTION </font><font color=#cc0000>SchmidtNumber</font>( S, T, which ) RESULT( RES )   <A href='../../call_to/SCHMIDTNUMBER.html' TARGET='index'>1</A>,<A href='../../call_from/SCHMIDTNUMBER.html' TARGET='index'>2</A><a name='4'>
+      <a name='5'>
+  <font color=#447700>!-------------------------------------------------------------------------<a name='6'></font>
+  <font color=#447700>! INPUT:  (all must have same dimensions)<a name='7'></font>
+  <font color=#447700>!   S = salinity    [psu      (PSS-78)]<a name='8'></font>
+  <font color=#447700>!   T = temperature [degree C (IPTS-68)]<a name='9'></font>
+  <font color=#447700>!<a name='10'></font>
+  <font color=#447700>! OUTPUT:<a name='11'></font>
+  <font color=#447700>!   Schmidt Number for Oxygen (which = 0)<a name='12'></font>
+  <font color=#447700>!or Schmidt Number for CO2    (which = 1) <a name='13'></font>
+  <font color=#447700>! <a name='14'></font>
+  <font color=#447700>! REFERENCES:<a name='15'></font>
+  <font color=#447700>!     Unesco 1983. Algorithms for computation of fundamental properties of <a name='16'></font>
+  <font color=#447700>!     seawater, 1983. _Unesco Tech. Pap. in Mar. Sci._, No. 44, 53 pp.<a name='17'></font>
+  <font color=#447700>!------------------------------------------------------------------------<a name='18'></font>
+    IMPLICIT NONE<a name='19'>
+<a name='20'>
+    REAL, INTENT(IN) :: S    <font color=#447700>! Salinity (psu)<a name='21'></font>
+    REAL, INTENT(IN) :: T    <font color=#447700>! Temperature (deg C)<a name='22'></font>
+    REAL :: RES<a name='23'>
+    REAL :: sw_dens0<a name='24'>
+    REAL :: muSW,KT<a name='25'>
+    REAL :: D_02, D_C02<a name='26'>
+    INTEGER, INTENT(IN) :: which <font color=#447700>!0 for Oxygen<a name='27'></font>
+                                 <font color=#447700>!1 for CO2<a name='28'></font>
+<a name='29'>
+    REAL, PARAMETER:: K0 = 1.7910 <a name='30'>
+    REAL, PARAMETER:: K1 = -6.144e-2 <a name='31'>
+    REAL, PARAMETER:: K2 = 1.4510e-3 <a name='32'>
+    REAL, PARAMETER:: K3 = -1.6826e-5 <a name='33'>
+    REAL, PARAMETER:: K4 = -1.5290e-4<a name='34'>
+    REAL, PARAMETER:: K5 = 8.3885e-8<a name='35'>
+    REAL, PARAMETER:: K6 = 2.4727e-3<a name='36'>
+    REAL, PARAMETER:: K7 = 6.0574e-6<a name='37'>
+    REAL, PARAMETER:: K8 = -2.6760e-9<a name='38'>
+    REAL, PARAMETER:: K9 = 4.8429e-5<a name='39'>
+    REAL, PARAMETER:: K10 = -4.7172e-6<a name='40'>
+    REAL, PARAMETER:: K11 = 7.5986e-8<a name='41'>
+<a name='42'>
+    REAL, PARAMETER:: D1 = 0.2604e-5 <a name='43'>
+    REAL, PARAMETER:: D2 = 0.006383e-5 <a name='44'>
+    REAL, PARAMETER:: D3 = 0.1954e-5<a name='45'>
+    REAL, PARAMETER:: D4 = 0.005089e-5 <a name='46'>
+<a name='47'>
+    REAL, PARAMETER:: P = 1.01325<a name='48'>
+<a name='49'>
+    KT = 273.15 + T<a name='50'>
+<a name='51'>
+    muSW = K0 + K1*T + K2*T*T + K3*T*T*T + K4*P + K5*P*P + K6*S + T*(K7*P + K8*P*P) + S*(K9*T + K10*T*T + K11*T*T*T) <a name='52'>
+<a name='53'>
+    if(which.eq.0) then<a name='54'>
+     D_02 = D1 + D2*KT/muSW<a name='55'>
+     RES = muSW/(<A href='../../html_code/CGEM_2.0/sw_dens0.f.html#SW_DENS0'>sw_dens0</A><A href='../../html_code/CGEM_2.0/SchmidtNumber.f.html#SCHMIDTNUMBER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SW_DENS0_3">(S,T)*D_02)<a name='56'>
+    endif<a name='57'>
+<a name='58'>
+    if(which.eq.1) then<a name='59'>
+     D_C02 = D3 + D4*KT/muSW<a name='60'>
+     RES = muSW/(<A href='../../html_code/CGEM_2.0/sw_dens0.f.html#SW_DENS0'>sw_dens0</A><A href='../../html_code/CGEM_2.0/SchmidtNumber.f.html#SCHMIDTNUMBER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SW_DENS0_4">(S,T)*D_C02)<a name='61'>
+    endif<a name='62'>
+<a name='63'>
+               <a name='64'>
+    RETURN<a name='65'>
+  END FUNCTION SchmidtNumber  <a name='66'>
+</pre></body></html>

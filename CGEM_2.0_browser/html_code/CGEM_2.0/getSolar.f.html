@@ -1,0 +1,93 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!----------------------------------------------------------------------<a name='2'></font>
+<A NAME='GETSOLAR'><A href='../../html_code/CGEM_2.0/getSolar.f.html#GETSOLAR' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>getSolar</font>(                                             &amp; <A href='../../call_to/GETSOLAR.html' TARGET='index'>3</A>,<A href='../../call_from/GETSOLAR.html' TARGET='index'>4</A><a name='4'>
+      &amp;    lon       , lat    ,                                        &amp; <a name='5'>
+      &amp;    iYr       ,                                                 &amp;<a name='6'>
+      &amp;    iMon      , iDay   ,                                        &amp;    <a name='7'>
+      &amp;    iHr       , iMin   ,                                        &amp;     <a name='8'>
+      &amp;    iSec      , Rad    , my_imstart, my_imend                  )        <a name='9'>
+<font color=#447700>!----------------------------------------------------------------------<a name='10'></font>
+<font color=#447700>!     Written by  ::  D.S.Ko/NRL<a name='11'></font>
+<font color=#447700>!     Modified by ::  Barry Herchenroder/EMVL, April   2010<a name='12'></font>
+<font color=#447700>!                                              July    2011<a name='13'></font>
+<font color=#447700>!                                              Nov-Dec 2011<a name='14'></font>
+<font color=#447700>!<a name='15'></font>
+<font color=#447700>!     Calculate visible solar radiation irradiance<a name='16'></font>
+<font color=#447700>!                        using just the solar zenith and ignore<a name='17'></font>
+<font color=#447700>!                        the effects of clouds and atmospheric<a name='18'></font>
+<font color=#447700>!                        absorption and scattering.<a name='19'></font>
+<font color=#447700>! ---------------------------------------------------------------------<a name='20'></font>
+     USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/getSolar.f.html#GETSOLAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_36"><a name='21'>
+<a name='22'>
+     IMPLICIT NONE<a name='23'>
+     <a name='24'>
+<font color=#447700>!----------------------<a name='25'></font>
+<font color=#447700>! Interface variables:<a name='26'></font>
+<font color=#447700>!----------------------<a name='27'></font>
+      integer, intent(in)  :: my_imstart, my_imend <a name='28'>
+      real   , intent(in)  :: lon(im)  <font color=#447700>! longitude (deg E) at center of cell <a name='29'></font>
+      real   , intent(in)  :: lat(jm)  <font color=#447700>! latitude (deg N) at center of cell <a name='30'></font>
+      integer, intent(in)  :: iYr      <font color=#447700>! Year that Time_8 corresponds to<a name='31'></font>
+      integer, intent(in)  :: iMon     <font color=#447700>! Month that Time_8 corresponds to <a name='32'></font>
+      integer, intent(in)  :: iDay     <font color=#447700>! Day that Time_8 corresponds to<a name='33'></font>
+      integer, intent(in)  :: iHr      <font color=#447700>! Hour that Time_8 corresponds to<a name='34'></font>
+      integer, intent(in)  :: iMin     <font color=#447700>! Minute that Time_8 corresponds to<a name='35'></font>
+      integer, intent(in)  :: iSec     <font color=#447700>! Second that Time_8 corresponds to<a name='36'></font>
+      real   , intent(out) :: Rad(im,jm) <font color=#447700>! Solar Radiation <a name='37'></font>
+                                                                               <a name='38'>
+<font color=#447700>!-----------------------<a name='39'></font>
+<font color=#447700>! Local variables <a name='40'></font>
+<font color=#447700>!-----------------------<a name='41'></font>
+      real, parameter :: cv        = 2.77e14 <font color=#447700>! multiplicative factor used<a name='42'></font>
+                                                 <font color=#447700>! to convert from watts/m2 <a name='43'></font>
+                                                 <font color=#447700>! to photons/cm2/sec<a name='44'></font>
+                                                 <font color=#447700>! Morel and Smith (1974)<a name='45'></font>
+      real(kind=8), parameter :: OneD60_8   =  1.0_8/60.0_8<a name='46'>
+      real(kind=8), parameter :: OneD3600_8 =  1.0_8/3600.0_8              <a name='47'>
+      real :: calc_solar_zenith<a name='48'>
+      integer  :: i,j  <a name='49'>
+      integer  :: jul_day<a name='50'>
+      integer  :: JY<a name='51'>
+      integer  :: mdate_julian<a name='52'>
+      real                :: rhr     <font color=#447700>! decimal hr in the Julian Day <a name='53'></font>
+      real(kind=8)        :: rhr_8   <font color=#447700>! decimal hr in the Julian Day       <a name='54'></font>
+      real                :: solconst      <a name='55'>
+      real                :: Z<a name='56'>
+      LOGICAL :: leapyr  <a name='57'>
+<a name='58'>
+<font color=#447700>!------------------------------------------------------------------------<a name='59'></font>
+<font color=#447700>! Temporarily, we will make the radiation only a function<a name='60'></font>
+<font color=#447700>! of time based on the zenth value and an approximate solar constant<a name='61'></font>
+<font color=#447700>! of 1200 watts/m2. We will use the function calc_solar_zenith to<a name='62'></font>
+<font color=#447700>! generate the solar zenith and the mdate_julian to generate a julian<a name='63'></font>
+<font color=#447700>! date/time  that approximates the GMT date/time that we need.<a name='64'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='65'></font>
+	 rhr_8 = real(iHr,kind=8)                                        &amp;<a name='66'>
+	 &amp;     + OneD60_8*(real(iMin,kind=8) + OneD3600_8*real(iSec,kind=8)) <a name='67'>
+         rhr   = real(rhr_8,kind=4)<a name='68'>
+<a name='69'>
+         if (<A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/getSolar.f.html#GETSOLAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_7">(iYr) == 1) then <a name='70'>
+            leapyr = .FALSE.  <font color=#447700>! iYr is not a leap-year<a name='71'></font>
+	 else <a name='72'>
+	    leapyr = .TRUE.   <font color=#447700>! iYr is a leap-year<a name='73'></font>
+	 endif <a name='74'>
+	 <a name='75'>
+	 jul_day = <A href='../../html_code/CGEM_2.0/mdate_julian.f.html#MDATE_JULIAN'>mdate_julian</A><A href='../../html_code/CGEM_2.0/getSolar.f.html#GETSOLAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MDATE_JULIAN_3">(iMon,iDay,leapyr )<a name='76'>
+         <a name='77'>
+<font color=#447700>! Note in next line that 1200 is the average clear-sky solar constant<a name='78'></font>
+<font color=#447700>! in watts/m^2     <a name='79'></font>
+	 solconst = 1200.00 * cv  <font color=#447700>! in photons/cm2/sec<a name='80'></font>
+<a name='81'>
+<font color=#447700>!-----------------------------------	 <a name='82'></font>
+         do i = my_imstart,my_imend<a name='83'>
+         do j = 1,jm<a name='84'>
+           Z        = <A href='../../html_code/CGEM_2.0/calc_solar_zenith.f.html#CALC_SOLAR_ZENITH'>calc_solar_zenith</A><A href='../../html_code/CGEM_2.0/getSolar.f.html#GETSOLAR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CALC_SOLAR_ZENITH_3">(lat(j),lon(i),rhr,jul_day,leapyr) <font color=#447700>!in rad<a name='85'></font>
+           Rad(i,j) = solconst *AMAX1( COS(Z), 0.0)    <font color=#447700>! COS(Z)&lt;= 0 means night <a name='86'></font>
+         enddo<a name='87'>
+         enddo<a name='88'>
+<font color=#447700>!-----------------------------------<a name='89'></font>
+        RETURN<a name='90'>
+           <a name='91'>
+      END Subroutine getSolar<a name='92'>
+</pre></body></html>

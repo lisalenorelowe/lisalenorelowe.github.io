@@ -1,0 +1,499 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!---------------------------------------------------------------------= <a name='2'></font>
+<A NAME='GET_RIVER_FLOW'><A href='../../html_code/CGEM_2.0/get_river_flow2.f.html#GET_RIVER_FLOW' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+      <font color=#993300>SUBROUTINE </font><font color=#cc0000>get_river_flow</font> (iYr, TC_8, River_flow ) <A href='../../call_to/GET_RIVER_FLOW.html' TARGET='index'>3</A>,<A href='../../call_from/GET_RIVER_FLOW.html' TARGET='index'>12</A><a name='4'>
+<font color=#447700>!----------------------------------------------------------------------  <a name='5'></font>
+<font color=#447700>!               Written  by D.S.Ko/NRL<a name='6'></font>
+<font color=#447700>!               Modified by B.E. Herchenroder/EMVL, April/May 2010<a name='7'></font>
+<font color=#447700>!                                                   June,Sept 2011<a name='8'></font>
+<font color=#447700>!                                                   June      2013<a name='9'></font>
+<font color=#447700>!---------------------------------------------------------------------<a name='10'></font>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_32"> <font color=#447700>! For iYr0, etc.<a name='11'></font>
+      USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_12"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='12'></font>
+      USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_21"><a name='13'>
+<a name='14'>
+      IMPLICIT NONE<a name='15'>
+<a name='16'>
+<font color=#447700>! ---------------------------------------------------------------------         <a name='17'></font>
+<font color=#447700>!     Time-interpolation of data/time GMT<a name='18'></font>
+<font color=#447700>!     TC_8     (In)  - Simulation time in seconds since Model_dim::iYr0.<a name='19'></font>
+<font color=#447700>!     River_flow (Out) - flow rate at Day_8<a name='20'></font>
+<font color=#447700>!-----------------------------------------------------<a name='21'></font>
+<font color=#447700>! Declare variables in subroutine Inteface<a name='22'></font>
+<font color=#447700>!------------------------------------------<a name='23'></font>
+<font color=#447700>! --- Input to subroutine:<a name='24'></font>
+      INTEGER, INTENT(IN) :: iYr   <font color=#447700>! GMT year (YYYY; 2003-2007) at the <a name='25'></font>
+                                   <font color=#447700>! date/time in simulation that <a name='26'></font>
+                                   <font color=#447700>! discharge is needed <a name='27'></font>
+      <a name='28'>
+      INTEGER(KIND=8), INTENT(IN) :: TC_8  <font color=#447700>! Model time in seconds since iYr0.<a name='29'></font>
+<font color=#447700>! --- Output from subroutine:<a name='30'></font>
+      REAL   , INTENT(OUT)     :: River_flow(nr)  <font color=#447700>! river flow rate (m3/sec)<a name='31'></font>
+<a name='32'>
+<font color=#447700>!-----------------------------------------------------  <a name='33'></font>
+<a name='34'>
+<font color=#447700>!-----------------------------------------------<a name='35'></font>
+<font color=#447700>! Declare remaining (local) variables <a name='36'></font>
+<font color=#447700>!-----------------------------------------------   <a name='37'></font>
+ CHARACTER(LEN=150), SAVE  :: fileRiv_flow <a name='38'>
+ <a name='39'>
+ CHARACTER(LEN=160), SAVE  :: fileRiv_flow2002<a name='40'>
+ CHARACTER(LEN=160), SAVE  :: fileRiv_flow2003<a name='41'>
+ CHARACTER(LEN=160), SAVE  :: fileRiv_flow2004<a name='42'>
+ CHARACTER(LEN=160), SAVE  :: fileRiv_flow2005<a name='43'>
+ CHARACTER(LEN=160), SAVE  :: fileRiv_flow2006<a name='44'>
+ CHARACTER(LEN=160), SAVE  :: fileRiv_flow2007<a name='45'>
+      <a name='46'>
+      INTEGER            :: funit <a name='47'>
+      INTEGER, SAVE      :: funit_old        <a name='48'>
+<a name='49'>
+      INTEGER, SAVE      :: i1     = 0  <a name='50'>
+      INTEGER, SAVE      :: i2     = 1  <a name='51'>
+      INTEGER            :: i1n                                <a name='52'>
+      INTEGER            :: id<a name='53'>
+      INTEGER            :: idum <a name='54'>
+      INTEGER            :: ih           <a name='55'>
+      INTEGER            :: imon       <a name='56'>
+      INTEGER, SAVE      :: iminn<a name='57'>
+      INTEGER, SAVE      :: isecc                             <a name='58'>
+      INTEGER            :: iy    <a name='59'>
+      INTEGER            :: l<a name='60'>
+      INTEGER(8):: SECONDS<a name='61'>
+<font color=#447700>!-----------------------------------<a name='62'></font>
+      REAL(8):: DTC_8 <font color=#447700>! TC_8 converted to fractional days.<a name='63'></font>
+      REAL(KIND=8), SAVE :: D_8(2) <a name='64'>
+            <a name='65'>
+      REAL               :: R1<a name='66'>
+      REAL               :: R2            <a name='67'>
+      REAL   , SAVE      :: RD <a name='68'>
+      REAL(KIND=8), SAVE :: RD_8          <a name='69'>
+      <a name='70'>
+<font color=#447700>! local arrays <a name='71'></font>
+      REAL   , SAVE      :: f2(nr,2)            <a name='72'>
+      CHARACTER*150      :: array <a name='73'>
+<font color=#447700>! ----------------------------------------------------------------------<a name='74'></font>
+      if(Which_hydro.eq.1) then       <font color=#447700>!Climate change cc0<a name='75'></font>
+        fileRiv_flow2002 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2002')<a name='76'>
+        fileRiv_flow2003 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2003')<a name='77'>
+        fileRiv_flow2004 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2004')<a name='78'>
+        fileRiv_flow2005 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2005')<a name='79'>
+        fileRiv_flow2006 =  TRIM(NONHYDRODIR//'River/'//'River_flow_present.2006')<a name='80'>
+        fileRiv_flow2007 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2007')<a name='81'>
+      elseif (Which_hydro.eq.2) then  <font color=#447700>!Climate change cc1<a name='82'></font>
+        fileRiv_flow2002 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2002')<a name='83'>
+        fileRiv_flow2003 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2003')<a name='84'>
+        fileRiv_flow2004 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2004')<a name='85'>
+        fileRiv_flow2005 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2005')<a name='86'>
+        fileRiv_flow2006 =  TRIM(NONHYDRODIR//'River/'//'River_flow_cc1.2006')<a name='87'>
+        fileRiv_flow2007 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2007')<a name='88'>
+      elseif (Which_hydro.eq.3) then  <font color=#447700>!New Climate change cc1<a name='89'></font>
+        fileRiv_flow2002 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2002')<a name='90'>
+        fileRiv_flow2003 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2003')<a name='91'>
+        fileRiv_flow2004 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2004')<a name='92'>
+        fileRiv_flow2005 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2005')<a name='93'>
+        fileRiv_flow2006 =  TRIM(NONHYDRODIR//'River/'//'River_flow_cc2.2006')<a name='94'>
+        fileRiv_flow2007 =  TRIM(NONHYDRODIR//'River_cc/'//'River_flow.2007')<a name='95'>
+      else  <font color=#447700>!Default is "present" hydro<a name='96'></font>
+        fileRiv_flow2002 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2002')<a name='97'>
+        fileRiv_flow2003 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2003')<a name='98'>
+        fileRiv_flow2004 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2004')<a name='99'>
+        fileRiv_flow2005 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2005')<a name='100'>
+        fileRiv_flow2006 =  TRIM(NONHYDRODIR//'River/'//'River_flow_present.2006')<a name='101'>
+        fileRiv_flow2007 =  TRIM(NONHYDRODIR//'River_Old/'//'River_flow.2007')<a name='102'>
+      endif<a name='103'>
+<a name='104'>
+        SELECT CASE(iYr)<a name='105'>
+        CASE(2002)<a name='106'>
+           fileRiv_flow  = fileRiv_flow2002<a name='107'>
+        CASE(2003)<a name='108'>
+           fileRiv_flow  = fileRiv_flow2003<a name='109'>
+        CASE(2004)<a name='110'>
+           fileRiv_flow  = fileRiv_flow2004<a name='111'>
+        CASE(2005)<a name='112'>
+           fileRiv_flow  = fileRiv_flow2005<a name='113'>
+        CASE(2006)<a name='114'>
+           fileRiv_flow  = fileRiv_flow2006<a name='115'>
+        CASE(2007)<a name='116'>
+           fileRiv_flow  = fileRiv_flow2007<a name='117'>
+        CASE DEFAULT<a name='118'>
+           WRITE(6, "(' ')")<a name='119'>
+           WRITE(6, "('In sub. get_River_flow_new_1D, encountered ')")<a name='120'>
+           WRITE(6, "('default case for first case statement. ')")<a name='121'>
+           WRITE(6, "('That means iYr = ', I4)") iYr<a name='122'>
+           WRITE(6, "('is &lt; 2002 or &gt; 2007. Allowed range of iYr ')")<a name='123'>
+           WRITE(6, "('is Yr &gt;= 2002 and &lt;= 2007 ')")<a name='124'>
+           WRITE(6, "('Abort run. ')")<a name='125'>
+           WRITE(6, "(' ')")<a name='126'>
+           STOP<a name='127'>
+        END SELECT<a name='128'>
+<a name='129'>
+<a name='130'>
+<font color=#447700>! --- read data<a name='131'></font>
+<a name='132'>
+IF (i1.eq.0) THEN<a name='133'>
+<a name='134'>
+<font color=#447700>! Open river discharge data file iYr, 2002 &lt;= iYr &lt;= 2007, Note that the<a name='135'></font>
+<font color=#447700>! daatafor year 200+j, j=2,...,7 is stored on units 92,94,...97 <a name='136'></font>
+<font color=#447700>!respectively. <a name='137'></font>
+<a name='138'>
+<a name='139'>
+      <font color=#447700>! Set funit to the unit number that holds the data for year iYr.<a name='140'></font>
+      <font color=#447700>! Since this section of the code is only executed once, iYr will<a name='141'></font>
+      <font color=#447700>! be the first iYr encountered in the main program when the<a name='142'></font>
+      <font color=#447700>! present subroutine is called.<a name='143'></font>
+      <a name='144'>
+        funit     = 90 + (iYr - 2000)  <a name='145'>
+        <a name='146'>
+        funit_old = funit<a name='147'>
+	<a name='148'>
+<font color=#447700>! Open river data file associated with iYr<a name='149'></font>
+<a name='150'>
+        SELECT CASE(iYr)<a name='151'>
+        CASE(2002)<a name='152'>
+           open (92,file=fileRiv_flow2002,status='old')          <a name='153'>
+        CASE(2003)<a name='154'>
+           open (93,file=fileRiv_flow2003,status='old')        <a name='155'>
+        CASE(2004)<a name='156'>
+           open (94,file=fileRiv_flow2004,status='old')            <a name='157'>
+        CASE(2005)      <a name='158'>
+      	    open (95,file=fileRiv_flow2005,status='old')  <a name='159'>
+        CASE(2006)     <a name='160'>
+	    open (96,file=fileRiv_flow2006,status='old')  <a name='161'>
+        CASE(2007)<a name='162'>
+	    open (97,file=fileRiv_flow2007,status='old')<a name='163'>
+	CASE DEFAULT<a name='164'>
+	   <font color=#447700>! This is no op--years have been tested in 1st <a name='165'></font>
+	   <font color=#447700>! Case Statement<a name='166'></font>
+        END SELECT<a name='167'>
+	   	    <a name='168'>
+      <font color=#447700>! Skip past first 201 lines on unit funit which are header <a name='169'></font>
+      <font color=#447700>! material we won't use<a name='170'></font>
+      <a name='171'>
+        DO idum = 1, 201<a name='172'>
+           READ(funit,*)<a name='173'>
+        ENDDO<a name='174'>
+<a name='175'>
+      <font color=#447700>! Read data for first time-level on the file.attached to funit<a name='176'></font>
+     <a name='177'>
+      <font color=#447700>! There are 2 time-levels of data per day and those time-levels <a name='178'></font>
+      <font color=#447700>! are at 12:00 midnight GMT at the beginning of the day and <a name='179'></font>
+      <font color=#447700>! 12:00 noon GMT st the middle of the GMT day . The first <a name='180'></font>
+      <font color=#447700>! time-level corresponds to midnight at the beginning of 1  <a name='181'></font>
+      <font color=#447700>! Jan of GMT year iYr. <a name='182'></font>
+             <a name='183'>
+        i2 = 1<a name='184'>
+        READ (funit,*,err=7) iy,imon,id,ih<a name='185'>
+        READ (funit,*,err=8) (f2(l,i2),l=1,nr)<a name='186'>
+<a name='187'>
+<font color=#447700>!L3 Modification 1: Data is every day on the 12th hr        <a name='188'></font>
+      <font color=#447700>! Make sure that iy = iYr, im = 1, id = 1, and ih =12. If one<a name='189'></font>
+      <font color=#447700>! or more of these variables are not correct, print message and<a name='190'></font>
+      <font color=#447700>! abort run.<a name='191'></font>
+      <a name='192'>
+        IF(iy /= iYr .OR. imon /= 1 .OR. id /=1 .OR. ih /= 12) THEN<a name='193'>
+          WRITE(6, "(' ')")     <a name='194'>
+          WRITE(6, "('In sub. get_river_flow ')") <a name='195'>
+          WRITE(6, "('in the initialization section, there is')")               <a name='196'>
+          WRITE(6, "('a problem with funit = ',I3,' since: ')") funit<a name='197'>
+          WRITE(6, "(' ')")                      <a name='198'>
+          WRITE(6, "('iy  = ',I5)") iy<a name='199'>
+          WRITE(6, "('iYr = ',I5)") iYr          <a name='200'>
+          WRITE(6, "('im  = ',I5)") imon<a name='201'>
+          WRITE(6, "('id  = ',I5)") id<a name='202'>
+          WRITE(6, "('ih  = ',I5)") ih <a name='203'>
+          WRITE(6, "(' ')") <a name='204'>
+          WRITE(6, "('One or more of the above variables is wrong. ')")  <a name='205'>
+          WRITE(6, "('Abort run, and find and fix the problem. ')") <a name='206'>
+          WRITE(6, "(' ')") <a name='207'>
+          STOP                      <a name='208'>
+        ENDIF<a name='209'>
+       <a name='210'>
+      <font color=#447700>! Calc D_8(i2), the model time (decimal days) for the first<a name='211'></font>
+      <font color=#447700>! time-level on the file attached to unit funit. This time<a name='212'></font>
+<font color=#447700>!L3      ! will correspond to the model time of of 12:00 midnight at<a name='213'></font>
+      <font color=#447700>! will correspond to the model time of 12:00 noon at<a name='214'></font>
+      <font color=#447700>! beginning of 1 Jan, year = iYr.<a name='215'></font>
+      <a name='216'>
+<font color=#447700>!L3   ! D_8(i2) will be 12.0_8 for the first time-level on unit<a name='217'></font>
+      <font color=#447700>! funit=92 since the first time-level is at the start<a name='218'></font>
+      <font color=#447700>! of model time at the beginning(12:00 midnight) of <a name='219'></font>
+      <font color=#447700>! 1 Jan 2002<a name='220'></font>
+      <a name='221'>
+        iminn = 0<a name='222'>
+        isecc = 0      <a name='223'>
+       <a name='224'>
+        IF( iYr == 2002) THEN<a name='225'>
+<font color=#447700>!L3           D_8(i2) = 0.0_8        <a name='226'></font>
+           D_8(i2) = 12.0_8*60.0_8*60.0_8  <font color=#447700>!Seconds at 12 hours<a name='227'></font>
+<a name='228'>
+        ELSE                        	         <a name='229'>
+           SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_16">( iYr0, iy, imon, id, ih, iminn, isecc )<a name='230'>
+           D_8(i2) = SECONDS<a name='231'>
+           D_8(i2) = D_8(i2) / SECONDS_PER_DAY<a name='232'>
+        ENDIF <a name='233'>
+	<a name='234'>
+     <font color=#447700>!  D_8 has units of decimal days and was calculated on line above.	  <a name='235'></font>
+        <a name='236'>
+       i1 = 2        <a name='237'>
+<a name='238'>
+      <font color=#447700>! Time difference between data on a Ko created file containing <a name='239'></font>
+      <font color=#447700>! river discharges is always 1/2 days, so <a name='240'></font>
+      <font color=#447700>!     RD_8 = 1.0_8/(D(i1)-D(i2) <a name='241'></font>
+      <font color=#447700>! with (D(i1)-D(i2)) = time difference in time, always between 2<a name='242'></font>
+      <font color=#447700>!                      Data points (in days) <a name='243'></font>
+      <font color=#447700>!                    = 0.5 days<a name='244'></font>
+      <font color=#447700>! Therefore<a name='245'></font>
+      <font color=#447700>!     RD_8 = 1.0_8/(D(i1)-D(i2) = 1.0_8/0.5_8 = 2.0_8   <a name='246'></font>
+      <font color=#447700>! and RD = REAL(RD_8,KIND=4) = 2.0<a name='247'></font>
+      <font color=#447700>! always<a name='248'></font>
+      <font color=#447700>!		      <a name='249'></font>
+      <font color=#447700>! RD   = 1.0<a name='250'></font>
+      <font color=#447700>! RD_8 = 1.0_8 <a name='251'></font>
+       <a name='252'>
+      <font color=#447700>! RD_8 = 2.0_8   ! Always = 2.0_8 for NRL 20 layer river <a name='253'></font>
+<font color=#447700>!WTF???	RD_8 = 0.0_8   ! discharge input data. But we will use zero <a name='254'></font>
+        RD_8 = 1.0_8       <font color=#447700>! here to follow original coding  <a name='255'></font>
+		       <a name='256'>
+        RD   = REAL(RD_8,KIND=4)       <a name='257'>
+	               <font color=#447700>! Always true for NRL 20 layer river discharge <a name='258'></font>
+		       <font color=#447700>! input data<a name='259'></font>
+        <a name='260'>
+ENDIF  <font color=#447700>! End of "if (i1.eq.0)" block IF. This is the initialization<a name='261'></font>
+       <font color=#447700>! block<a name='262'></font>
+<font color=#447700>!**************************************************************        <a name='263'></font>
+                           <a name='264'>
+<font color=#447700>! Recalculate funit since it may differ from<a name='265'></font>
+<font color=#447700>! the value used when this subroutine was called previously by the<a name='266'></font>
+<font color=#447700>! main program.<a name='267'></font>
+      <a name='268'>
+    funit = 90 + (iYr - 2000)<a name='269'>
+    <a name='270'>
+<font color=#447700>! It is assumed that the main program will be run sequentially through<a name='271'></font>
+<font color=#447700>! the computation timesteps. Thus, once a river discharge input file <a name='272'></font>
+<font color=#447700>! has been stepped thru to the end of the file, it will no longer be <a name='273'></font>
+<font color=#447700>! used in the present run.<a name='274'></font>
+<font color=#447700>!<a name='275'></font>
+<font color=#447700>! In addition, it is assumed that the data in a given input file will<a name='276'></font>
+<font color=#447700>! be stepped through sequentially with no breaks in time     <a name='277'></font>
+      <a name='278'>
+    IF( funit /= funit_old) THEN<a name='279'>
+      <font color=#447700>! If we get here, this is the first call to the file attached<a name='280'></font>
+      <font color=#447700>! to unit number funit.<a name='281'></font>
+<font color=#447700>! Open river data file associated with iYr<a name='282'></font>
+        funit_old = funit<a name='283'>
+<a name='284'>
+        SELECT CASE(iYr)<a name='285'>
+        CASE(2002)<a name='286'>
+           open (92,file=fileRiv_flow2002,status='old')<a name='287'>
+      <font color=#447700>! Skip past first 201 lines which are header material we won't use<a name='288'></font>
+        DO idum = 1, 201<a name='289'>
+           READ(funit,*) array<a name='290'>
+        ENDDO<a name='291'>
+<a name='292'>
+        CASE(2003)<a name='293'>
+           open (93,file=fileRiv_flow2003,status='old')<a name='294'>
+      <font color=#447700>! Skip past first 201 lines which are header material we won't use<a name='295'></font>
+        DO idum = 1, 201<a name='296'>
+           READ(funit,*) array<a name='297'>
+        ENDDO<a name='298'>
+<a name='299'>
+        CASE(2004)<a name='300'>
+           open (94,file=fileRiv_flow2004,status='old')<a name='301'>
+      <font color=#447700>! Skip past first 201 lines which are header material we won't use<a name='302'></font>
+        DO idum = 1, 201<a name='303'>
+           READ(funit,*) array<a name='304'>
+        ENDDO<a name='305'>
+<a name='306'>
+        CASE(2005)<a name='307'>
+            open (95,file=fileRiv_flow2005,status='old')<a name='308'>
+      <font color=#447700>! Skip past first 201 lines which are header material we won't use<a name='309'></font>
+        DO idum = 1, 201<a name='310'>
+           READ(funit,*) array<a name='311'>
+        ENDDO<a name='312'>
+<a name='313'>
+        CASE(2006)<a name='314'>
+            open (96,file=fileRiv_flow2006,status='old')<a name='315'>
+      <font color=#447700>! Skip past first 201 lines which are header material we won't use<a name='316'></font>
+        DO idum = 1, 201<a name='317'>
+           READ(funit,*) array<a name='318'>
+        ENDDO<a name='319'>
+<a name='320'>
+        CASE(2007)<a name='321'>
+            open (97,file=fileRiv_flow2007,status='old')<a name='322'>
+      <font color=#447700>! Skip past first 201 lines which are header material we won't use<a name='323'></font>
+        DO idum = 1, 201<a name='324'>
+           READ(funit,*) array<a name='325'>
+        ENDDO<a name='326'>
+<a name='327'>
+        CASE DEFAULT<a name='328'>
+           <font color=#447700>! This is no op--years have been tested in 1st<a name='329'></font>
+           <font color=#447700>! Case Statement<a name='330'></font>
+        END SELECT<a name='331'>
+<a name='332'>
+        i1n = i2<a name='333'>
+        i2  = i1<a name='334'>
+        i1  = i1n        <a name='335'>
+        <a name='336'>
+      <font color=#447700>! Read first set of time-varying data on the file attached to<a name='337'></font>
+      <font color=#447700>! funit. <a name='338'></font>
+       <a name='339'>
+      <font color=#447700>! There are 2 time-levels of data per day and those time-levels <a name='340'></font>
+      <font color=#447700>! are at 12:00 midnight GMT at the beginning of the day and <a name='341'></font>
+      <font color=#447700>! 12:00 noon GMT st the middle of the GMT day . The first <a name='342'></font>
+      <font color=#447700>! time-level corresponds to midnight at the beginning of 1  <a name='343'></font>
+      <font color=#447700>! Jan of GMT year iYr. <a name='344'></font>
+         <a name='345'>
+        i2 = 1<a name='346'>
+        READ (funit,*,err=7) iy,imon,id,ih<a name='347'>
+        READ (funit,*,err=8) (f2(l,i2),l=1,nr) <a name='348'>
+<a name='349'>
+      <font color=#447700>! Make sure that iy = iYr, imon = 1, id = 1, and ih =0. If one<a name='350'></font>
+      <font color=#447700>! or more of these variables are not correct, print message and<a name='351'></font>
+      <font color=#447700>! abort run.<a name='352'></font>
+      <a name='353'>
+        IF(iy /= iYr .OR. imon /= 1 .OR. id /=1 .OR. ih /= 12) THEN<a name='354'>
+          WRITE(6, "(' ')")     <a name='355'>
+          WRITE(6, "('In sub. get_River_flow_new_1D ')") <a name='356'>
+          WRITE(6, "('in the initialization section, ')")               <a name='357'>
+          WRITE(6, "('there is a problem since: ')") <a name='358'>
+          WRITE(6, "(' ')")                      <a name='359'>
+          WRITE(6, "('iy  = ',I5)") iy<a name='360'>
+          WRITE(6, "('iYr = ',I5)") iYr          <a name='361'>
+          write(6,*) "funit",funit<a name='362'>
+          WRITE(6, "(' ')") <a name='363'>
+          WRITE(6, "('One or more of the above variables is wrong. ')")  <a name='364'>
+          WRITE(6, "('Abort run, and find and fix the problem. ')") <a name='365'>
+          WRITE(6, "(' ')") <a name='366'>
+          STOP                      <a name='367'>
+        ENDIF <a name='368'>
+        <a name='369'>
+      <font color=#447700>! Calc D_8(i2), the model time (decimal days) for the first<a name='370'></font>
+      <font color=#447700>! time-level on the file attached to unit funit. This time<a name='371'></font>
+      <font color=#447700>! will correspond to the model time of 12:00 midnight at<a name='372'></font>
+      <font color=#447700>! beginning of 1 Jan, year = iYr.<a name='373'></font>
+      <a name='374'>
+      <font color=#447700>! D_8_i2 will be &gt; 0.0_8 for the first time-level on unit<a name='375'></font>
+      <font color=#447700>! if funit /= 92 since the first time-level is &gt; 0 days since<a name='376'></font>
+      <font color=#447700>! the beginning of model time at he beginning of 1 Jan 2002. If<a name='377'></font>
+      <font color=#447700>! funit = 92, D_8_i2 will be 0.0_8 since model time is zero<a name='378'></font>
+      <font color=#447700>! at teh start of 2002.<a name='379'></font>
+      <a name='380'>
+        iminn = 0<a name='381'>
+        isecc = 0      <a name='382'>
+       <a name='383'>
+        IF( iYr == 2002) THEN<a name='384'>
+           D_8(i2) = 0.0_8       <a name='385'>
+           D_8(i2) = 12._8 * 60.0_8 * 60.0_8 <a name='386'>
+        ELSE                        	         <a name='387'>
+           SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_17">( iYr0, iy, imon, id, ih, iminn, isecc )<a name='388'>
+           D_8(i2) = SECONDS<a name='389'>
+           D_8(i2) = D_8(i2) / SECONDS_PER_DAY<a name='390'>
+        ENDIF <a name='391'>
+          <a name='392'>
+     <font color=#447700>!  D_8 has units of decimal days.<a name='393'></font>
+             <a name='394'>
+        i1 = 2  <a name='395'>
+        <a name='396'>
+      <font color=#447700>! Time difference between data on a file containing river discharges<a name='397'></font>
+      <font color=#447700>! is always 1/2 day, so RD_8 = 0.5_8 and RD = REAL(RD_8,KIND=4) <a name='398'></font>
+      <font color=#447700>! always<a name='399'></font>
+      <font color=#447700>! RD   = 1       <a name='400'></font>
+       RD_8 = 1.0_8    <a name='401'>
+      <font color=#447700>!  RD_8 = 2.0_8   ! Always true for NRL  river discharge input data <a name='402'></font>
+        RD   = REAL(RD_8,KIND=4)       <a name='403'>
+                                                <a name='404'>
+    ENDIF  <font color=#447700>! End of "IF( funit /= funit_old)" block IF<a name='405'></font>
+<a name='406'>
+       DTC_8 = TC_8<a name='407'>
+       DTC_8 = DTC_8 / SECONDS_PER_DAY<a name='408'>
+              	                 <a name='409'>
+       DO WHILE (DTC_8 .gt. D_8(i2))<a name='410'>
+        READ (funit,*,ERR=8,END=6) iy,imon,id,ih<a name='411'>
+        READ (funit,*,ERR=8) (f2(l,i1),l=1,nr)<a name='412'>
+      <a name='413'>
+      <font color=#447700>!--------------------------------------------------------------  <a name='414'></font>
+      <font color=#447700>! Note that iminn and isecc have been set to zero (values<a name='415'></font>
+      <font color=#447700>! have beeen declared as "SAVE") in the initialization block IF<a name='416'></font>
+      <font color=#447700>! which ends a few lines above.<a name='417'></font>
+      <font color=#447700>!--------------------------------------------------------------        <a name='418'></font>
+	<a name='419'>
+        SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_river_flow.f.html#GET_RIVER_FLOW' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_18">( iYr0, iy, imon, id, ih, iminn, isecc )<a name='420'>
+        D_8(i1) = SECONDS<a name='421'>
+        D_8(i1) = D_8(i1) / SECONDS_PER_DAY<a name='422'>
+        <a name='423'>
+     <font color=#447700>!  D_8 has units of decimal days.        	<a name='424'></font>
+        i1n = i2<a name='425'>
+        i2 = i1<a name='426'>
+        i1 = i1n    <a name='427'>
+                       <a name='428'>
+     <font color=#447700>!  RD   = 1./(D(i1)-D(i2))<a name='429'></font>
+     <font color=#447700>!  RD_8 =  1.0_8/(D_8(i1)-D_8(i2)) ! Should be 2.0_8 at present, so::<a name='430'></font>
+        RD_8 = 1.0_8<a name='431'>
+        RD   = REAL(RD_8,KIND=4)     <a name='432'>
+<a name='433'>
+      end do  <font color=#447700>! End of "do while (Day_8 .gt. D_8(i2))" block DO WHILE<a name='434'></font>
+<a name='435'>
+    <font color=#447700>! Once we get here, Day_8 is &lt; D_8(i2). Note when the EOF is <a name='436'></font>
+    <font color=#447700>! encountered on unit funit, the code will jump to label 6<a name='437'></font>
+<a name='438'>
+5     CONTINUE<a name='439'>
+      R1 = REAL((DTC_8 - D_8(i2))*RD_8,KIND=4)      <a name='440'>
+      <a name='441'>
+      R2 = 1.0 - R1<a name='442'>
+      <a name='443'>
+      DO l = 1, nr<a name='444'>
+        River_flow(l) = f2(l,i2)*R2+f2(l,i1)*R1<a name='445'>
+      END DO <a name='446'>
+<a name='447'>
+      RETURN <a name='448'>
+<a name='449'>
+<a name='450'>
+6     CONTINUE<a name='451'>
+      WRITE(6, "(' ')")     <a name='452'>
+      WRITE(6, "('In sub. get_River_flow_new_1D ')")    <a name='453'>
+      WRITE(6, "('code reached label 6. Code should never get here ')") <a name='454'>
+      WRITE(6, "('Abort run. ')")       <a name='455'>
+      WRITE(6, "(' ')")<a name='456'>
+      STOP               <a name='457'>
+      RD_8 = 0.0_8<a name='458'>
+      RD   = 0.0<a name='459'>
+      GOTO 5<a name='460'>
+<a name='461'>
+7   CONTINUE <a name='462'>
+    WRITE(6, "(' ')")     <a name='463'>
+    WRITE(6, "('In sub. get_River_flow_1D ')")<a name='464'>
+    write(6, "('*** Can not find River_flow file:')")<a name='465'>
+    WRITE(6, "('    attached to unit funit = ', I3, ' ,')") funit <a name='466'>
+    WRITE(6, "('    namely, the file: ')")     <a name='467'>
+    GOTO 9<a name='468'>
+    <a name='469'>
+8   CONTINUE<a name='470'>
+    WRITE(6, "('In sub. get_River_flow_new_1D ')")<a name='471'>
+    WRITE (6,'(''*** Read error in River_flow input file'')')<a name='472'>
+    <a name='473'>
+9   CONTINUE             <a name='474'>
+    WRITE(6, "(' ')")             <a name='475'>
+    SELECT CASE (funit)<a name='476'>
+       CASE(92)<a name='477'>
+          WRITE(6, "(A)") TRIM(fileRiv_flow2002)        <a name='478'>
+       CASE(93)<a name='479'>
+          WRITE(6, "(A)") TRIM(fileRiv_flow2003)          <a name='480'>
+       CASE(94)<a name='481'>
+          WRITE(6, "(A)") TRIM(fileRiv_flow2004)          <a name='482'>
+       CASE(95)<a name='483'>
+          WRITE(6, "(A)") TRIM(fileRiv_flow2005)          <a name='484'>
+       CASE(96)<a name='485'>
+          WRITE(6, "(A)") TRIM(fileRiv_flow2006)                    <a name='486'>
+       CASE(97)<a name='487'>
+          WRITE(6, "(A)") TRIM(fileRiv_flow2007) <a name='488'>
+       CASE DEFAULT<a name='489'>
+          WRITE(6, "('Unrecognized unit number funit = ', I5)") funit <a name='490'>
+          WRITE(6, "('for input data file containing river discharges ')")  <a name='491'>
+    END SELECT                         <a name='492'>
+    WRITE(6, "(' ')") <a name='493'>
+    WRITE(6, "('Abort run, find &amp; fix problem and rerun ')")<a name='494'>
+    WRITE(6, "(' ')")                 <a name='495'>
+    STOP<a name='496'>
+      END SUBROUTINE get_river_flow <a name='497'>
+<font color=#447700>!----------------------------------------------------------------------- <a name='498'></font>
+</pre></body></html>

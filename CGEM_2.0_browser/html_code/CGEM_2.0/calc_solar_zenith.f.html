@@ -1,0 +1,137 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!----------------------------------------------------------------------<a name='2'></font>
+<A NAME='CALC_SOLAR_ZENITH'><A href='../../html_code/CGEM_2.0/calc_solar_zenith.f.html#CALC_SOLAR_ZENITH' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='3'>
+      <font color=#993300>FUNCTION </font><font color=#cc0000>calc_solar_zenith</font>(lat, lon, rhr, julianDay, leapyr )    &amp;       <A href='../../call_to/CALC_SOLAR_ZENITH.html' TARGET='index'>3</A><a name='4'>
+      &amp;        RESULT(sunangle) <a name='5'>
+      <a name='6'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='7'></font>
+<font color=#447700>!     Original MATLAB code Written by: Brad Penta/NRL<a name='8'></font>
+<font color=#447700>!<a name='9'></font>
+<font color=#447700>!     Translated into FORTRAN and <a name='10'></font>
+<font color=#447700>!     Revised by                     : Barry Herchenroder/EMVL, April 2010<a name='11'></font>
+<font color=#447700>!                                                               June 2011<a name='12'></font>
+<font color=#447700>!------------------------------------------------------------------------<a name='13'></font>
+<a name='14'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='15'></font>
+<font color=#447700>!  Calculate the solar zenith angle (radians) given the latitude <a name='16'></font>
+<font color=#447700>!  (lat, degrees) longitude (lon, degrees) of a point in the Gulf of <a name='17'></font>
+<font color=#447700>!  Mexico (GOM) as well as the Julian day of the year (julianDay),<a name='18'></font>
+<font color=#447700>!  the hour in that day (ihr-integer), and whether julianDay is in<a name='19'></font>
+<font color=#447700>!  a leap year (leapyr == .TRUE.) or a non leap year (leapyr == .FALSE.)<a name='20'></font>
+<font color=#447700>!------------------------------------------------------------------------<a name='21'></font>
+<a name='22'>
+  <font color=#447700>!--------------------------------------------------------------------------<a name='23'></font>
+  <font color=#447700>! Definitions<a name='24'></font>
+  <font color=#447700>!<a name='25'></font>
+  <font color=#447700>! sunangle     -&gt; angle of the sun in radians, computed from latitude,<a name='26'></font>
+  <font color=#447700>!                 longitude, Julian day, and time--This is the zenith <a name='27'></font>
+  <font color=#447700>!<a name='28'></font>
+  <font color=#447700>! Compute the sun zenith angle in radians for a given Julian day (julianDay),<a name='29'></font>
+  <font color=#447700>! GMT (ihr;in hours), latitude (lat), and longitude (lon).<a name='30'></font>
+  <font color=#447700>!<a name='31'></font>
+  <font color=#447700>! leapyr      -&gt; a logical parameter input thru the subroutine interface.<a name='32'></font>
+  <font color=#447700>!                 If true, then julianDay is in a leap year (366 days <a name='33'></font>
+  <font color=#447700>!                 long). If false, then julianDay is in a non leap year <a name='34'></font>
+  <font color=#447700>!                 (365 days long).      <a name='35'></font>
+  <font color=#447700>!  <a name='36'></font>
+  <font color=#447700>! Sun angle of pi/2 radians (90 deg) = sun at or below horizon i.e. dark<a name='37'></font>
+  <font color=#447700>! Sun angle of 0 radians (0 deg)     = sun directly overhead.<a name='38'></font>
+<font color=#447700>!------------------------------------------------------------------------------<a name='39'></font>
+<a name='40'>
+  IMPLICIT NONE <a name='41'>
+   <a name='42'>
+<font color=#447700>!-------------------------------------------------<a name='43'></font>
+<font color=#447700>! Declare variables in the interface<a name='44'></font>
+<font color=#447700>!------------------------------------------------- <a name='45'></font>
+  REAL   , INTENT(IN)    :: lat          <font color=#447700>! Latitude (deg); lat &gt; 0 means<a name='46'></font>
+                                         <font color=#447700>!                 North of Equator<a name='47'></font>
+  <a name='48'>
+  REAL   , INTENT(IN)    :: lon          <font color=#447700>! Longitude (deg E, 0 &lt;= lon &lt; 360); <a name='49'></font>
+  <a name='50'>
+  REAL   , INTENT(IN)    :: rhr          <font color=#447700>! decimal Hour of Julian Day  <a name='51'></font>
+<a name='52'>
+  INTEGER, INTENT(IN)    :: julianDay    <font color=#447700>! Julian Day GMT<a name='53'></font>
+  <a name='54'>
+  LOGICAL, INTENT(IN)    :: leapyr       <font color=#447700>! IF true,  julianDay is in a leap<a name='55'></font>
+                                         <font color=#447700>!           year (366 days)<a name='56'></font>
+					 <font color=#447700>! IF false, julianDay is in a non<a name='57'></font>
+                                         <font color=#447700>!           leap year (365 days)    <a name='58'></font>
+<font color=#447700>!-------------------------------------------------<a name='59'></font>
+<font color=#447700>! Local variables<a name='60'></font>
+<font color=#447700>!------------------------------------------------- <a name='61'></font>
+  REAL   :: costmp<a name='62'>
+  REAL   :: sdec<a name='63'>
+  REAL   :: rad<a name='64'>
+  REAL   :: rlat <a name='65'>
+  REAL   :: rsdec   <a name='66'>
+  REAL   :: rthez <a name='67'>
+  REAL   :: sunangle  <font color=#447700>! returned as RESULT <a name='68'></font>
+  REAL   :: tc  <a name='69'>
+  REAL   :: thez<a name='70'>
+  REAL   :: xha<a name='71'>
+  REAL   :: Yr_length<a name='72'>
+<a name='73'>
+<font color=#447700>!---------------------------------------------------<a name='74'></font>
+<font color=#447700>!  Compute solar declination angle<a name='75'></font>
+  rad = 180.0/ (4.0 * atan(1.0))             <font color=#447700>! rad = radian to degrees <a name='76'></font>
+                                             <font color=#447700>!       conversion factor<a name='77'></font>
+  IF(leapyr == .FALSE.) THEN<a name='78'>
+      Yr_length = 365.0<a name='79'>
+  ELSE<a name='80'>
+      Yr_length = 366.0  <a name='81'>
+  ENDIF        <a name='82'>
+<a name='83'>
+  thez = 360.0*((FLOAT(julianDay-1)) )/Yr_length <font color=#447700>! thez = theta zero orbital <a name='84'></font>
+                                                 <font color=#447700>!        position (degs)<a name='85'></font>
+  rthez = thez/rad;  <font color=#447700>! in radians<a name='86'></font>
+<a name='87'>
+<font color=#447700>!  sdec = solar declination angle in degrees<a name='88'></font>
+   sdec = 0.396372                                                    &amp;<a name='89'>
+   &amp;    -22.91327 *cos(rthez)     + 4.02543*sin(rthez)                &amp; <a name='90'>
+   &amp;    - 0.387205*cos(2.0*rthez) + 0.051967*sin(2.0*rthez)           &amp;<a name='91'>
+   &amp;    - 0.154527*cos(3.0*rthez) + 0.084798*sin(3.0*rthez)           <a name='92'>
+   rsdec = sdec/rad; <font color=#447700>! in radians<a name='93'></font>
+<a name='94'>
+<font color=#447700>!  Time correction (tc) for solar hour angle<a name='95'></font>
+   tc = 0.004297                                                      &amp;<a name='96'>
+   &amp;  + 0.107029*cos(rthez)     - 1.837877*sin(rthez)                 &amp;<a name='97'>
+   &amp;  - 0.837378*cos(2.0*rthez) - 2.342824*sin(2.0*rthez)<a name='98'>
+<a name='99'>
+<font color=#447700>!  xha = solar hour angle in degrees<a name='100'></font>
+   xha = (rhr-12.0 )*15.0 + lon + tc    <a name='101'>
+     <a name='102'>
+   IF (xha &gt; 180.0) THEN<a name='103'>
+      xha = xha - 360.0<a name='104'>
+   ENDIF <a name='105'>
+   IF (xha &gt; -180.0) THEN<a name='106'>
+      xha = xha + 360.0<a name='107'>
+   ENDIF <a name='108'>
+<a name='109'>
+<font color=#447700>!  Sun zenith angle sunangle. <a name='110'></font>
+<font color=#447700>! Cosine(sunangle) == costmp<a name='111'></font>
+<font color=#447700>! rsdec            == sun declination angle<a name='112'></font>
+<font color=#447700>! xha              == local hour angle  <a name='113'></font>
+<a name='114'>
+   rlat = lat/rad<a name='115'>
+   costmp = sin(rlat)*sin(rsdec)                                      &amp; <a name='116'>
+   &amp;      + cos(rlat)*cos(rsdec) * cos(xha/rad)<a name='117'>
+<a name='118'>
+<font color=#447700>! The next block if is for failsafe purposes<a name='119'></font>
+   IF (abs(costmp) &gt; 1.0) THEN<a name='120'>
+       IF (costmp &gt; 0.0) THEN<a name='121'>
+           costmp = 1.0<a name='122'>
+       ELSE<a name='123'>
+           costmp = -1.0<a name='124'>
+       ENDIF <a name='125'>
+   ENDIF <a name='126'>
+<a name='127'>
+   sunangle = acos(costmp)  <font color=#447700>! solar zenith angle in radians. Note that<a name='128'></font>
+                            <font color=#447700>! 2.0*atan(1.0)= Pi/2 radians= 90 deg<a name='129'></font>
+<a name='130'>
+   IF (sunangle &gt; (2.0*atan(1.0))) THEN<a name='131'>
+       sunangle = 2.0*atan(1.0);<a name='132'>
+   ENDIF <a name='133'>
+ <a name='134'>
+   RETURN  <a name='135'>
+   END FUNCTION calc_solar_zenith   <a name='136'>
+</pre></body></html>

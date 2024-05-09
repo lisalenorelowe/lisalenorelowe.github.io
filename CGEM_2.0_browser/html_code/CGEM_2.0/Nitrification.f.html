@@ -1,0 +1,49 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!--------------------------------------------------------------------<a name='2'></font>
+<A NAME='NITRIFICATION'><A href='../../html_code/CGEM_2.0/Nitrification.f.html#NITRIFICATION' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+  <font color=#993300>SUBROUTINE </font><font color=#cc0000>Nitrification</font>( O2, NH4, KO2, KNH4, nitmax, TEMP, R_11 )      <A href='../../call_to/NITRIFICATION.html' TARGET='index'>2</A><a name='4'>
+  <font color=#447700>!-------------------------------------------------------------------  <a name='5'></font>
+  <font color=#447700>! Provides Nitrification rate for the model.<a name='6'></font>
+  <font color=#447700>! Note that the time units are in days, not seconds. <a name='7'></font>
+  <font color=#447700>!-------------------------------------------------------------------   <a name='8'></font>
+    IMPLICIT NONE<a name='9'>
+    <a name='10'>
+    REAL, INTENT(IN) :: O2<a name='11'>
+    REAL, INTENT(IN) :: NH4<a name='12'>
+    REAL, INTENT(IN) :: KO2<a name='13'>
+    REAL, INTENT(IN) :: KNH4<a name='14'>
+    REAL, INTENT(IN) :: nitmax <a name='15'>
+    REAL, INTENT(IN) :: TEMP<a name='16'>
+    REAL, INTENT(OUT):: R_11  <a name='17'>
+<a name='18'>
+<font color=#447700>!    REAL :: FACTOR         <a name='19'></font>
+<font color=#447700>!    REAL :: TQ1          <a name='20'></font>
+<font color=#447700>!    REAL :: TQ2         <a name='21'></font>
+<font color=#447700>!    REAL :: RQ1    <a name='22'></font>
+<font color=#447700>!    REAL :: RQ11 <a name='23'></font>
+<font color=#447700>!-------------------------------------------------    <a name='24'></font>
+    <font color=#447700>! Use the Q10 relationship to determine the rates.<a name='25'></font>
+    <font color=#447700>! Assume that TEMP is the maximum temperature.<a name='26'></font>
+<a name='27'>
+<font color=#447700>!    TQ1  = 25.0<a name='28'></font>
+<font color=#447700>!    TQ2  = TEMP<a name='29'></font>
+<font color=#447700>!    FACTOR = LOG10( 2.0 ) * 0.1 * ( TQ1 - TQ2 )<a name='30'></font>
+<a name='31'>
+<font color=#447700>!    RQ1  = K11    <a name='32'></font>
+<font color=#447700>!    RQ11 = LOG10( RQ1 ) - FACTOR<a name='33'></font>
+<font color=#447700>!    RQ11 = 10.0 ** RQ11<a name='34'></font>
+<a name='35'>
+   <font color=#447700>! VC&amp;W Nitrification Rate<a name='36'></font>
+<font color=#447700>!    R_11   = RQ11 * NH4 * O2 <a name='37'></font>
+<a name='38'>
+<font color=#447700>! 6/12/16 from GoMDOM code Where<a name='39'></font>
+<font color=#447700>!      nitmax =  .52 !(mmol m-3 d-1, maximum nitrification rate, calculated from<a name='40'></font>
+<font color=#447700>!Jenkins and Kemp 1984 and also the same value used in Pauer et al.  2016)<a name='41'></font>
+<font color=#447700>!!    KO2                      = 10.!(mmol O2 m-3, using the value for our KO2)<a name='42'></font>
+<font color=#447700>!      KNH4                     = 1. !71. !(mmol NH4 m-3, value from GoMDOM)<a name='43'></font>
+      R_11 = nitmax* O2/(KO2+O2) * NH4/(KNH4+NH4)<a name='44'>
+<a name='45'>
+<a name='46'>
+    RETURN<a name='47'>
+  END SUBROUTINE Nitrification <a name='48'>
+</pre></body></html>

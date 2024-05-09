@@ -1,0 +1,308 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='SET_INITIAL_CONDITIONS'><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions.f.html#SET_INITIAL_CONDITIONS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+<font color=#993300>Subroutine </font><font color=#cc0000>Set_Initial_Conditions</font>(f,S,D,T,lat,fm,my_imstart,my_imend) <A href='../../call_to/SET_INITIAL_CONDITIONS.html' TARGET='index'>4</A>,<A href='../../call_from/SET_INITIAL_CONDITIONS.html' TARGET='index'>22</A><a name='3'>
+<a name='4'>
+  USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_55"> <font color=#447700>! For nf, nospA<a name='5'></font>
+  USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_20"><a name='6'>
+  USE <A href='../../html_code/CGEM_2.0/CGEM_vars.f.html#CGEM_VARS'>CGEM_vars</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CGEM_VARS_16"> <font color=#447700>! For iA1, ... iOM2_BC.<a name='7'></font>
+  USE <A href='../../html_code/CGEM_2.0/Conversions.f.html#CONVERSIONS'>Conversions</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CONVERSIONS_8"><a name='8'>
+  USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_33"><a name='9'>
+  USE <A href='../../html_code/CGEM_2.0/depth2press.f.html#MDEPTH2PRESS'>mdepth2press</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MDEPTH2PRESS_2"><a name='10'>
+  USE <A href='../../html_code/CGEM_2.0/rhoinsitu.f.html#MRHOINSITU'>mrhoinsitu</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MRHOINSITU_2"><a name='11'>
+  USE <A href='../../html_code/CGEM_2.0/vars.f.html#MVARS'>mvars</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MVARS_3"><a name='12'>
+<a name='13'>
+  implicit none<a name='14'>
+<a name='15'>
+  real f(myimp2,jm,nsl,nf),S(im,jm,kbm1),D(im,jm,nsl)<font color=#447700>!S=Salinity,D=Depth<a name='16'></font>
+  real T(im,jm,kbm1),lat(jm) <font color=#447700>!Temperature, latitude<a name='17'></font>
+  real temp,temp_OM1,temp_OM2,total_chl,total_chl_cells<a name='18'>
+  real, dimension(1) :: pdbar, rhois <font color=#447700>!pressure, density<a name='19'></font>
+  integer my_imstart,my_imend,i,j,k,myi,fm(im,jm)<a name='20'>
+<font color=#447700>!Output vars for alkalinity subroutine:<a name='21'></font>
+  real ph_calc(1), pco2_calc(1), fco2(1), co2(1), hco3(1), co3(1)<a name='22'>
+  real omegaa(1), omegac(1), betad_calc(1), rhosw(1), p(1), tempis(1)<a name='23'>
+  real :: patm(1) = 1.<a name='24'>
+<a name='25'>
+  <font color=#447700>! For each F variable, specify wether or not to re-initialize<a name='26'></font>
+  <font color=#447700>! it using salinity regression equation during restart runs<a name='27'></font>
+  <font color=#447700>! i.e., .TRUE. means overwrite the value that was read in<a name='28'></font>
+  <font color=#447700>! from the NetCDF file during a re-start.<a name='29'></font>
+<a name='30'>
+  LOGICAL,PARAMETER,DIMENSION( nf ):: REINITIALIZE = (/ &amp;<a name='31'>
+    .FALSE., &amp; <font color=#447700>! A1<a name='32'></font>
+    .FALSE., &amp; <font color=#447700>! A2<a name='33'></font>
+    .FALSE., &amp; <font color=#447700>! A3<a name='34'></font>
+    .FALSE., &amp; <font color=#447700>! A4<a name='35'></font>
+    .FALSE., &amp; <font color=#447700>! A5<a name='36'></font>
+    .FALSE., &amp; <font color=#447700>! A6<a name='37'></font>
+    .FALSE., &amp; <font color=#447700>! Qn1   <a name='38'></font>
+    .FALSE., &amp; <font color=#447700>! Qn2   <a name='39'></font>
+    .FALSE., &amp; <font color=#447700>! Qn3   <a name='40'></font>
+    .FALSE., &amp; <font color=#447700>! Qn4   <a name='41'></font>
+    .FALSE., &amp; <font color=#447700>! Qn5   <a name='42'></font>
+    .FALSE., &amp; <font color=#447700>! Qn6   <a name='43'></font>
+    .FALSE., &amp; <font color=#447700>! Qp1   <a name='44'></font>
+    .FALSE., &amp; <font color=#447700>! Qp2   <a name='45'></font>
+    .FALSE., &amp; <font color=#447700>! Qp3   <a name='46'></font>
+    .FALSE., &amp; <font color=#447700>! Qp4   <a name='47'></font>
+    .FALSE., &amp; <font color=#447700>! Qp5   <a name='48'></font>
+    .FALSE., &amp; <font color=#447700>! Qp6   <a name='49'></font>
+    .FALSE., &amp; <font color=#447700>! G1    <a name='50'></font>
+    .FALSE., &amp; <font color=#447700>! G2    <a name='51'></font>
+    .FALSE., &amp; <font color=#447700>! NO3   <a name='52'></font>
+    .FALSE., &amp; <font color=#447700>! NH4   <a name='53'></font>
+    .FALSE., &amp; <font color=#447700>! PO4   <a name='54'></font>
+    .FALSE., &amp; <font color=#447700>! DIC   <a name='55'></font>
+    .FALSE., &amp; <font color=#447700>! O2    <a name='56'></font>
+    .FALSE., &amp; <font color=#447700>! OM1_A <a name='57'></font>
+    .FALSE., &amp; <font color=#447700>! OM2_A <a name='58'></font>
+    .FALSE., &amp; <font color=#447700>! OM1_Z<a name='59'></font>
+    .FALSE., &amp; <font color=#447700>! OM2_Z<a name='60'></font>
+    .FALSE., &amp; <font color=#447700>! OM1_R<a name='61'></font>
+    .FALSE., &amp; <font color=#447700>! OM2_R<a name='62'></font>
+    .FALSE., &amp; <font color=#447700>! CDOM  <a name='63'></font>
+    .FALSE., &amp; <font color=#447700>! Si    <a name='64'></font>
+    .FALSE., &amp; <font color=#447700>! OM1_BC<a name='65'></font>
+    .FALSE., &amp; <font color=#447700>! OM2_BC<a name='66'></font>
+    .FALSE.  &amp; <font color=#447700>! ALK<a name='67'></font>
+  /)<a name='68'>
+<a name='69'>
+  do k = 1,nsl<a name='70'>
+    do j = 1,jm<a name='71'>
+      myi = 2<a name='72'>
+      do i = my_imstart, my_imend<a name='73'>
+<a name='74'>
+        if ( fm( i, j ) .ne. 1 ) then <font color=#447700>! Land cell.<a name='75'></font>
+          f( myi, j, k, : ) = -9999.<a name='76'>
+          pH( myi, j, k) = -9999.<a name='77'>
+        else <font color=#447700>! Ocean cell:<a name='78'></font>
+<a name='79'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iA1 ) ) THEN<a name='80'>
+            <font color=#447700>!Chla<a name='81'></font>
+            temp = -0.67 * S(i,j,k) + 0.01 * D(i,j,k) + 24.50<a name='82'>
+            total_chl = AMAX1(temp,0.01) <font color=#447700>! in mg.<a name='83'></font>
+            <font color=#447700>! Convert Chla to A<a name='84'></font>
+            <font color=#447700>! C2_chla_mg defined in Conversions module<a name='85'></font>
+            <font color=#447700>! Convert total Chl to cells<a name='86'></font>
+            total_chl_cells = total_chl/0.02/12. <a name='87'>
+            f( myi, j, k, iA1 ) = total_chl_cells/Qc(1)<a name='88'>
+          END IF<a name='89'>
+<a name='90'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iA2 ) ) THEN<a name='91'>
+            f( myi, j, k, iA2 ) = total_chl_cells/Qc(2) <a name='92'>
+          END IF<a name='93'>
+<a name='94'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iA3 ) ) THEN<a name='95'>
+            f( myi, j, k, iA3 ) = total_chl_cells/Qc(3)<a name='96'>
+          END IF<a name='97'>
+<a name='98'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iA4 ) ) THEN<a name='99'>
+            f( myi, j, k, iA4 ) = total_chl_cells/Qc(4) <a name='100'>
+          END IF<a name='101'>
+<a name='102'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iA5 ) ) THEN<a name='103'>
+            f( myi, j, k, iA5 ) = total_chl_cells/Qc(5) <a name='104'>
+          END IF<a name='105'>
+<a name='106'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iA6 ) ) THEN<a name='107'>
+            f( myi, j, k, iA6 ) = total_chl_cells/Qc(6) <a name='108'>
+          END IF<a name='109'>
+<a name='110'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iZ1 ) ) THEN<a name='111'>
+            <font color=#447700>! Zooplankton based on E&amp;R ratio (1000 zooplankton)<a name='112'></font>
+            f( myi, j, k, iZ1 ) = 2.e-6 * f( myi, j, k, iA1 )<a name='113'>
+          END IF<a name='114'>
+<a name='115'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iZ2 ) ) THEN<a name='116'>
+            f( myi, j, k, iZ2 ) = 2.e-5 * f( myi, j, k, iA1 )<a name='117'>
+          END IF<a name='118'>
+<a name='119'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iNO3 ) ) THEN<a name='120'>
+            <font color=#447700>!NO3<a name='121'></font>
+            temp = -7.57*S(i,j,k) + 0.04*D(i,j,k) + 0.11*S(i,j,k)*S(i,j,k) + 125.32<a name='122'>
+            f( myi, j, k, iNO3 ) = AMAX1(temp,0.01)<a name='123'>
+          END IF<a name='124'>
+<a name='125'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iNH4 ) ) THEN<a name='126'>
+            <font color=#447700>!NH4<a name='127'></font>
+            temp = -0.06*S(i,j,k) + 3.14<a name='128'>
+            f( myi, j, k, iNH4 ) = AMAX1(temp,0.01)<a name='129'>
+          END IF<a name='130'>
+<a name='131'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iSi ) ) THEN<a name='132'>
+            <font color=#447700>!Si<a name='133'></font>
+            temp = -5.08*S(i,j,k) + 0.07*D(i,j,k) + 0.08*S(i,j,k)*S(i,j,k) - 0.00029*D(i,j,k)*D(i,j,k) + 86.97<a name='134'>
+            f( myi, j, k, iSi ) = AMAX1(temp,0.01)<a name='135'>
+          END IF<a name='136'>
+<a name='137'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iPO4 ) ) THEN<a name='138'>
+            <font color=#447700>!PO4 = DIP<a name='139'></font>
+            temp = -0.11*S(i,j,k) + 1.77<a name='140'>
+            f( myi, j, k, iPO4 ) = AMAX1(temp,0.01)<a name='141'>
+          END IF<a name='142'>
+<a name='143'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iDIC ) ) THEN<a name='144'>
+            <font color=#447700>!DIC<a name='145'></font>
+            temp = -36.89*S(i,j,k) + 3.06*D(i,j,k) + 0.81*S(i,j,k)*S(i,j,k) - 0.04*D(i,j,k)*D(i,j,k) + 2438.05<a name='146'>
+            f( myi, j, k, iDIC ) = AMAX1(temp,0.01)<a name='147'>
+          END IF<a name='148'>
+<a name='149'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iO2 ) ) THEN<a name='150'>
+            <font color=#447700>!O2<a name='151'></font>
+            temp = -18.02*S(i,j,k) -0.37*D(i,j,k) +0.23*S(i,j,k)*S(i,j,k) + 521.72<a name='152'>
+            temp = AMAX1(temp,0.01)<a name='153'>
+            f( myi, j, k, iO2 ) = AMIN1(temp,415.)<a name='154'>
+          END IF<a name='155'>
+<a name='156'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iCDOM ) ) THEN<a name='157'>
+            <font color=#447700>!CDOM<a name='158'></font>
+            temp = -0.36*S(i,j,k) + 1.37<a name='159'>
+            temp = AMAX1(temp,0.01)<a name='160'>
+            <font color=#447700>!CONVERT CDOM 412 to 312<a name='161'></font>
+            <font color=#447700>!a312 = a412 X exp(-S*(312-412)), where S = 0.016 (S was obtained from D’Sa and Dimarco 2009).<a name='162'></font>
+            temp = temp * exp(-0.016*(312.-412.))<a name='163'>
+            <font color=#447700>!CONVERT CDOM 312 to ppb:<a name='164'></font>
+            <font color=#447700>! calculate CDOM (QSE ppb): CDOM (QSE ppb) = a(312)*2.933 + 0.538<a name='165'></font>
+            f(myi, j, k, iCDOM) = temp * 2.933 + 0.538<a name='166'>
+          END IF<a name='167'>
+<a name='168'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM1_A ) ) THEN<a name='169'>
+            f( myi, j, k, iOM1_A ) = 0.<a name='170'>
+          END IF<a name='171'>
+<a name='172'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM2_A ) ) THEN<a name='173'>
+            f( myi, j, k, iOM2_A ) = 0.<a name='174'>
+          END IF<a name='175'>
+<a name='176'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM1_Z ) ) THEN<a name='177'>
+            f( myi, j, k, iOM1_Z ) = 0.<a name='178'>
+          END IF<a name='179'>
+<a name='180'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM2_Z ) ) THEN<a name='181'>
+            f( myi, j, k, iOM2_Z ) = 0.<a name='182'>
+          END IF<a name='183'>
+<a name='184'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM1_R ) ) THEN<a name='185'>
+            f( myi, j, k, iOM1_R ) = 0.<a name='186'>
+          END IF<a name='187'>
+<a name='188'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM2_R ) ) THEN<a name='189'>
+            f( myi, j, k, iOM2_R ) = 0.<a name='190'>
+          END IF<a name='191'>
+<a name='192'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM1_BC ) ) THEN<a name='193'>
+            <font color=#447700>!Initialize POC and DIC into OM_BC terms times a multiplier specified at input<a name='194'></font>
+            <font color=#447700>!PC==OM1<a name='195'></font>
+            temp = -3.97 * S(i,j,k) - 0.01 * D(i,j,k) + 157.42<a name='196'>
+            temp_OM1 = AMAX1(temp,0.01)<a name='197'>
+            f( myi, j, k, iOM1_BC ) = temp_OM1 * m_OM_init<a name='198'>
+          END IF<a name='199'>
+<a name='200'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iOM2_BC ) ) THEN<a name='201'>
+            <font color=#447700>!DOC==OM2<a name='202'></font>
+            temp = -6.39 * S(i,j,k) - 0.40 * D(i,j,k) + 338.89<a name='203'>
+            temp_OM2 = AMAX1(temp,0.01)<a name='204'>
+            f( myi, j, k, iOM2_BC )= temp_OM2 * m_OM_init<a name='205'>
+          END IF<a name='206'>
+<a name='207'>
+<font color=#447700>!Set Qn and Qp to mimic Redfield<a name='208'></font>
+<a name='209'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQn1 ) ) THEN<a name='210'>
+                       f( myi, j, k, iQn1 ) = AMAX1(AMIN1(15.*QmaxP(1),QmaxN(1)),QminN(1))<a name='211'>
+          END IF<a name='212'>
+<a name='213'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQn2 ) ) THEN<a name='214'>
+             f( myi, j, k, iQn2 ) = AMAX1(AMIN1(15.*QmaxP(2),QmaxN(2)),QminN(2))<a name='215'>
+          END IF<a name='216'>
+<a name='217'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQn3 ) ) THEN<a name='218'>
+             f( myi, j, k, iQn3 ) = AMAX1(AMIN1(15.*QmaxP(3),QmaxN(3)),QminN(3))<a name='219'>
+          END IF<a name='220'>
+<a name='221'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQn4 ) ) THEN<a name='222'>
+             f( myi, j, k, iQn4 ) = AMAX1(AMIN1(15.*QmaxP(4),QmaxN(4)),QminN(4))<a name='223'>
+          END IF<a name='224'>
+<a name='225'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQn5 ) ) THEN<a name='226'>
+             f( myi, j, k, iQn5 ) = AMAX1(AMIN1(15.*QmaxP(5),QmaxN(5)),QminN(5))<a name='227'>
+          END IF<a name='228'>
+<a name='229'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQn6 ) ) THEN<a name='230'>
+             f( myi, j, k, iQn6 ) = AMAX1(AMIN1(15.*QmaxP(6),QmaxN(6)),QminN(6))<a name='231'>
+          END IF<a name='232'>
+<a name='233'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQp1 ) ) THEN<a name='234'>
+             f( myi, j, k, iQp1 ) = QmaxP(1)<a name='235'>
+          END IF<a name='236'>
+<a name='237'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQp2 ) ) THEN<a name='238'>
+             f( myi, j, k, iQp2 ) = QmaxP(2)<a name='239'>
+          END IF<a name='240'>
+<a name='241'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQp3 ) ) THEN<a name='242'>
+             f( myi, j, k, iQp3 ) = QmaxP(3)<a name='243'>
+          END IF<a name='244'>
+<a name='245'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQp4 ) ) THEN<a name='246'>
+             f( myi, j, k, iQp4 ) = QmaxP(4)<a name='247'>
+          END IF<a name='248'>
+<a name='249'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQp5 ) ) THEN<a name='250'>
+             f( myi, j, k, iQp5 ) = QmaxP(5)<a name='251'>
+          END IF<a name='252'>
+<a name='253'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iQp6 ) ) THEN<a name='254'>
+             f( myi, j, k, iQp6 ) = QmaxP(6)<a name='255'>
+          END IF<a name='256'>
+<a name='257'>
+          IF ( InitializeHow .EQ. 0 .OR. REINITIALIZE( iALK ) ) THEN<a name='258'>
+            <font color=#447700>!Set Alkalinity, use Figure 2 from Cai 2003, in mmol/kg, convert to mmol/m3<a name='259'></font>
+            <font color=#447700>! y = -(0.01586)x + 2.9573<a name='260'></font>
+            call <A href='../../html_code/CGEM_2.0/depth2press.f.html#DEPTH2PRESS'>depth2press</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DEPTH2PRESS_2">(D(i,j,k), lat(j), pdbar, 1)<a name='261'>
+            call <A href='../../html_code/CGEM_2.0/rhoinsitu.f.html#RHOINSITU'>rhoinsitu</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="RHOINSITU_2">(S(i,j,k), T(i,j,k), pdbar, 1, rhois)<a name='262'>
+            f(myi,j,k,iALK) = (-0.01586*S(i,j,k) + 2.9573)*rhois(1)<a name='263'>
+            <font color=#447700>!write(6,*) i,j,k,rhois(1),pdbar(1),f(myi,j,k,iALK)<a name='264'></font>
+          END IF<a name='265'>
+          <a name='266'>
+          IF ( InitializeHow .EQ. 0 ) THEN<a name='267'>
+           <font color=#447700>!!! MOCSY alkalinity expressions:<a name='268'></font>
+           call <A href='../../html_code/CGEM_2.0/vars.f.html#VARS'>vars</A><A href='../../html_code/CGEM_2.0/Set_Initial_Conditions_Kurtz.f.html#SET_INITIAL_CONDITIONS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="VARS_3">(ph_calc, pco2_calc, fco2, co2, hco3, co3, OmegaA, OmegaC, BetaD_calc, rhoSW, p, tempis,&amp;<a name='269'>
+     &amp;       T(i,j,k), S(i,j,k), f(myi,j,k,iALK)/1000., f(myi,j,k,iDIC)/1000., f(myi,j,k,iSi)/1000., f(myi,j,k,iPO4)/1000., patm, D(i,j,k), lat(j), 1,&amp;<a name='270'>
+     &amp;       'mol/m3', 'Tinsitu', 'm ', 'u74', 'l  ', 'pf ', 'Pzero  ')<a name='271'>
+           pH(myi,j,k) = ph_calc(1)<a name='272'>
+         ENDIF<a name='273'>
+<a name='274'>
+        endif<a name='275'>
+        myi = myi + 1<a name='276'>
+      enddo<a name='277'>
+    enddo<a name='278'>
+  enddo<a name='279'>
+<a name='280'>
+END Subroutine Set_Initial_Conditions<a name='281'>
+<a name='282'>
+<a name='283'>
+<font color=#447700>!Regression y  =  b1*Salinity + b2*Depth + b3*Salinity^2 + b4*Depth^2 + Intercept<a name='284'></font>
+<font color=#447700>!For depths &gt; 200 m (100 m for DIC), set y = mean_deep									<a name='285'></font>
+<font color=#447700>!				coeffs						<a name='286'></font>
+<font color=#447700>!	Var	n	Intercept	b1	b2	b3	b4	mean_deep*	R2	<a name='287'></font>
+<font color=#447700>!	O2	31,573	521.72	      -18.02	-0.37	0.23	0.00	112.77	     0.15	<a name='288'></font>
+<font color=#447700>!	NO3	2,423	125.32	      -7.57	0.04	0.11	0.00	21.85	     0.50	<a name='289'></font>
+<font color=#447700>!	NH4	2,404	1.88	       0.04	0.00	0.00	0.00	0.22	     0.01	<a name='290'></font>
+<font color=#447700>!	DIN	2,392	127.42	      -7.55	0.04	0.11	0.00	22.06	     0.46	<a name='291'></font>
+<font color=#447700>!	DON	1,977	6.80	       0.73	0.03	-0.02	0.00	10.04	     0.09	<a name='292'></font>
+<font color=#447700>!	PN	1,825	13.69	       0.12	0.01	-0.01	0.00	0.36	     0.16	<a name='293'></font>
+<font color=#447700>!	DIP	2,424	1.77	      -0.11	0.00	0.00	0.00	1.23	     0.06	<a name='294'></font>
+<font color=#447700>!	DOP	2,179	0.27	       0.01	0.00	0.00	0.00	0.10	     0.02	<a name='295'></font>
+<font color=#447700>!	PP	1,810	0.91	      -0.01	0.00	0.00	0.00	0.04	     0.22	<a name='296'></font>
+<font color=#447700>!	DIC	1,670	2438.05	      -36.89	3.06	0.81	-0.04	2205.33	     0.35	<a name='297'></font>
+<font color=#447700>!	DOC	1,469	189.23	       4.66	0.03	-0.20	0.00	188.61	     0.29	<a name='298'></font>
+<font color=#447700>!	PC	1,833	127.32	      -1.64	0.11	-0.04	0.00	7.30	     0.31	<a name='299'></font>
+<font color=#447700>!	Chla	2,110	30.06	      -1.05	0.02	0.01	0.00	0.08	     0.36	<a name='300'></font>
+<font color=#447700>!	SPM	1,073	-6.94	       1.15	0.05	-0.03	0.00	3.57	     0.03	<a name='301'></font>
+<font color=#447700>!	CDOM**			                0.01					<a name='302'></font>
+<font color=#447700>!	*mean concentration for depths &gt; 200 m (100 m for DIC)									<a name='303'></font>
+<font color=#447700>!	**best guess for CDOM(a488) at the open boundary									<a name='304'></font>
+<font color=#447700>! Set any negative values to 0.01; in a few cases the regressions still produce negative values<a name='305'></font>
+<font color=#447700>!CDOM, instead, use: a412 = -0.36*Salinity + 1.37;<a name='306'></font>
+<font color=#447700>!  	Si	2324	86.96666104	-5.079115752	0.070930806	0.079130394	-0.000286726	11.67499995	0.436898807<a name='307'></font>
+</pre></body></html>

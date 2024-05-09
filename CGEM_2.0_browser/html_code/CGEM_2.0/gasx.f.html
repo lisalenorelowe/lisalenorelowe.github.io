@@ -1,0 +1,464 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!&gt; \file gasx.f90<a name='2'></font>
+<font color=#447700>!! \BRIEF <a name='3'></font>
+<font color=#447700>!&gt; Module with routines needed to compute gas exchange (flxco2, scco2, atmospheric xCO2 and pCO2)<a name='4'></font>
+<A NAME='GASX'><A href='../../html_code/CGEM_2.0/gasx.f.html#GASX' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='5'>
+<font color=#993300>MODULE </font><font color=#cc0000>gasx</font> <A href='../../call_to/GASX.html' TARGET='index'>1</A><a name='6'>
+CONTAINS<a name='7'>
+<font color=#447700>!&gt;    Computes air-sea CO2 flux &amp; surface-ocean carbonate system vars (pH, CO2*, HCO3- and CO32-, OmegaA, OmegaC, R)<a name='8'></font>
+<font color=#447700>!!    from T, S, P, ALK, DIC, total inorganic silicon, total inorganic phosphorus, all as 1-D arrays<a name='9'></font>
+<A NAME='FLXCO2'><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='10'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>flxco2</font>(co2flux, co2ex, dpco2,                                                    &amp; <A href='../../call_to/FLXCO2.html' TARGET='index'>1</A>,<A href='../../call_from/FLXCO2.html' TARGET='index'>7</A><a name='11'>
+                  ph, pco2, fco2, co2, hco3, co3, OmegaA, OmegaC, BetaD, rhoSW, p, tempis,  &amp;<a name='12'>
+                  temp, sal, alk, dic, sil, phos, kw660, xco2, Patm, dz1, N,                &amp;<a name='13'>
+                  optCON, optT, optP, optB, optK1K2, optKf, optGAS                          )<a name='14'>
+<a name='15'>
+  <font color=#447700>!   Purpose:<a name='16'></font>
+  <font color=#447700>!     Computes air-sea CO2 flux &amp; surface ocean carbonate system vars (pH, CO2*, HCO3- and CO32-, OmegaA, OmegaC, R)<a name='17'></font>
+  <font color=#447700>!     from T, S, P, ALK, DIC, total inorganic silicon, total inorganic phosphorus, all as 1-D arrays<a name='18'></font>
+  <font color=#447700>!<a name='19'></font>
+  <font color=#447700>!     INPUT variables:<a name='20'></font>
+  <font color=#447700>!     ================<a name='21'></font>
+  <font color=#447700>!     kw660   = gas transfer velocity (piston velocity) for CO2 [m/s] <a name='22'></font>
+  <font color=#447700>!               without T-dependant Schmidt number correction<a name='23'></font>
+  <font color=#447700>!               but accounting for sea ice fraction (See OCMIP2 design &amp; HOWTO documents for details)<a name='24'></font>
+  <font color=#447700>!     xco2    = atmospheric mole fraction of CO2 [ppm]<a name='25'></font>
+  <font color=#447700>!     Patm    = atmospheric pressure at surface [atm]<a name='26'></font>
+  <font color=#447700>!     dz1     = depth of the top vertical layer of the model [m]<a name='27'></font>
+  <font color=#447700>!     temp    = surface potential temperature [degrees C] (with optT='Tpot', i.e., models carry tempot, not in situ temp)<a name='28'></font>
+  <font color=#447700>!             = surface in situ temperature [degrees C] (with optT='Tinsitu', e.g., for data)<a name='29'></font>
+  <font color=#447700>!     sal     = surface salinity in [psu]<a name='30'></font>
+  <font color=#447700>!     alk     = surface total alkalinity in [eq/m^3] with optCON = 'mol/m3'<a name='31'></font>
+  <font color=#447700>!             =                             [eq/kg]  with optCON = 'mol/kg'<a name='32'></font>
+  <font color=#447700>!     dic     = surface dissolved inorganic carbon [mol/m^3] with optCON = 'mol/m3'<a name='33'></font>
+  <font color=#447700>!             =                            [mol/kg]  with optCON = 'mol/kg'<a name='34'></font>
+  <font color=#447700>!     sil     = surface total inorganic silicon   [mol/m^3] with optCON = 'mol/m3'<a name='35'></font>
+  <font color=#447700>!             =                                   [mol/kg]  with optCON = 'mol/kg'<a name='36'></font>
+  <font color=#447700>!     phos    = surface total inorganinc phosphorus [mol/m^3] with optCON = 'mol/m3'<a name='37'></font>
+  <font color=#447700>!             =                                     [mol/kg]  with optCON = 'mol/kg'<a name='38'></font>
+  <font color=#447700>!     INPUT options:<a name='39'></font>
+  <font color=#447700>!     ==============<a name='40'></font>
+  <font color=#447700>!     -----------<a name='41'></font>
+  <font color=#447700>!     optCON: choose input concentration units - mol/kg (data) vs. mol/m^3 (models)<a name='42'></font>
+  <font color=#447700>!     -----------<a name='43'></font>
+  <font color=#447700>!       -&gt; 'mol/kg' for DIC and ALK given on mokal scale, i.e., in mol/kg  (std DATA units)<a name='44'></font>
+  <font color=#447700>!       -&gt; 'mol/m3' for DIC and ALK given in mol/m^3 (std MODEL units)<a name='45'></font>
+  <font color=#447700>!     -----------<a name='46'></font>
+  <font color=#447700>!     optT: choose in situ vs. potential temperature as input<a name='47'></font>
+  <font color=#447700>!     ---------<a name='48'></font>
+  <font color=#447700>!     NOTE: Carbonate chem calculations require IN-SITU temperature (not potential Temperature)<a name='49'></font>
+  <font color=#447700>!       -&gt; 'Tpot' means input is pot. Temperature (in situ Temp "tempis" is computed)<a name='50'></font>
+  <font color=#447700>!       -&gt; 'Tinsitu' means input is already in-situ Temperature, not pot. Temp ("tempis" not computed)<a name='51'></font>
+  <font color=#447700>!     ---------<a name='52'></font>
+  <font color=#447700>!     optP: choose depth (m) vs pressure (db) as input<a name='53'></font>
+  <font color=#447700>!     ---------<a name='54'></font>
+  <font color=#447700>!       -&gt; 'm'  means "depth" input is in "m" (thus in situ Pressure "p" [db] is computed)<a name='55'></font>
+  <font color=#447700>!       -&gt; 'db' means "depth" input is already in situ pressure [db], not m (thus p = depth)<a name='56'></font>
+  <font color=#447700>!     ---------<a name='57'></font>
+  <font color=#447700>!     optB: choose total boron formulation - Uppström (1974) vs. Lee et al. (2010)<a name='58'></font>
+  <font color=#447700>!     ---------<a name='59'></font>
+  <font color=#447700>!       -&gt; 'u74' means use classic formulation of Uppström (1974) for total Boron<a name='60'></font>
+  <font color=#447700>!       -&gt; 'l10' means use newer   formulation of Lee et al. (2010) for total Boron<a name='61'></font>
+  <font color=#447700>!     ---------<a name='62'></font>
+  <font color=#447700>!     optK1K2:<a name='63'></font>
+  <font color=#447700>!     ---------<a name='64'></font>
+  <font color=#447700>!       -&gt; 'l'   means use Lueker et al. (2000) formulations for K1 &amp; K2 (recommended by Dickson et al. 2007)<a name='65'></font>
+  <font color=#447700>!                **** BUT this should only be used when 2 &lt; T &lt; 35 and 19 &lt; S &lt; 43<a name='66'></font>
+  <font color=#447700>!       -&gt; 'm10' means use Millero (2010) formulation for K1 &amp; K2 (see Dickson et al., 2007)<a name='67'></font>
+  <font color=#447700>!                **** Valid for 0 &lt; T &lt; 50°C and 1 &lt; S &lt; 50 psu<a name='68'></font>
+  <font color=#447700>!                **** Orr et al. (GMDD, 2014) identify large discrepancies between packages w/ this option<a name='69'></font>
+  <font color=#447700>!     ----------<a name='70'></font>
+  <font color=#447700>!     optKf:<a name='71'></font>
+  <font color=#447700>!     ----------<a name='72'></font>
+  <font color=#447700>!       -&gt; 'pf' means use Perez &amp; Fraga (1987) formulation for Kf (recommended by Dickson et al., 2007)<a name='73'></font>
+  <font color=#447700>!               **** BUT Valid for  9 &lt; T &lt; 33°C and 10 &lt; S &lt; 40.<a name='74'></font>
+  <font color=#447700>!       -&gt; 'dg' means use Dickson &amp; Riley (1979) formulation for Kf (recommended by Dickson &amp; Goyet, 1994)<a name='75'></font>
+  <font color=#447700>!     -----------<a name='76'></font>
+  <font color=#447700>!     optGAS: choose in situ vs. potential fCO2 and pCO2<a name='77'></font>
+  <font color=#447700>!     ---------<a name='78'></font>
+  <font color=#447700>!       PRESSURE corrections for K0 and the fugacity coefficient (Cf) <a name='79'></font>
+  <font color=#447700>!       -&gt; 'Pzero'   = 'zero order' fCO2 and pCO2 (typical approach, which is flawed)<a name='80'></font>
+  <font color=#447700>!                      considers in situ T &amp; only atm pressure (hydrostatic=0)<a name='81'></font>
+  <font color=#447700>!       -&gt; 'Ppot'    = 'potential' fCO2 and pCO2 (water parcel brought adiabatically to the surface)<a name='82'></font>
+  <font color=#447700>!                      considers potential T &amp; only atm pressure (hydrostatic press = 0)<a name='83'></font>
+  <font color=#447700>!       -&gt; 'Pinsitu' = 'in situ' fCO2 and pCO2 (accounts for huge effects of pressure)<a name='84'></font>
+  <font color=#447700>!                      considers in situ T &amp; total pressure (atm + hydrostatic)<a name='85'></font>
+  <font color=#447700>!     ---------<a name='86'></font>
+<a name='87'>
+  <font color=#447700>!     OUTPUT variables:<a name='88'></font>
+  <font color=#447700>!     =================<a name='89'></font>
+  <font color=#447700>!     co2flux = air-to-sea flux of CO2 [mol/(m^2 * s)]<a name='90'></font>
+  <font color=#447700>!     co2ex = time rate of change of surface CO2 due to gas exchange [mol/(m^3 * s)]<a name='91'></font>
+  <font color=#447700>!     dpco2 = difference of oceanic pCO2 minus atmospheric pCO2 [uatm]<a name='92'></font>
+  <font color=#447700>!     ph   = pH on total scale<a name='93'></font>
+  <font color=#447700>!     pco2 = oceanic partial pressure of CO2 (uatm)<a name='94'></font>
+  <font color=#447700>!     fco2 = oceanic fugacity of CO2 (uatm)<a name='95'></font>
+  <font color=#447700>!     co2  = aqueous CO2 concentration [mol/m^3]<a name='96'></font>
+  <font color=#447700>!     hco3 = bicarbonate (HCO3-) concentration [mol/m^3]<a name='97'></font>
+  <font color=#447700>!     co3  = carbonate (CO3--) concentration [mol/m^3]<a name='98'></font>
+  <font color=#447700>!     OmegaA = Omega for aragonite, i.e., the aragonite saturation state<a name='99'></font>
+  <font color=#447700>!     OmegaC = Omega for calcite, i.e., the   calcite saturation state<a name='100'></font>
+  <font color=#447700>!     BetaD = Revelle factor   dpCO2/pCO2 / dDIC/DIC<a name='101'></font>
+  <font color=#447700>!     rhoSW  = in-situ density of seawater; rhoSW = f(s, t, p)<a name='102'></font>
+  <font color=#447700>!     p = pressure [decibars]; p = f(depth, latitude) if computed from depth [m] OR p = depth if [db]<a name='103'></font>
+  <font color=#447700>!     tempis  = in-situ temperature [degrees C]<a name='104'></font>
+<a name='105'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_4"><a name='106'>
+  USE <A href='../../html_code/CGEM_2.0/vars.f.html#MVARS'>mvars</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MVARS_1"><a name='107'>
+  USE <A href='../../html_code/CGEM_2.0/p2fCO2.f.html#MP2FCO2'>mp2fCO2</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MP2FCO2_1"><a name='108'>
+<a name='109'>
+  IMPLICIT NONE<a name='110'>
+<a name='111'>
+<font color=#447700>! Input variables<a name='112'></font>
+  <font color=#447700>!&gt;     number of records<a name='113'></font>
+  INTEGER, INTENT(in) :: N<a name='114'>
+  <font color=#447700>!&gt; either &lt;b&gt;in situ temperature&lt;/b&gt; (when optT='Tinsitu', typical data) <a name='115'></font>
+  <font color=#447700>!! OR &lt;b&gt;potential temperature&lt;/b&gt; (when optT='Tpot', typical models) &lt;b&gt;[degree C]&lt;/b&gt;<a name='116'></font>
+  REAL(kind=r4), INTENT(in),    DIMENSION(N) :: temp<a name='117'>
+  <font color=#447700>!&gt; salinity &lt;b&gt;[psu]&lt;/b&gt;<a name='118'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: sal<a name='119'>
+  <font color=#447700>!&gt; total alkalinity in &lt;b&gt;[eq/m^3]&lt;/b&gt; (when optCON = 'mol/m3') OR in &lt;b&gt;[eq/kg]&lt;/b&gt;  (when optCON = 'mol/kg')<a name='120'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: alk<a name='121'>
+  <font color=#447700>!&gt; dissolved inorganic carbon in &lt;b&gt;[mol/m^3]&lt;/b&gt; (when optCON = 'mol/m3') OR in &lt;b&gt;[mol/kg]&lt;/b&gt; (when optCON = 'mol/kg')<a name='122'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: dic<a name='123'>
+  <font color=#447700>!&gt; SiO2 concentration in &lt;b&gt;[mol/m^3]&lt;/b&gt; (when optCON = 'mol/m3') OR in &lt;b&gt;[mol/kg]&lt;/b&gt; (when optCON = 'mol/kg')<a name='124'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: sil<a name='125'>
+  <font color=#447700>!&gt; phosphate concentration in &lt;b&gt;[mol/m^3]&lt;/b&gt; (when optCON = 'mol/m3') OR in &lt;b&gt;[mol/kg]&lt;/b&gt; (when optCON = 'mol/kg')<a name='126'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: phos<a name='127'>
+<font color=#447700>!f2py optional , depend(sal) :: n=len(sal)<a name='128'></font>
+  <font color=#447700>!&gt; gas transfer velocity (piston velocity) at a Schmidt number of 660 &lt;b&gt;[m/s]&lt;/b&gt;<a name='129'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: kw660<a name='130'>
+  <font color=#447700>!&gt; atmospheric mole fraction of CO2 &lt;b&gt;[ppm]&lt;/b&gt;<a name='131'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: xco2<a name='132'>
+  <font color=#447700>!&gt; atmospheric pressure &lt;b&gt;[atm]&lt;/b&gt;<a name='133'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: Patm<a name='134'>
+  <font color=#447700>!&gt; thickness of the surface layer of the model &lt;b&gt;[m]&lt;/b&gt; <a name='135'></font>
+  REAL(kind=r4), INTENT(in) :: dz1<a name='136'>
+<a name='137'>
+  <font color=#447700>!&gt; choose either \b 'mol/kg' (std DATA units) or \b 'mol/m3' (std MODEL units) to select <a name='138'></font>
+  <font color=#447700>!! concentration units for input (for alk, dic, sil, phos) &amp; output (co2, hco3, co3)<a name='139'></font>
+<font color=#447700>!f2py character*6 optional, intent(in) :: optCON='mol/m3'<a name='140'></font>
+  CHARACTER(6), OPTIONAL, INTENT(in) :: optCON<a name='141'>
+  <font color=#447700>!&gt; choose \b 'Tinsitu' for in situ temperature or \b 'Tpot' for potential temperature (in situ Temp is computed, needed for models)<a name='142'></font>
+<font color=#447700>!f2py character*7 optional, intent(in) :: optT='Tinsitu'<a name='143'></font>
+  CHARACTER(7), OPTIONAL, INTENT(in) :: optT<a name='144'>
+  <font color=#447700>!&gt; for depth input, choose \b "db" for decibars (in situ pressure) or \b "m" for meters (pressure is computed, needed for models)<a name='145'></font>
+<font color=#447700>!f2py character*2 optional, intent(in) :: optP='m'<a name='146'></font>
+  CHARACTER(2), OPTIONAL, INTENT(in) :: optP<a name='147'>
+  <font color=#447700>!&gt; for total boron, choose either \b 'u74' (Uppstrom, 1974) or \b 'l10' (Lee et al., 2010).<a name='148'></font>
+  <font color=#447700>!! The 'l10' formulation is based on 139 measurements (instead of 20), <a name='149'></font>
+  <font color=#447700>!! uses a more accurate method, and<a name='150'></font>
+  <font color=#447700>!! generally increases total boron in seawater by 4% <a name='151'></font>
+<font color=#447700>!f2py character*3 optional, intent(in) :: optB='l10'<a name='152'></font>
+  CHARACTER(3), OPTIONAL, INTENT(in) :: optB<a name='153'>
+  <font color=#447700>!&gt; for Kf, choose either \b 'pf' (Perez &amp; Fraga, 1987) or \b 'dg' (Dickson &amp; Riley, 1979)<a name='154'></font>
+<font color=#447700>!f2py character*2 optional, intent(in) :: optKf='pf'<a name='155'></font>
+  CHARACTER(2), OPTIONAL, INTENT(in) :: optKf<a name='156'>
+  <font color=#447700>!&gt; for K1,K2 choose either \b 'l' (Lueker et al., 2000) or \b 'm10' (Millero, 2010) <a name='157'></font>
+<font color=#447700>!f2py character*3 optional, intent(in) :: optK1K2='l'<a name='158'></font>
+  CHARACTER(3), OPTIONAL, INTENT(in) :: optK1K2<a name='159'>
+  <font color=#447700>!&gt; for K0,fugacity coefficient choose either \b 'Ppot' (no pressure correction) or \b 'Pinsitu' (with pressure correction) <a name='160'></font>
+  <font color=#447700>!! 'Ppot'    - for 'potential' fCO2 and pCO2 (water parcel brought adiabatically to the surface)<a name='161'></font>
+  <font color=#447700>!! 'Pinsitu' - for 'in situ' values of fCO2 and pCO2, accounting for pressure on K0 and Cf<a name='162'></font>
+  <font color=#447700>!! with 'Pinsitu' the fCO2 and pCO2 will be many times higher in the deep ocean<a name='163'></font>
+<font color=#447700>!f2py character*7 optional, intent(in) :: optGAS='Pinsitu'<a name='164'></font>
+  CHARACTER(7), OPTIONAL, INTENT(in) :: optGAS<a name='165'>
+<a name='166'>
+<font color=#447700>! Output variables:<a name='167'></font>
+  <font color=#447700>!&gt; air-to-sea CO2 flux &lt;b&gt;[mol/(m^2 * s)]&lt;/b&gt;<a name='168'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: co2flux<a name='169'>
+  <font color=#447700>!&gt; rate of change of surface DIC concentration &lt;b&gt;[mol/(m^3 * s)]&lt;/b&gt;<a name='170'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: co2ex<a name='171'>
+  <font color=#447700>!&gt; difference of surface ocean pCO2 minus atmospheric pCO2 &lt;b&gt;[uatm]&lt;/b&gt;<a name='172'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: dpCO2<a name='173'>
+  <font color=#447700>!&gt; pH on the &lt;b&gt;total scale&lt;/b&gt;<a name='174'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: ph<a name='175'>
+  <font color=#447700>!&gt; CO2 partial pressure &lt;b&gt;[uatm]&lt;/b&gt;<a name='176'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: pco2<a name='177'>
+  <font color=#447700>!&gt; CO2 fugacity &lt;b&gt;[uatm]&lt;/b&gt;<a name='178'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: fco2<a name='179'>
+  <font color=#447700>!&gt; aqueous CO2* concentration, either in &lt;b&gt;[mol/m^3]&lt;/b&gt; or &lt;b&gt;[mol/kg&lt;/b&gt;] depending on choice for optCON<a name='180'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: co2<a name='181'>
+  <font color=#447700>!&gt; bicarbonate ion (HCO3-) concentration, either in &lt;b&gt;[mol/m^3]&lt;/b&gt; or &lt;b&gt;[mol/kg]&lt;/b&gt; depending on choice for optCON<a name='182'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: hco3<a name='183'>
+  <font color=#447700>!&gt; carbonate ion (CO3--) concentration, either in &lt;b&gt;[mol/m^3]&lt;/b&gt; or &lt;b&gt;[mol/kg]&lt;/b&gt; depending on choice for optCON<a name='184'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: co3<a name='185'>
+  <font color=#447700>!&gt; Omega for aragonite, i.e., the aragonite saturation state<a name='186'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: OmegaA<a name='187'>
+  <font color=#447700>!&gt; Omega for calcite, i.e., the calcite saturation state<a name='188'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: OmegaC<a name='189'>
+  <font color=#447700>!&gt; Revelle factor, i.e., dpCO2/pCO2 / dDIC/DIC<a name='190'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: BetaD<a name='191'>
+  <font color=#447700>!&gt; in-situ density of seawater; rhoSW = f(s, t, p) in &lt;b&gt;[kg/m3]&lt;/b&gt;<a name='192'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: rhoSW<a name='193'>
+  <font color=#447700>!&gt; pressure &lt;b&gt;[decibars]&lt;/b&gt;; p = f(depth, latitude) if computed from depth [m] (when optP='m') OR p = depth [db] (when optP='db')<a name='194'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: p<a name='195'>
+  <font color=#447700>!&gt; in-situ temperature \b &lt;b&gt;[degrees C]&lt;/b&gt;<a name='196'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: tempis<a name='197'>
+<a name='198'>
+<font color=#447700>! Local variables<a name='199'></font>
+  REAL(kind=r8) :: tk, invtk, dtemp<a name='200'>
+  REAL(kind=r8) :: tmp, K0, co2star, co2starair, kwco2<a name='201'>
+  REAL(kind=r4), DIMENSION(N) :: pCO2atm, fCO2atm<a name='202'>
+  REAL(kind=r4), DIMENSION(N) :: depth0, lat0<a name='203'>
+ <a name='204'>
+  INTEGER :: i<a name='205'>
+  INTEGER :: kcomp<a name='206'>
+<a name='207'>
+<font color=#447700>! Optional arguments: if not present use defaults (defined below)<a name='208'></font>
+  CHARACTER(6) :: opCON<a name='209'>
+  CHARACTER(7) :: opT<a name='210'>
+  CHARACTER(2) :: opP<a name='211'>
+  CHARACTER(3) :: opB<a name='212'>
+  CHARACTER(2) :: opKf<a name='213'>
+  CHARACTER(3) :: opK1K2<a name='214'>
+  CHARACTER(7) :: opGAS<a name='215'>
+<a name='216'>
+<font color=#447700>! Set defaults for optional arguments (in Fortran 90)<a name='217'></font>
+<font color=#447700>! Note:  Optional arguments with f2py (python) are set above with <a name='218'></font>
+<font color=#447700>!        the !f2py statements that precede each type declaration<a name='219'></font>
+<font color=#447700>!        Those !f2py statements should be consistent w/ defaults below<a name='220'></font>
+  IF (PRESENT(optCON)) THEN<a name='221'>
+    opCON = optCON<a name='222'>
+  ELSE<a name='223'>
+<font color=#447700>!   Default (typical for models, not data)<a name='224'></font>
+    opCON = 'mol/m3'<a name='225'>
+  ENDIF<a name='226'>
+  IF (PRESENT(optT)) THEN<a name='227'>
+    opT = optT<a name='228'>
+  ELSE<a name='229'>
+<font color=#447700>!   Default (this option is irrelevant for surface values, 0 m)<a name='230'></font>
+    opT = 'Tinsitu'<a name='231'>
+  ENDIF<a name='232'>
+  IF (PRESENT(optP)) THEN<a name='233'>
+    opP = optP<a name='234'>
+  ELSE<a name='235'>
+<font color=#447700>!   Default (this option is irrelevant for surface values, 0 m)<a name='236'></font>
+    opP = 'm'<a name='237'>
+  ENDIF<a name='238'>
+  IF (PRESENT(optB)) THEN<a name='239'>
+    opB = optB<a name='240'>
+  ELSE<a name='241'>
+<font color=#447700>!   Default is Lee et al (2010) for total boron<a name='242'></font>
+    opB = 'l10'<a name='243'>
+  ENDIF<a name='244'>
+  IF (PRESENT(optKf)) THEN<a name='245'>
+    opKf = optKf<a name='246'>
+  ELSE<a name='247'>
+<font color=#447700>!   Default is Perez &amp; Fraga (1987) for Kf<a name='248'></font>
+    opKf = 'pf'<a name='249'>
+  ENDIF<a name='250'>
+  IF (PRESENT(optK1K2)) THEN<a name='251'>
+    opK1K2 = optK1K2<a name='252'>
+  ELSE<a name='253'>
+<font color=#447700>!   Default is Lueker et al. 2000) for K1 &amp; K2<a name='254'></font>
+    opK1K2 = 'l'<a name='255'>
+  ENDIF<a name='256'>
+  IF (PRESENT(optGAS)) THEN<a name='257'>
+    opGAS = optGAS<a name='258'>
+  ELSE<a name='259'>
+    opGAS = 'Pinsitu'<a name='260'>
+  ENDIF<a name='261'>
+<a name='262'>
+  depth0 = fco2 * 0.0<a name='263'>
+  lat0   = depth0<a name='264'>
+<font color=#447700>! Compute derived variables from input (DIC, ALK, ...)<a name='265'></font>
+  CALL <A href='../../html_code/CGEM_2.0/vars.f.html#VARS'>vars</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="VARS_1">(ph, pco2, fco2, co2, hco3, co3, OmegaA, OmegaC, BetaD, rhoSW, p, tempis,  &amp;<a name='266'>
+            temp, sal, alk, dic, sil, phos, Patm, depth0, lat0, N,                    &amp;<a name='267'>
+            opCON, opT, opP, opB, opK1K2, opKf, opGAS                                 )<a name='268'>
+<a name='269'>
+<font color=#447700>! Compute pCO2atm [uatm] from xCO2 [ppm], atmospheric pressure [atm], &amp; vapor pressure of seawater<a name='270'></font>
+<font color=#447700>! pCO2atm = (Patm - pH20(i)) * xCO2,   where pH20 is the vapor pressure of seawater [atm]<a name='271'></font>
+  CALL <A href='../../html_code/CGEM_2.0/gasx.f.html#X2PCO2ATM'>x2pCO2atm</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="X2PCO2ATM_1">(xco2, temp, sal, Patm, N, pco2atm)<a name='272'>
+<a name='273'>
+<font color=#447700>! Compute fCO2atm [uatm] from pCO2atm [uatm] &amp; fugacity coefficient [unitless]<a name='274'></font>
+<font color=#447700>! fCO2atm = pCO2atm * fugcoeff,   where fugcoeff= exp(Patm*(B + 2.0*xc2*Del)/(R*tk) )<a name='275'></font>
+  CALL <A href='../../html_code/CGEM_2.0/p2fCO2.f.html#P2FCO2'>p2fCO2</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="P2FCO2_1">(pco2atm, temp, Patm, depth0, N, fco2atm)<a name='276'>
+<a name='277'>
+<font color=#447700>! Compute flux, absolute rate of change of surface DIC, &amp; Delta pCO2<a name='278'></font>
+  DO i = 1, N<a name='279'>
+     IF (co3(i) .eq. 1.e20_r4) THEN<a name='280'>
+<font color=#447700>!       Masked values (land)<a name='281'></font>
+        co2flux(i) = 1.e20_r4<a name='282'>
+        co2ex(i)   = 1.e20_r4<a name='283'>
+        dpco2(i)   = 1.e20_r4<a name='284'>
+     ELSE<a name='285'>
+        dtemp = DBLE(temp(i))<a name='286'>
+        tk = dtemp + 273.15d0<a name='287'>
+        invtk = 1.0d0/tk<a name='288'>
+<a name='289'>
+<font color=#447700>!       Transfer velocity for CO2 in m/s (see equation [4] in OCMIP2 design document &amp; OCMIP2 Abiotic HOWTO)<a name='290'></font>
+        kwco2 = DBLE(kw660(i)) * (660/<A href='../../html_code/CGEM_2.0/gasx.f.html#SCCO2'>scco2</A><A href='../../html_code/CGEM_2.0/gasx.f.html#FLXCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SCCO2_1">(dtemp))**0.5<a name='291'>
+<a name='292'>
+<font color=#447700>!       Surface K0 [(mol/kg) / atm] at T, S of surface water<a name='293'></font>
+        tmp = 9345.17d0*invtk - 60.2409d0 + 23.3585d0 * LOG(tk/100.0d0)<a name='294'>
+        K0 = EXP( tmp + DBLE(sal(i))*(0.023517d0 - 0.00023656d0*tk + 0.0047036e-4_r8*tk*tk) )<a name='295'>
+<a name='296'>
+<font color=#447700>!       "Atmospheric" [CO2*], air-sea CO2 flux, sfc DIC rate of change, &amp; Delta pCO2<a name='297'></font>
+        co2starair = K0 * DBLE(fco2atm(i)) * 1.0e-6_r8 * DBLE(rhoSW(i)) <font color=#447700>!Equil. [CO2*] for atm CO2 at Patm &amp; sfc-water T,S [mol/m3]<a name='298'></font>
+        co2star = DBLE(co2(i))                                          <font color=#447700>!Oceanic [CO2*] in [mol/m3] from vars.f90<a name='299'></font>
+        co2flux(i) = REAL(kwco2 * (co2starair - co2star))               <font color=#447700>!Air-sea CO2 flux [mol/(m2 * s)]<a name='300'></font>
+        co2ex(i) = co2flux(i) / dz1                                     <font color=#447700>!Change in sfc DIC due to gas exchange [mol/[m3 * s)]<a name='301'></font>
+        dpco2(i) = pco2(i) - pco2atm(i)                                 <font color=#447700>!Delta pCO2 (oceanic - atmospheric pCO2) [uatm]<a name='302'></font>
+     ENDIF<a name='303'>
+<a name='304'>
+  END DO<a name='305'>
+<a name='306'>
+  RETURN<a name='307'>
+END SUBROUTINE flxco2<a name='308'>
+<a name='309'>
+<font color=#447700>!&gt;    Compute xCO2 from arrays of pCO2atm, in situ T, S, &amp; atm pressure<a name='310'></font>
+<A NAME='PCO2ATM2XCO2'><A href='../../html_code/CGEM_2.0/gasx.f.html#PCO2ATM2XCO2' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='311'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>pCO2atm2xCO2</font>(pCO2atm, temp, salt, Patm, N, xCO2),<A href='../../call_from/PCO2ATM2XCO2.html' TARGET='index'>2</A><a name='312'>
+  <font color=#447700>!    Purpose:<a name='313'></font>
+  <font color=#447700>!    Compute xCO2 from arrays of pCO2atm, in situ T, S, &amp; atm pressure<a name='314'></font>
+<a name='315'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/gasx.f.html#PCO2ATM2XCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_5"><a name='316'>
+<a name='317'>
+  IMPLICIT NONE<a name='318'>
+<a name='319'>
+  <font color=#447700>!&gt; number of records<a name='320'></font>
+  INTEGER, intent(in) :: N<a name='321'>
+<a name='322'>
+<font color=#447700>! INPUT variables<a name='323'></font>
+  <font color=#447700>!&gt; atmospheric partial pressure of CO2 [uatm] <a name='324'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: pCO2atm<a name='325'>
+  <font color=#447700>!&gt; in situ temperature [C]<a name='326'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: temp<a name='327'>
+  <font color=#447700>!&gt; salinity [psu]<a name='328'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: salt<a name='329'>
+  <font color=#447700>!&gt; atmospheric pressure [atm]<a name='330'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: Patm<a name='331'>
+<font color=#447700>!f2py optional , depend(temp) :: n=len(temp)<a name='332'></font>
+<a name='333'>
+<font color=#447700>! OUTPUT variables:<a name='334'></font>
+  <font color=#447700>!&gt; mole fraction of CO2 [ppm]<a name='335'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: xCO2<a name='336'>
+<a name='337'>
+<font color=#447700>! LOCAL variables:<a name='338'></font>
+  REAL(kind=r8) :: dpCO2atm, dPatm<a name='339'>
+  REAL(kind=r8), DIMENSION(N) :: pH20<a name='340'>
+  REAL(kind=r8) :: dxCO2<a name='341'>
+<a name='342'>
+  INTEGER :: i<a name='343'>
+<a name='344'>
+  call <A href='../../html_code/CGEM_2.0/gasx.f.html#VAPRESS'>vapress</A><A href='../../html_code/CGEM_2.0/gasx.f.html#PCO2ATM2XCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="VAPRESS_1">(temp, salt, N, pH20)<a name='345'>
+<a name='346'>
+  DO i = 1,N<a name='347'>
+     dpCO2atm  = DBLE(pCO2atm(i))<a name='348'>
+     dPatm     = DBLE(Patm(i))<a name='349'>
+     dxCO2     = dpCO2atm / (dPatm - pH20(i))<a name='350'>
+     xCO2(i) = REAL(dxCO2)<a name='351'>
+  END DO<a name='352'>
+<a name='353'>
+  RETURN<a name='354'>
+END SUBROUTINE pCO2atm2xCO2<a name='355'>
+<a name='356'>
+<font color=#447700>!&gt;    Compute Schmidt number for CO2 in seawater from temperature<a name='357'></font>
+<A NAME='SCCO2'><A href='../../html_code/CGEM_2.0/gasx.f.html#SCCO2' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='358'>
+<font color=#993300>FUNCTION </font><font color=#cc0000>scco2</font>(temp) <A href='../../call_to/SCCO2.html' TARGET='index'>1</A>,<A href='../../call_from/SCCO2.html' TARGET='index'>1</A><a name='359'>
+<a name='360'>
+<font color=#447700>!  Computes the Schmidt number of CO2 in seawater using the<a name='361'></font>
+<font color=#447700>!  formulation presented by Wanninkhof (1992, J. Geophys. Res., 97,<a name='362'></font>
+<font color=#447700>!  7373-7382).  Input is temperature in deg C.<a name='363'></font>
+<a name='364'>
+   USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/gasx.f.html#SCCO2' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_6"><a name='365'>
+   IMPLICIT NONE<a name='366'>
+<a name='367'>
+<font color=#447700>!  Input &amp; output variables:<a name='368'></font>
+   REAL(kind=r8), INTENT(in) :: temp<a name='369'>
+<font color=#447700>!  REAL(kind=r8), INTENT(out) :: scco2<a name='370'></font>
+   REAL(kind=r8) :: scco2<a name='371'>
+<a name='372'>
+   scco2 = 2073.1 - 125.62*temp + 3.6276*temp**2 - 0.043219*temp**3<a name='373'>
+<a name='374'>
+  RETURN<a name='375'>
+END FUNCTION scco2<a name='376'>
+<a name='377'>
+<font color=#447700>!&gt;    Compute pCO2atm from arrays of xCO2, in situ T, S, &amp; atm pressure<a name='378'></font>
+<A NAME='X2PCO2ATM'><A href='../../html_code/CGEM_2.0/gasx.f.html#X2PCO2ATM' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='379'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>x2pCO2atm</font>(xCO2, temp, salt, Patm, N, pCO2atm) <A href='../../call_to/X2PCO2ATM.html' TARGET='index'>1</A>,<A href='../../call_from/X2PCO2ATM.html' TARGET='index'>2</A><a name='380'>
+  <font color=#447700>!    Purpose:<a name='381'></font>
+  <font color=#447700>!    Compute pCO2atm from arrays of xCO2, in situ T, S, &amp; atm pressure<a name='382'></font>
+<a name='383'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/gasx.f.html#X2PCO2ATM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_7"><a name='384'>
+<a name='385'>
+  IMPLICIT NONE<a name='386'>
+<a name='387'>
+  <font color=#447700>!&gt; number of records<a name='388'></font>
+  INTEGER, intent(in) :: N<a name='389'>
+<a name='390'>
+<font color=#447700>! INPUT variables<a name='391'></font>
+  <font color=#447700>!&gt; mole fraction of CO2 [ppm]<a name='392'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: xCO2<a name='393'>
+  <font color=#447700>!&gt; in situ temperature [C]<a name='394'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: temp<a name='395'>
+  <font color=#447700>!&gt; salinity [psu]<a name='396'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: salt<a name='397'>
+  <font color=#447700>!&gt; atmospheric pressure [atm]<a name='398'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: Patm<a name='399'>
+<font color=#447700>!f2py optional , depend(temp) :: n=len(temp)<a name='400'></font>
+<a name='401'>
+<font color=#447700>! OUTPUT variables:<a name='402'></font>
+  <font color=#447700>!&gt; oceanic partial pressure of CO2 [uatm] <a name='403'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: pCO2atm<a name='404'>
+<a name='405'>
+<font color=#447700>! LOCAL variables:<a name='406'></font>
+  REAL(kind=r8) :: dxCO2, dPatm<a name='407'>
+  REAL(kind=r8), DIMENSION(N) :: pH20<a name='408'>
+  REAL(kind=r8) :: dpCO2atm<a name='409'>
+<a name='410'>
+  INTEGER :: i<a name='411'>
+<a name='412'>
+<font color=#447700>! Compute vapor pressure of seawater [in atm]<a name='413'></font>
+  call <A href='../../html_code/CGEM_2.0/gasx.f.html#VAPRESS'>vapress</A><A href='../../html_code/CGEM_2.0/gasx.f.html#X2PCO2ATM' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="VAPRESS_2">(temp, salt, N, pH20)<a name='414'>
+<a name='415'>
+  DO i = 1,N<a name='416'>
+     dxCO2     = DBLE(xCO2(i))<a name='417'>
+     dPatm     = DBLE(Patm(i))<a name='418'>
+     dpCO2atm = (dPatm - pH20(i)) * dxCO2<a name='419'>
+     pCO2atm(i) = REAL(dpCO2atm)<a name='420'>
+  END DO<a name='421'>
+<a name='422'>
+  RETURN<a name='423'>
+END SUBROUTINE x2pCO2atm<a name='424'>
+<a name='425'>
+<font color=#447700>!&gt;    Compute vapor pressure of seawater (atm) following preocedure from Weiss &amp; Price (1980)<a name='426'></font>
+<A NAME='VAPRESS'><A href='../../html_code/CGEM_2.0/gasx.f.html#VAPRESS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='427'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>vapress</font>(temp, salt, N, vpsw) <A href='../../call_to/VAPRESS.html' TARGET='index'>2</A>,<A href='../../call_from/VAPRESS.html' TARGET='index'>1</A><a name='428'>
+  <font color=#447700>!    Purpose:<a name='429'></font>
+  <font color=#447700>!    Compute vapor pressure of seawater (atm) following preocedure from Weiss &amp; Price (1980)<a name='430'></font>
+<a name='431'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/gasx.f.html#VAPRESS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_8"><a name='432'>
+  IMPLICIT NONE<a name='433'>
+<a name='434'>
+  <font color=#447700>!&gt; number of records<a name='435'></font>
+  INTEGER, intent(in) :: N<a name='436'>
+<a name='437'>
+<font color=#447700>! INPUT variables<a name='438'></font>
+  <font color=#447700>!&gt; in situ temperature [C]<a name='439'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: temp<a name='440'>
+  <font color=#447700>!&gt; salinity [psu]<a name='441'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: salt<a name='442'>
+<font color=#447700>!f2py optional , depend(temp) :: n=len(temp)<a name='443'></font>
+<a name='444'>
+<font color=#447700>! OUTPUT variables:<a name='445'></font>
+  <font color=#447700>!&gt; vapor pressure of seawater [atm] <a name='446'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: vpsw<a name='447'>
+<a name='448'>
+<font color=#447700>! LOCAL variables:<a name='449'></font>
+  REAL(kind=r8) :: tk, dsalt<a name='450'>
+<a name='451'>
+  INTEGER :: i<a name='452'>
+<a name='453'>
+  DO i = 1,N<a name='454'>
+     dsalt = DBLE(salt(i))<a name='455'>
+     tk = 273.15d0 + DBLE(temp(i))     <font color=#447700>!Absolute temperature (Kelvin)<a name='456'></font>
+     vpsw(i) = exp(24.4543d0 - 67.4509d0*(100.0d0/tk) - 4.8489d0*log(tk/100) - 0.000544d0*dsalt)<a name='457'>
+  END DO<a name='458'>
+<a name='459'>
+  RETURN<a name='460'>
+END SUBROUTINE vapress<a name='461'>
+<a name='462'>
+END MODULE gasx<a name='463'>
+</pre></body></html>

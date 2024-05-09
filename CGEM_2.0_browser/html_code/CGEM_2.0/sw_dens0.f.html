@@ -1,0 +1,60 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!***********************************************************************<a name='2'></font>
+<A NAME='SW_DENS0'><A href='../../html_code/CGEM_2.0/sw_dens0.f.html#SW_DENS0' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='3'>
+      <font color=#993300>FUNCTION </font><font color=#cc0000>sw_dens0</font>( S, T ) RESULT( RES )   <A href='../../call_to/SW_DENS0.html' TARGET='index'>4</A>,<A href='../../call_from/SW_DENS0.html' TARGET='index'>1</A><a name='4'>
+      <a name='5'>
+  <font color=#447700>!--------------------------------------------------------------------------<a name='6'></font>
+  <font color=#447700>! Density of Sea Water at atmospheric pressure using UNESCO 1983 (EOS 1980).<a name='7'></font>
+  <font color=#447700>! Based on MATLAB code and the following references:<a name='8'></font>
+  <font color=#447700>! SW_DENS0  $Revision: 1.3 $  $Date: 1994/10/10 04:54:09 $<a name='9'></font>
+  <font color=#447700>!           Copyright (C) CSIRO, Phil Morgan 1992<a name='10'></font>
+  <font color=#447700>!<a name='11'></font>
+  <font color=#447700>! INPUT:  (all must have same dimensions)<a name='12'></font>
+  <font color=#447700>!   S = salinity    [psu      (PSS-78)]<a name='13'></font>
+  <font color=#447700>!   T = temperature [degree C (IPTS-68)]<a name='14'></font>
+  <font color=#447700>!<a name='15'></font>
+  <font color=#447700>! OUTPUT:<a name='16'></font>
+  <font color=#447700>!   dens0 = density  [kg/m^3] of salt water with properties S,T,<a name='17'></font>
+  <font color=#447700>!           P=0 (0 db gauge pressure)<a name='18'></font>
+  <font color=#447700>! <a name='19'></font>
+  <font color=#447700>! AUTHOR:  Phil Morgan 92-11-05  (morgan@ml.csiro.au)<a name='20'></font>
+  <font color=#447700>!<a name='21'></font>
+  <font color=#447700>! DISCLAIMER:<a name='22'></font>
+  <font color=#447700>!   This software is provided "as is" without warranty of any kind.  <a name='23'></font>
+  <font color=#447700>!   See the file sw_copy.m for conditions of use and licence.<a name='24'></font>
+  <font color=#447700>!<a name='25'></font>
+  <font color=#447700>! REFERENCES:<a name='26'></font>
+  <font color=#447700>!     Unesco 1983. Algorithms for computation of fundamental properties of <a name='27'></font>
+  <font color=#447700>!     seawater, 1983. _Unesco Tech. Pap. in Mar. Sci._, No. 44, 53 pp.<a name='28'></font>
+  <font color=#447700>!<a name='29'></font>
+  <font color=#447700>!     Millero, F.J. and  Poisson, A.<a name='30'></font>
+  <font color=#447700>!     International one-atmosphere equation of state of seawater.<a name='31'></font>
+  <font color=#447700>!     Deep-Sea Res. 1981. Vol28A(6) pp625-629.<a name='32'></font>
+  <font color=#447700>!------------------------------------------------------------------------<a name='33'></font>
+    IMPLICIT NONE<a name='34'>
+<a name='35'>
+    REAL, INTENT(IN) :: S    <font color=#447700>! Salinity (psu)<a name='36'></font>
+    REAL, INTENT(IN) :: T    <font color=#447700>! Temperature (deg C)<a name='37'></font>
+    REAL :: RES<a name='38'>
+    REAL :: sw_smow<a name='39'>
+    <a name='40'>
+    <font color=#447700>! Locals from UNESCO 1983 eqn(13) p17.<a name='41'></font>
+    REAL, PARAMETER:: B0 =  8.24493E-1<a name='42'>
+    REAL, PARAMETER:: B1 = -4.0899E-3<a name='43'>
+    REAL, PARAMETER:: B2 =  7.6438E-5<a name='44'>
+    REAL, PARAMETER:: B3 = -8.2467E-7<a name='45'>
+    REAL, PARAMETER:: B4 =  5.3875E-9<a name='46'>
+   <a name='47'>
+    REAL, PARAMETER:: C0 = -5.72466E-3<a name='48'>
+    REAL, PARAMETER:: C1 = +1.0227E-4<a name='49'>
+    REAL, PARAMETER:: C2 = -1.6546E-6<a name='50'>
+    <a name='51'>
+    REAL, PARAMETER:: D0 =  4.8314E-4<a name='52'>
+<a name='53'>
+    RES = <A href='../../html_code/CGEM_2.0/sw_smow.f.html#SW_SMOW'>sw_smow</A><A href='../../html_code/CGEM_2.0/sw_dens0.f.html#SW_DENS0' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SW_SMOW_1">( T ) +                                                &amp;   <a name='54'>
+    &amp;     ( B0 + ( B1 + ( B2 + ( B3 + B4 * T ) * T ) * T ) * T ) * S +  &amp;<a name='55'>
+    &amp;     ( C0 + ( C1 + C2 * T ) * T ) * S * SQRT( S ) + D0 * S * S       <a name='56'>
+               <a name='57'>
+    RETURN<a name='58'>
+  END FUNCTION sw_dens0  <a name='59'>
+</pre></body></html>

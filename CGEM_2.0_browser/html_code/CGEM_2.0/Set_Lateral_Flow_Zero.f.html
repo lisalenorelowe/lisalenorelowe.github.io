@@ -1,0 +1,31 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='SET_LATERAL_FLOW_ZERO'><A href='../../html_code/CGEM_2.0/Set_Lateral_Flow_Zero.f.html#SET_LATERAL_FLOW_ZERO' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>Set_Lateral_Flow_Zero</font>(U,V,W,my_imstart,my_imend) <A href='../../call_to/SET_LATERAL_FLOW_ZERO.html' TARGET='index'>2</A>,<A href='../../call_from/SET_LATERAL_FLOW_ZERO.html' TARGET='index'>2</A><a name='3'>
+<a name='4'>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Set_Lateral_Flow_Zero.f.html#SET_LATERAL_FLOW_ZERO' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_57"><a name='5'>
+      USE <A href='../../html_code/CGEM_2.0/MPI_dim.f.html#MPI_DIM'>MPI_dim</A><A href='../../html_code/CGEM_2.0/Set_Lateral_Flow_Zero.f.html#SET_LATERAL_FLOW_ZERO' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPI_DIM_22"><a name='6'>
+<a name='7'>
+      implicit none<a name='8'>
+<a name='9'>
+      real U(im,jm,NSL),V(im,jm,NSL),W(im,jm,NSL) <font color=#447700>!Currents<a name='10'></font>
+      integer my_imstart,my_imend,i,j,k,myi<a name='11'>
+<a name='12'>
+      do j = 1,jm<a name='13'>
+      myi = 2<a name='14'>
+      do i = my_imstart, my_imend<a name='15'>
+<a name='16'>
+      if(i.eq.1.or.i.eq.im.or.j.eq.1.or.j.eq.jm) then<a name='17'>
+        do k = 1,nz<a name='18'>
+         U( myi, j, k )   = 0.<a name='19'>
+         V( myi, j, k )   = 0.<a name='20'>
+         W( myi, j, k )   = 0.<a name='21'>
+        enddo<a name='22'>
+      endif<a name='23'>
+<a name='24'>
+      myi = myi +1<a name='25'>
+      enddo<a name='26'>
+      enddo<a name='27'>
+<a name='28'>
+      end subroutine Set_Lateral_Flow_Zero<a name='29'>
+<a name='30'>
+</pre></body></html>

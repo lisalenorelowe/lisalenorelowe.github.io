@@ -1,0 +1,869 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!&gt; \file phsolvers.f90<a name='2'></font>
+<font color=#447700>!! \BRIEF <a name='3'></font>
+<font color=#447700>!&gt; Module with routines needed to solve pH-total alkalinity equation (Munhoven, 2013, GMD)<a name='4'></font>
+<A NAME='MPHSOLVERS'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#MPHSOLVERS' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='5'>
+<font color=#993300>MODULE </font><font color=#cc0000>mphsolvers</font> <A href='../../call_to/MPHSOLVERS.html' TARGET='index'>1</A>,<A href='../../call_from/MPHSOLVERS.html' TARGET='index'>1</A><a name='6'>
+<font color=#447700>!   Module of fastest solvers from Munhoven (2013, Geosci. Model Dev., 6, 1367-1388)<a name='7'></font>
+<font color=#447700>!   ! Taken from SolveSAPHE (mod_phsolvers.F90) &amp; adapted very slightly for use with mocsy<a name='8'></font>
+<font color=#447700>!   ! SolveSaphe is distributed under the GNU Lesser General Public License<a name='9'></font>
+<font color=#447700>!   ! mocsy is distributed under the MIT License<a name='10'></font>
+<font color=#447700>!<a name='11'></font>
+<font color=#447700>! Modifications J. C. Orr, LSCE/IPSL, CEA-CNRS-UVSQ, France, 11 Sep 2014:<a name='12'></font>
+<font color=#447700>! 1) kept only the 3 fastest solvers (atgen, atsec, atfast) and routines which they call<a name='13'></font>
+<font color=#447700>! 2) reduced vertical white space: deleted many blank lines &amp; comment lines that served as divisions<a name='14'></font>
+<font color=#447700>! 3) converted name from .F90 to .f90, deleting a few optional preprocesse if statements<a name='15'></font>
+<font color=#447700>! 4) read in mocsy computed equilibrium constants (as arguments) instead of USE MOD_CHEMCONST<a name='16'></font>
+<font color=#447700>! 5) converted routine names from upper case to lower case<a name='17'></font>
+<font color=#447700>! 6) commented out arguments and equations for NH4 and H2S acid systems<a name='18'></font>
+<a name='19'>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#MPHSOLVERS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_11"><a name='20'>
+IMPLICIT NONE<a name='21'>
+<a name='22'>
+<font color=#447700>! General parameters<a name='23'></font>
+REAL(KIND=wp), PARAMETER :: pp_rdel_ah_target = 1.E-8_wp<a name='24'>
+REAL(KIND=wp), PARAMETER :: pp_ln10 = 2.302585092994045684018_wp<a name='25'>
+<a name='26'>
+<font color=#447700>! Maximum number of iterations for each method<a name='27'></font>
+INTEGER, PARAMETER :: jp_maxniter_atgen    = 50<a name='28'>
+INTEGER, PARAMETER :: jp_maxniter_atsec    = 50<a name='29'>
+INTEGER, PARAMETER :: jp_maxniter_atfast   = 50<a name='30'>
+<a name='31'>
+<font color=#447700>! Bookkeeping variables for each method<a name='32'></font>
+<font color=#447700>! - SOLVE_AT_GENERAL<a name='33'></font>
+INTEGER :: niter_atgen    = jp_maxniter_atgen<a name='34'>
+<a name='35'>
+<font color=#447700>! - SOLVE_AT_GENERAL_SEC<a name='36'></font>
+INTEGER :: niter_atsec    = jp_maxniter_atsec<a name='37'>
+<a name='38'>
+<font color=#447700>! - SOLVE_AT_FAST (variant of SOLVE_AT_GENERAL w/o bracketing<a name='39'></font>
+INTEGER :: niter_atfast   = jp_maxniter_atfast<a name='40'>
+<a name='41'>
+<font color=#447700>! Keep the following functions private to avoid conflicts with<a name='42'></font>
+<font color=#447700>! other modules that provide similar ones.<a name='43'></font>
+<font color=#447700>!PRIVATE AHINI_FOR_AT<a name='44'></font>
+<a name='45'>
+CONTAINS<a name='46'>
+<font color=#447700>!===============================================================================<a name='47'></font>
+<A NAME='ANW_INFSUP'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#ANW_INFSUP' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='48'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>anw_infsup</font>(p_dictot, p_bortot,                                     &amp; <A href='../../call_to/ANW_INFSUP.html' TARGET='index'>2</A>,<A href='../../call_from/ANW_INFSUP.html' TARGET='index'>1</A><a name='49'>
+                      p_po4tot, p_siltot,                                     &amp;<a name='50'>
+                      p_so4tot, p_flutot,                                     &amp;<a name='51'>
+                      p_alknw_inf, p_alknw_sup)<a name='52'>
+<a name='53'>
+<font color=#447700>! Subroutine returns the lower and upper bounds of "non-water-selfionization"<a name='54'></font>
+<font color=#447700>! contributions to total alkalinity (the infimum and the supremum), i.e<a name='55'></font>
+<font color=#447700>! inf(TA - [OH-] + [H+]) and sup(TA - [OH-] + [H+])<a name='56'></font>
+<a name='57'>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#ANW_INFSUP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_12"><a name='58'>
+IMPLICIT NONE<a name='59'>
+<a name='60'>
+<font color=#447700>! Argument variables<a name='61'></font>
+REAL(KIND=wp), INTENT(IN)  :: p_dictot<a name='62'>
+REAL(KIND=wp), INTENT(IN)  :: p_bortot<a name='63'>
+REAL(KIND=wp), INTENT(IN)  :: p_po4tot<a name='64'>
+REAL(KIND=wp), INTENT(IN)  :: p_siltot<a name='65'>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)  :: p_nh4tot<a name='66'></font>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)  :: p_h2stot<a name='67'></font>
+REAL(KIND=wp), INTENT(IN)  :: p_so4tot<a name='68'>
+REAL(KIND=wp), INTENT(IN)  :: p_flutot<a name='69'>
+REAL(KIND=wp), INTENT(OUT) :: p_alknw_inf<a name='70'>
+REAL(KIND=wp), INTENT(OUT) :: p_alknw_sup<a name='71'>
+<a name='72'>
+p_alknw_inf =  -p_po4tot - p_so4tot - p_flutot<a name='73'>
+p_alknw_sup =   p_dictot + p_dictot + p_bortot &amp;<a name='74'>
+              + p_po4tot + p_po4tot + p_siltot <font color=#447700>!&amp;<a name='75'></font>
+<font color=#447700>!             + p_nh4tot + p_h2stot<a name='76'></font>
+<a name='77'>
+RETURN<a name='78'>
+END SUBROUTINE anw_infsup<a name='79'>
+<a name='80'>
+<font color=#447700>!===============================================================================<a name='81'></font>
+<a name='82'>
+<A NAME='EQUATION_AT'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='83'>
+<font color=#993300>FUNCTION </font><font color=#cc0000>equation_at</font>(p_alktot, p_h,       p_dictot, p_bortot,                 &amp; <A href='../../call_to/EQUATION_AT.html' TARGET='index'>8</A>,<A href='../../call_from/EQUATION_AT.html' TARGET='index'>1</A><a name='84'>
+                     p_po4tot, p_siltot,                                      &amp;<a name='85'>
+                     p_so4tot, p_flutot,                                      &amp;<a name='86'>
+                     K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi,          &amp;<a name='87'>
+                     p_deriveqn)<a name='88'>
+<a name='89'>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_13"><a name='90'>
+IMPLICIT NONE<a name='91'>
+REAL(KIND=wp) :: equation_at<a name='92'>
+<a name='93'>
+<font color=#447700>! Argument variables<a name='94'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_alktot<a name='95'>
+REAL(KIND=wp), INTENT(IN)            :: p_h<a name='96'>
+REAL(KIND=wp), INTENT(IN)            :: p_dictot<a name='97'>
+REAL(KIND=wp), INTENT(IN)            :: p_bortot<a name='98'>
+REAL(KIND=wp), INTENT(IN)            :: p_po4tot<a name='99'>
+REAL(KIND=wp), INTENT(IN)            :: p_siltot<a name='100'>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_nh4tot<a name='101'></font>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_h2stot<a name='102'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_so4tot<a name='103'>
+REAL(KIND=wp), INTENT(IN)            :: p_flutot<a name='104'>
+REAL(KIND=wp), INTENT(IN)            :: K0, K1, K2, Kb, Kw, Ks, Kf<a name='105'>
+REAL(KIND=wp), INTENT(IN)            :: K1p, K2p, K3p, Ksi<a name='106'>
+REAL(KIND=wp), INTENT(OUT), OPTIONAL :: p_deriveqn<a name='107'>
+<a name='108'>
+<font color=#447700>! Local variables <a name='109'></font>
+<font color=#447700>!-----------------<a name='110'></font>
+REAL(KIND=wp) :: znumer_dic, zdnumer_dic, zdenom_dic, zalk_dic, zdalk_dic<a name='111'>
+REAL(KIND=wp) :: znumer_bor, zdnumer_bor, zdenom_bor, zalk_bor, zdalk_bor<a name='112'>
+REAL(KIND=wp) :: znumer_po4, zdnumer_po4, zdenom_po4, zalk_po4, zdalk_po4<a name='113'>
+REAL(KIND=wp) :: znumer_sil, zdnumer_sil, zdenom_sil, zalk_sil, zdalk_sil<a name='114'>
+REAL(KIND=wp) :: znumer_nh4, zdnumer_nh4, zdenom_nh4, zalk_nh4, zdalk_nh4<a name='115'>
+REAL(KIND=wp) :: znumer_h2s, zdnumer_h2s, zdenom_h2s, zalk_h2s, zdalk_h2s<a name='116'>
+REAL(KIND=wp) :: znumer_so4, zdnumer_so4, zdenom_so4, zalk_so4, zdalk_so4<a name='117'>
+REAL(KIND=wp) :: znumer_flu, zdnumer_flu, zdenom_flu, zalk_flu, zdalk_flu<a name='118'>
+REAL(KIND=wp) ::                                      zalk_wat, zdalk_wat<a name='119'>
+REAL(KIND=wp) :: aphscale<a name='120'>
+<a name='121'>
+<font color=#447700>! TOTAL H+ scale: conversion factor for Htot = aphscale * Hfree<a name='122'></font>
+aphscale = 1._wp + p_so4tot/Ks<a name='123'>
+<a name='124'>
+<font color=#447700>! H2CO3 - HCO3 - CO3 : n=2, m=0<a name='125'></font>
+znumer_dic = 2._wp*K1*K2 + p_h*       K1<a name='126'>
+zdenom_dic =       K1*K2 + p_h*(      K1 + p_h)<a name='127'>
+zalk_dic   = p_dictot * (znumer_dic/zdenom_dic)<a name='128'>
+<a name='129'>
+<font color=#447700>! B(OH)3 - B(OH)4 : n=1, m=0<a name='130'></font>
+znumer_bor =       Kb<a name='131'>
+zdenom_bor =       Kb + p_h<a name='132'>
+zalk_bor   = p_bortot * (znumer_bor/zdenom_bor)<a name='133'>
+<a name='134'>
+<font color=#447700>! H3PO4 - H2PO4 - HPO4 - PO4 : n=3, m=1<a name='135'></font>
+znumer_po4 = 3._wp*K1p*K2p*K3p + p_h*(2._wp*K1p*K2p + p_h* K1p)<a name='136'>
+zdenom_po4 =       K1p*K2p*K3p + p_h*(      K1p*K2p + p_h*(K1p + p_h))<a name='137'>
+zalk_po4   = p_po4tot * (znumer_po4/zdenom_po4 - 1._wp) <font color=#447700>! Zero level of H3PO4 = 1<a name='138'></font>
+<a name='139'>
+<font color=#447700>! H4SiO4 - H3SiO4 : n=1, m=0<a name='140'></font>
+znumer_sil =       Ksi<a name='141'>
+zdenom_sil =       Ksi + p_h<a name='142'>
+zalk_sil   = p_siltot * (znumer_sil/zdenom_sil)<a name='143'>
+<a name='144'>
+<font color=#447700>! NH4 - NH3 : n=1, m=0<a name='145'></font>
+<font color=#447700>!znumer_nh4 =       api1_nh4<a name='146'></font>
+<font color=#447700>!zdenom_nh4 =       api1_nh4 + p_h<a name='147'></font>
+<font color=#447700>!zalk_nh4   = p_nh4tot * (znumer_nh4/zdenom_nh4)<a name='148'></font>
+<font color=#447700>! Note: api1_nh4 = Knh4<a name='149'></font>
+<a name='150'>
+<font color=#447700>! H2S - HS : n=1, m=0<a name='151'></font>
+<font color=#447700>!znumer_h2s =       api1_h2s<a name='152'></font>
+<font color=#447700>!zdenom_h2s =       api1_h2s + p_h<a name='153'></font>
+<font color=#447700>!zalk_h2s   = p_h2stot * (znumer_h2s/zdenom_h2s)<a name='154'></font>
+<font color=#447700>! Note: api1_h2s = Kh2s<a name='155'></font>
+<a name='156'>
+<font color=#447700>! HSO4 - SO4 : n=1, m=1<a name='157'></font>
+znumer_so4 =       Ks<a name='158'>
+zdenom_so4 =       Ks + p_h<a name='159'>
+zalk_so4   = p_so4tot * (znumer_so4/zdenom_so4 - 1._wp)<a name='160'>
+<a name='161'>
+<font color=#447700>! HF - F : n=1, m=1<a name='162'></font>
+znumer_flu =       Kf<a name='163'>
+zdenom_flu =       Kf + p_h<a name='164'>
+zalk_flu   = p_flutot * (znumer_flu/zdenom_flu - 1._wp)<a name='165'>
+<a name='166'>
+<font color=#447700>! H2O - OH<a name='167'></font>
+zalk_wat   = Kw/p_h - p_h/aphscale<a name='168'>
+<a name='169'>
+equation_at =    zalk_dic + zalk_bor + zalk_po4 + zalk_sil &amp;<a name='170'>
+               + zalk_so4 + zalk_flu                       &amp;<a name='171'>
+               + zalk_wat - p_alktot<a name='172'>
+<a name='173'>
+IF(PRESENT(p_deriveqn)) THEN<a name='174'>
+   <font color=#447700>! H2CO3 - HCO3 - CO3 : n=2<a name='175'></font>
+   zdnumer_dic = K1*K1*K2 + p_h*(4._wp*K1*K2               &amp;<a name='176'>
+                          + p_h*       K1    )<a name='177'>
+   zdalk_dic   = -p_dictot*(zdnumer_dic/zdenom_dic**2)<a name='178'>
+<a name='179'>
+   <font color=#447700>! B(OH)3 - B(OH)4 : n=1<a name='180'></font>
+   zdnumer_bor = Kb<a name='181'>
+   zdalk_bor   = -p_bortot*(zdnumer_bor/zdenom_bor**2)<a name='182'>
+<a name='183'>
+   <font color=#447700>! H3PO4 - H2PO4 - HPO4 - PO4 : n=3<a name='184'></font>
+   zdnumer_po4 = K1p*K2p*K1p*K2p*K3p + p_h*(4._wp*K1p*K1p*K2p*K3p                &amp;<a name='185'>
+                                     + p_h*(9._wp*K1p*K2p*K3p + K1p*K1p*K2p      &amp;<a name='186'>
+                                     + p_h*(4._wp*K1p*K2p                        &amp;<a name='187'>
+                                     + p_h*       K1p)))<a name='188'>
+   zdalk_po4   = -p_po4tot * (zdnumer_po4/zdenom_po4**2)<a name='189'>
+<a name='190'>
+   <font color=#447700>! H4SiO4 - H3SiO4 : n=1<a name='191'></font>
+   zdnumer_sil = Ksi<a name='192'>
+   zdalk_sil   = -p_siltot * (zdnumer_sil/zdenom_sil**2)<a name='193'>
+<a name='194'>
+<font color=#447700>!  ! NH4 - NH3 : n=1<a name='195'></font>
+<font color=#447700>!  zdnumer_nh4 = Knh4<a name='196'></font>
+<font color=#447700>!  zdalk_nh4   = -p_nh4tot * (zdnumer_nh4/zdenom_nh4**2)<a name='197'></font>
+<a name='198'>
+<font color=#447700>!  ! H2S - HS : n=1<a name='199'></font>
+<font color=#447700>!  zdnumer_h2s = api1_h2s<a name='200'></font>
+<font color=#447700>!  zdalk_h2s   = -p_h2stot * (zdnumer_h2s/zdenom_h2s**2)<a name='201'></font>
+<a name='202'>
+   <font color=#447700>! HSO4 - SO4 : n=1<a name='203'></font>
+   zdnumer_so4 = Ks<a name='204'>
+   zdalk_so4   = -p_so4tot * (zdnumer_so4/zdenom_so4**2)<a name='205'>
+<a name='206'>
+   <font color=#447700>! HF - F : n=1<a name='207'></font>
+   zdnumer_flu = Kf<a name='208'>
+   zdalk_flu   = -p_flutot * (zdnumer_flu/zdenom_flu**2)<a name='209'>
+<a name='210'>
+<font color=#447700>!  p_deriveqn =   zdalk_dic + zdalk_bor + zdalk_po4 + zdalk_sil &amp;<a name='211'></font>
+<font color=#447700>!               + zdalk_nh4 + zdalk_h2s + zdalk_so4 + zdalk_flu &amp;<a name='212'></font>
+<font color=#447700>!               - Kw/p_h**2 - 1._wp/aphscale<a name='213'></font>
+   p_deriveqn =   zdalk_dic + zdalk_bor + zdalk_po4 + zdalk_sil &amp;<a name='214'>
+                                        + zdalk_so4 + zdalk_flu &amp;<a name='215'>
+                - Kw/p_h**2 - 1._wp/aphscale<a name='216'>
+ENDIF<a name='217'>
+RETURN<a name='218'>
+END FUNCTION equation_at<a name='219'>
+<a name='220'>
+<font color=#447700>!===============================================================================<a name='221'></font>
+<a name='222'>
+<A NAME='AHINI_FOR_AT'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#AHINI_FOR_AT' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='223'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>ahini_for_at</font>(p_alkcb, p_dictot, p_bortot, K1, K2, Kb, p_hini) <A href='../../call_to/AHINI_FOR_AT.html' TARGET='index'>4</A>,<A href='../../call_from/AHINI_FOR_AT.html' TARGET='index'>1</A><a name='224'>
+<a name='225'>
+<font color=#447700>! Subroutine returns the root for the 2nd order approximation of the<a name='226'></font>
+<font color=#447700>! DIC -- B_T -- A_CB equation for [H+] (reformulated as a cubic polynomial)<a name='227'></font>
+<font color=#447700>! around the local minimum, if it exists.<a name='228'></font>
+<a name='229'>
+<font color=#447700>! Returns * 1E-03_wp if p_alkcb &lt;= 0<a name='230'></font>
+<font color=#447700>!         * 1E-10_wp if p_alkcb &gt;= 2*p_dictot + p_bortot<a name='231'></font>
+<font color=#447700>!         * 1E-07_wp if 0 &lt; p_alkcb &lt; 2*p_dictot + p_bortot<a name='232'></font>
+<font color=#447700>!                    and the 2nd order approximation does not have a solution<a name='233'></font>
+<a name='234'>
+<font color=#447700>!USE MOD_CHEMCONST, ONLY : api1_dic, api2_dic, api1_bor<a name='235'></font>
+<a name='236'>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#AHINI_FOR_AT' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_14"><a name='237'>
+IMPLICIT NONE<a name='238'>
+<a name='239'>
+<font color=#447700>! Argument variables <a name='240'></font>
+<font color=#447700>!--------------------<a name='241'></font>
+REAL(KIND=wp), INTENT(IN)   ::  p_alkcb, p_dictot, p_bortot<a name='242'>
+REAL(KIND=wp), INTENT(IN)   ::  K1, K2, Kb<a name='243'>
+REAL(KIND=wp), INTENT(OUT)  ::  p_hini<a name='244'>
+<a name='245'>
+<font color=#447700>! Local variables <a name='246'></font>
+<font color=#447700>!-----------------<a name='247'></font>
+REAL(KIND=wp)  ::  zca, zba<a name='248'>
+REAL(KIND=wp)  ::  zd, zsqrtd, zhmin<a name='249'>
+REAL(KIND=wp)  ::  za2, za1, za0<a name='250'>
+<a name='251'>
+IF (p_alkcb &lt;= 0._wp) THEN<a name='252'>
+  p_hini = 1.e-3_wp<a name='253'>
+ELSEIF (p_alkcb &gt;= (2._wp*p_dictot + p_bortot)) THEN<a name='254'>
+  p_hini = 1.e-10_wp<a name='255'>
+ELSE<a name='256'>
+  zca = p_dictot/p_alkcb<a name='257'>
+  zba = p_bortot/p_alkcb<a name='258'>
+<a name='259'>
+  <font color=#447700>! Coefficients of the cubic polynomial<a name='260'></font>
+  za2 = Kb*(1._wp - zba) + K1*(1._wp-zca)<a name='261'>
+  za1 = K1*Kb*(1._wp - zba - zca) + K1*K2*(1._wp - (zca+zca))<a name='262'>
+  za0 = K1*K2*Kb*(1._wp - zba - (zca+zca))<a name='263'>
+                                        <font color=#447700>! Taylor expansion around the minimum<a name='264'></font>
+  zd = za2*za2 - 3._wp*za1              <font color=#447700>! Discriminant of the quadratic equation<a name='265'></font>
+                                        <font color=#447700>! for the minimum close to the root<a name='266'></font>
+<a name='267'>
+  IF(zd &gt; 0._wp) THEN                   <font color=#447700>! If the discriminant is positive<a name='268'></font>
+    zsqrtd = SQRT(zd)<a name='269'>
+    IF(za2 &lt; 0) THEN<a name='270'>
+      zhmin = (-za2 + zsqrtd)/3._wp<a name='271'>
+    ELSE<a name='272'>
+      zhmin = -za1/(za2 + zsqrtd)<a name='273'>
+    ENDIF<a name='274'>
+    p_hini = zhmin + SQRT(-(za0 + zhmin*(za1 + zhmin*(za2 + zhmin)))/zsqrtd)<a name='275'>
+  ELSE<a name='276'>
+    p_hini = 1.e-7_wp<a name='277'>
+  ENDIF<a name='278'>
+<a name='279'>
+ENDIF<a name='280'>
+RETURN<a name='281'>
+END SUBROUTINE ahini_for_at<a name='282'>
+<a name='283'>
+<font color=#447700>!===============================================================================<a name='284'></font>
+<a name='285'>
+<A NAME='SOLVE_AT_GENERAL'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='286'>
+<font color=#993300>FUNCTION </font><font color=#cc0000>solve_at_general</font>(p_alktot, p_dictot, p_bortot,                       &amp; <A href='../../call_to/SOLVE_AT_GENERAL.html' TARGET='index'>1</A>,<A href='../../call_from/SOLVE_AT_GENERAL.html' TARGET='index'>5</A><a name='287'>
+                          p_po4tot, p_siltot,                                 &amp;<a name='288'>
+                          p_so4tot, p_flutot,                                 &amp;<a name='289'>
+                          K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi,     &amp;<a name='290'>
+                          p_hini,   p_val)<a name='291'>
+<a name='292'>
+<font color=#447700>! Universal pH solver that converges from any given initial value,<a name='293'></font>
+<font color=#447700>! determines upper an lower bounds for the solution if required<a name='294'></font>
+<a name='295'>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_15"><a name='296'>
+IMPLICIT NONE<a name='297'>
+REAL(KIND=wp) :: SOLVE_AT_GENERAL<a name='298'>
+<a name='299'>
+<font color=#447700>! Argument variables <a name='300'></font>
+<font color=#447700>!--------------------<a name='301'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_alktot<a name='302'>
+REAL(KIND=wp), INTENT(IN)            :: p_dictot<a name='303'>
+REAL(KIND=wp), INTENT(IN)            :: p_bortot<a name='304'>
+REAL(KIND=wp), INTENT(IN)            :: p_po4tot<a name='305'>
+REAL(KIND=wp), INTENT(IN)            :: p_siltot<a name='306'>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_nh4tot<a name='307'></font>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_h2stot<a name='308'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_so4tot<a name='309'>
+REAL(KIND=wp), INTENT(IN)            :: p_flutot<a name='310'>
+REAL(KIND=wp), INTENT(IN)            :: K0, K1, K2, Kb, Kw, Ks, Kf<a name='311'>
+REAL(KIND=wp), INTENT(IN)            :: K1p, K2p, K3p, Ksi<a name='312'>
+REAL(KIND=wp), INTENT(IN), OPTIONAL  :: p_hini<a name='313'>
+REAL(KIND=wp), INTENT(OUT), OPTIONAL :: p_val<a name='314'>
+<a name='315'>
+<font color=#447700>! Local variables <a name='316'></font>
+<font color=#447700>!-----------------<a name='317'></font>
+REAL(KIND=wp)  ::  zh_ini, zh, zh_prev, zh_lnfactor<a name='318'>
+REAL(KIND=wp)  ::  zalknw_inf, zalknw_sup<a name='319'>
+REAL(KIND=wp)  ::  zh_min, zh_max<a name='320'>
+REAL(KIND=wp)  ::  zdelta, zh_delta<a name='321'>
+REAL(KIND=wp)  ::  zeqn, zdeqndh, zeqn_absmin<a name='322'>
+REAL(KIND=wp)  ::  aphscale<a name='323'>
+LOGICAL        :: l_exitnow<a name='324'>
+REAL(KIND=wp), PARAMETER :: pz_exp_threshold = 1.0_wp<a name='325'>
+<a name='326'>
+<font color=#447700>! TOTAL H+ scale: conversion factor for Htot = aphscale * Hfree<a name='327'></font>
+aphscale = 1._wp + p_so4tot/Ks<a name='328'>
+<a name='329'>
+IF(PRESENT(p_hini)) THEN<a name='330'>
+   zh_ini = p_hini<a name='331'>
+ELSE<a name='332'>
+   CALL <A href='../../html_code/CGEM_2.0/phsolvers.f.html#AHINI_FOR_AT'>ahini_for_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="AHINI_FOR_AT_1">(p_alktot, p_dictot, p_bortot, K1, K2, Kb, zh_ini)<a name='333'>
+ENDIF<a name='334'>
+<a name='335'>
+ CALL <A href='../../html_code/CGEM_2.0/phsolvers.f.html#ANW_INFSUP'>anw_infsup</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="ANW_INFSUP_1">(p_dictot, p_bortot,                                           &amp;<a name='336'>
+                 p_po4tot, p_siltot,                                           &amp;<a name='337'>
+                 p_so4tot, p_flutot,                                           &amp;<a name='338'>
+                 zalknw_inf, zalknw_sup)<a name='339'>
+<a name='340'>
+zdelta = (p_alktot-zalknw_inf)**2 + 4._wp*Kw/aphscale<a name='341'>
+<a name='342'>
+IF(p_alktot &gt;= zalknw_inf) THEN<a name='343'>
+   zh_min = 2._wp*Kw /( p_alktot-zalknw_inf + SQRT(zdelta) )<a name='344'>
+ELSE<a name='345'>
+   zh_min = aphscale*(-(p_alktot-zalknw_inf) + SQRT(zdelta) ) / 2._wp<a name='346'>
+ENDIF<a name='347'>
+<a name='348'>
+zdelta = (p_alktot-zalknw_sup)**2 + 4._wp*Kw/aphscale<a name='349'>
+<a name='350'>
+IF(p_alktot &lt;= zalknw_sup) THEN<a name='351'>
+   zh_max = aphscale*(-(p_alktot-zalknw_sup) + SQRT(zdelta) ) / 2._wp<a name='352'>
+ELSE<a name='353'>
+   zh_max = 2._wp*Kw /( p_alktot-zalknw_sup + SQRT(zdelta) )<a name='354'>
+ENDIF<a name='355'>
+<a name='356'>
+zh = MAX(MIN(zh_max, zh_ini), zh_min)<a name='357'>
+niter_atgen        = 0                 <font color=#447700>! Reset counters of iterations<a name='358'></font>
+zeqn_absmin        = HUGE(1._wp)<a name='359'>
+<a name='360'>
+DO<a name='361'>
+   IF(niter_atgen &gt;= jp_maxniter_atgen) THEN<a name='362'>
+      zh = -1._wp<a name='363'>
+      EXIT<a name='364'>
+   ENDIF<a name='365'>
+<a name='366'>
+   zh_prev = zh<a name='367'>
+   zeqn = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_1">(p_alktot, zh,       p_dictot, p_bortot,                  &amp;<a name='368'>
+                      p_po4tot, p_siltot,                                      &amp;<a name='369'>
+                      p_so4tot, p_flutot,                                      &amp;<a name='370'>
+                      K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi,          &amp;<a name='371'>
+                      P_DERIVEQN = zdeqndh)<a name='372'>
+<a name='373'>
+   <font color=#447700>! Adapt bracketing interval<a name='374'></font>
+   IF(zeqn &gt; 0._wp) THEN<a name='375'>
+      zh_min = zh_prev<a name='376'>
+   ELSEIF(zeqn &lt; 0._wp) THEN<a name='377'>
+      zh_max = zh_prev<a name='378'>
+   ELSE<a name='379'>
+      <font color=#447700>! zh is the root; unlikely but, one never knows<a name='380'></font>
+      EXIT<a name='381'>
+   ENDIF<a name='382'>
+<a name='383'>
+   <font color=#447700>! Now determine the next iterate zh<a name='384'></font>
+   niter_atgen = niter_atgen + 1<a name='385'>
+<a name='386'>
+   IF(ABS(zeqn) &gt;= 0.5_wp*zeqn_absmin) THEN<a name='387'>
+      <font color=#447700>! if the function evaluation at the current point is<a name='388'></font>
+      <font color=#447700>! not decreasing faster than with a bisection step (at least linearly)<a name='389'></font>
+      <font color=#447700>! in absolute value take one bisection step on [ph_min, ph_max]<a name='390'></font>
+      <font color=#447700>! ph_new = (ph_min + ph_max)/2d0<a name='391'></font>
+      <font color=#447700>!<a name='392'></font>
+      <font color=#447700>! In terms of [H]_new:<a name='393'></font>
+      <font color=#447700>! [H]_new = 10**(-ph_new)<a name='394'></font>
+      <font color=#447700>!         = 10**(-(ph_min + ph_max)/2d0)<a name='395'></font>
+      <font color=#447700>!         = SQRT(10**(-(ph_min + phmax)))<a name='396'></font>
+      <font color=#447700>!         = SQRT(zh_max * zh_min)<a name='397'></font>
+      zh = SQRT(zh_max * zh_min)<a name='398'>
+      zh_lnfactor = (zh - zh_prev)/zh_prev <font color=#447700>! Required to test convergence below<a name='399'></font>
+   ELSE<a name='400'>
+      <font color=#447700>! dzeqn/dpH = dzeqn/d[H] * d[H]/dpH<a name='401'></font>
+      <font color=#447700>!           = -zdeqndh * LOG(10) * [H]<a name='402'></font>
+      <font color=#447700>! \Delta pH = -zeqn/(zdeqndh*d[H]/dpH) = zeqn/(zdeqndh*[H]*LOG(10))<a name='403'></font>
+      <font color=#447700>!<a name='404'></font>
+      <font color=#447700>! pH_new = pH_old + \deltapH<a name='405'></font>
+      <font color=#447700>!<a name='406'></font>
+      <font color=#447700>! [H]_new = 10**(-pH_new)<a name='407'></font>
+      <font color=#447700>!         = 10**(-pH_old - \Delta pH)<a name='408'></font>
+      <font color=#447700>!         = [H]_old * 10**(-zeqn/(zdeqndh*[H]_old*LOG(10)))<a name='409'></font>
+      <font color=#447700>!         = [H]_old * EXP(-LOG(10)*zeqn/(zdeqndh*[H]_old*LOG(10)))<a name='410'></font>
+      <font color=#447700>!         = [H]_old * EXP(-zeqn/(zdeqndh*[H]_old))<a name='411'></font>
+<a name='412'>
+      zh_lnfactor = -zeqn/(zdeqndh*zh_prev)<a name='413'>
+<a name='414'>
+      IF(ABS(zh_lnfactor) &gt; pz_exp_threshold) THEN<a name='415'>
+         zh          = zh_prev*EXP(zh_lnfactor)<a name='416'>
+      ELSE<a name='417'>
+         zh_delta    = zh_lnfactor*zh_prev<a name='418'>
+         zh          = zh_prev + zh_delta<a name='419'>
+      ENDIF<a name='420'>
+<a name='421'>
+      IF( zh &lt; zh_min ) THEN<a name='422'>
+         <font color=#447700>! if [H]_new &lt; [H]_min<a name='423'></font>
+         <font color=#447700>! i.e., if ph_new &gt; ph_max then<a name='424'></font>
+         <font color=#447700>! take one bisection step on [ph_prev, ph_max]<a name='425'></font>
+         <font color=#447700>! ph_new = (ph_prev + ph_max)/2d0<a name='426'></font>
+         <font color=#447700>! In terms of [H]_new:<a name='427'></font>
+         <font color=#447700>! [H]_new = 10**(-ph_new)<a name='428'></font>
+         <font color=#447700>!         = 10**(-(ph_prev + ph_max)/2d0)<a name='429'></font>
+         <font color=#447700>!         = SQRT(10**(-(ph_prev + phmax)))<a name='430'></font>
+         <font color=#447700>!         = SQRT([H]_old*10**(-ph_max))<a name='431'></font>
+         <font color=#447700>!         = SQRT([H]_old * zh_min)<a name='432'></font>
+         zh                = SQRT(zh_prev * zh_min)<a name='433'>
+         zh_lnfactor       = (zh - zh_prev)/zh_prev <font color=#447700>! Required to test convergence below<a name='434'></font>
+      ENDIF<a name='435'>
+<a name='436'>
+      IF( zh &gt; zh_max ) THEN<a name='437'>
+         <font color=#447700>! if [H]_new &gt; [H]_max<a name='438'></font>
+         <font color=#447700>! i.e., if ph_new &lt; ph_min, then<a name='439'></font>
+         <font color=#447700>! take one bisection step on [ph_min, ph_prev]<a name='440'></font>
+         <font color=#447700>! ph_new = (ph_prev + ph_min)/2d0<a name='441'></font>
+         <font color=#447700>! In terms of [H]_new:<a name='442'></font>
+         <font color=#447700>! [H]_new = 10**(-ph_new)<a name='443'></font>
+         <font color=#447700>!         = 10**(-(ph_prev + ph_min)/2d0)<a name='444'></font>
+         <font color=#447700>!         = SQRT(10**(-(ph_prev + ph_min)))<a name='445'></font>
+         <font color=#447700>!         = SQRT([H]_old*10**(-ph_min))<a name='446'></font>
+         <font color=#447700>!         = SQRT([H]_old * zhmax)<a name='447'></font>
+         zh                = SQRT(zh_prev * zh_max)<a name='448'>
+         zh_lnfactor       = (zh - zh_prev)/zh_prev <font color=#447700>! Required to test convergence below<a name='449'></font>
+      ENDIF<a name='450'>
+   ENDIF<a name='451'>
+<a name='452'>
+   zeqn_absmin = MIN( ABS(zeqn), zeqn_absmin)<a name='453'>
+<a name='454'>
+   <font color=#447700>! Stop iterations once |\delta{[H]}/[H]| &lt; rdel<a name='455'></font>
+   <font color=#447700>! &lt;=&gt; |(zh - zh_prev)/zh_prev| = |EXP(-zeqn/(zdeqndh*zh_prev)) -1| &lt; rdel<a name='456'></font>
+   <font color=#447700>! |EXP(-zeqn/(zdeqndh*zh_prev)) -1| ~ |zeqn/(zdeqndh*zh_prev)|<a name='457'></font>
+<a name='458'>
+   <font color=#447700>! Alternatively:<a name='459'></font>
+   <font color=#447700>! |\Delta pH| = |zeqn/(zdeqndh*zh_prev*LOG(10))|<a name='460'></font>
+   <font color=#447700>!             ~ 1/LOG(10) * |\Delta [H]|/[H]<a name='461'></font>
+   <font color=#447700>!             &lt; 1/LOG(10) * rdel<a name='462'></font>
+<a name='463'>
+   <font color=#447700>! Hence |zeqn/(zdeqndh*zh)| &lt; rdel<a name='464'></font>
+<a name='465'>
+   <font color=#447700>! rdel &lt;-- pp_rdel_ah_target<a name='466'></font>
+<a name='467'>
+   l_exitnow = (ABS(zh_lnfactor) &lt; pp_rdel_ah_target)<a name='468'>
+<a name='469'>
+   IF(l_exitnow) EXIT<a name='470'>
+ENDDO<a name='471'>
+<a name='472'>
+solve_at_general = zh<a name='473'>
+<a name='474'>
+IF(PRESENT(p_val)) THEN<a name='475'>
+   IF(zh &gt; 0._wp) THEN<a name='476'>
+      p_val = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_2">(p_alktot, zh,       p_dictot, p_bortot,              &amp;<a name='477'>
+                          p_po4tot, p_siltot,                                  &amp;<a name='478'>
+                          p_so4tot, p_flutot,                                  &amp;<a name='479'>
+                          K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi)    <a name='480'>
+   ELSE<a name='481'>
+      p_val = HUGE(1._wp)<a name='482'>
+   ENDIF<a name='483'>
+ENDIF<a name='484'>
+RETURN<a name='485'>
+END FUNCTION solve_at_general<a name='486'>
+<a name='487'>
+<font color=#447700>!===============================================================================<a name='488'></font>
+<a name='489'>
+<A NAME='SOLVE_AT_GENERAL_SEC'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='490'>
+<font color=#993300>FUNCTION </font><font color=#cc0000>solve_at_general_sec</font>(p_alktot, p_dictot, p_bortot,                   &amp;,<A href='../../call_from/SOLVE_AT_GENERAL_SEC.html' TARGET='index'>7</A><a name='491'>
+                              p_po4tot, p_siltot,                             &amp;<a name='492'>
+                              p_so4tot, p_flutot,                             &amp;<a name='493'>
+                              K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi, &amp;<a name='494'>
+                              p_hini,   p_val) <a name='495'>
+<a name='496'>
+<font color=#447700>! Universal pH solver that converges from any given initial value,<a name='497'></font>
+<font color=#447700>! determines upper an lower bounds for the solution if required<a name='498'></font>
+<a name='499'>
+<font color=#447700>!USE MOD_CHEMCONST, ONLY: api1_wat, aphscale<a name='500'></font>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_16"><a name='501'>
+IMPLICIT NONE<a name='502'>
+REAL(KIND=wp) :: SOLVE_AT_GENERAL_SEC<a name='503'>
+<a name='504'>
+<font color=#447700>! Argument variables <a name='505'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_alktot<a name='506'>
+REAL(KIND=wp), INTENT(IN)            :: p_dictot<a name='507'>
+REAL(KIND=wp), INTENT(IN)            :: p_bortot<a name='508'>
+REAL(KIND=wp), INTENT(IN)            :: p_po4tot<a name='509'>
+REAL(KIND=wp), INTENT(IN)            :: p_siltot<a name='510'>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_nh4tot<a name='511'></font>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_h2stot<a name='512'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_so4tot<a name='513'>
+REAL(KIND=wp), INTENT(IN)            :: p_flutot<a name='514'>
+REAL(KIND=wp), INTENT(IN)            :: K0, K1, K2, Kb, Kw, Ks, Kf<a name='515'>
+REAL(KIND=wp), INTENT(IN)            :: K1p, K2p, K3p, Ksi<a name='516'>
+REAL(KIND=wp), INTENT(IN), OPTIONAL  :: p_hini<a name='517'>
+REAL(KIND=wp), INTENT(OUT), OPTIONAL :: p_val<a name='518'>
+<a name='519'>
+<font color=#447700>! Local variables<a name='520'></font>
+REAL(KIND=wp)  ::  zh_ini, zh, zh_1, zh_2, zh_delta<a name='521'>
+REAL(KIND=wp)  ::  zalknw_inf, zalknw_sup<a name='522'>
+REAL(KIND=wp)  ::  zh_min, zh_max<a name='523'>
+REAL(KIND=wp)  ::  zeqn, zeqn_1, zeqn_2, zeqn_absmin<a name='524'>
+REAL(KIND=wp)  ::  zdelta<a name='525'>
+REAL(KIND=wp)  ::  aphscale<a name='526'>
+LOGICAL        ::  l_exitnow<a name='527'>
+<a name='528'>
+<font color=#447700>! TOTAL H+ scale: conversion factor for Htot = aphscale * Hfree<a name='529'></font>
+aphscale = 1._wp + p_so4tot/Ks<a name='530'>
+<a name='531'>
+IF(PRESENT(p_hini)) THEN<a name='532'>
+   zh_ini = p_hini<a name='533'>
+ELSE<a name='534'>
+   CALL <A href='../../html_code/CGEM_2.0/phsolvers.f.html#AHINI_FOR_AT'>ahini_for_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="AHINI_FOR_AT_2">(p_alktot, p_dictot, p_bortot, K1, K2, Kb, zh_ini)<a name='535'>
+ENDIF<a name='536'>
+<a name='537'>
+ CALL <A href='../../html_code/CGEM_2.0/phsolvers.f.html#ANW_INFSUP'>anw_infsup</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="ANW_INFSUP_2">(p_dictot, p_bortot,                                      &amp;<a name='538'>
+                 p_po4tot, p_siltot,                                      &amp;<a name='539'>
+                 p_so4tot, p_flutot,                                      &amp;<a name='540'>
+                 zalknw_inf, zalknw_sup)<a name='541'>
+<a name='542'>
+zdelta = (p_alktot-zalknw_inf)**2 + 4._wp*Kw/aphscale<a name='543'>
+<a name='544'>
+IF(p_alktot &gt;= zalknw_inf) THEN<a name='545'>
+   zh_min = 2._wp*Kw /( p_alktot-zalknw_inf + SQRT(zdelta) )<a name='546'>
+ELSE<a name='547'>
+   zh_min = aphscale*(-(p_alktot-zalknw_inf) + SQRT(zdelta) ) / 2._wp<a name='548'>
+ENDIF<a name='549'>
+<a name='550'>
+zdelta = (p_alktot-zalknw_sup)**2 + 4._wp*Kw/aphscale<a name='551'>
+<a name='552'>
+IF(p_alktot &lt;= zalknw_sup) THEN<a name='553'>
+   zh_max = aphscale*(-(p_alktot-zalknw_sup) + SQRT(zdelta) ) / 2._wp<a name='554'>
+ELSE<a name='555'>
+   zh_max = 2._wp*Kw /( p_alktot-zalknw_sup + SQRT(zdelta) )<a name='556'>
+ENDIF<a name='557'>
+<a name='558'>
+zh = MAX(MIN(zh_max, zh_ini), zh_min)<a name='559'>
+niter_atsec        = 0                 <font color=#447700>! Reset counters of iterations<a name='560'></font>
+<a name='561'>
+<font color=#447700>! Prepare the secant iterations: two initial (zh, zeqn) pairs are required<a name='562'></font>
+<font color=#447700>! We have the starting value, that needs to be completed by the evaluation<a name='563'></font>
+<font color=#447700>! of the equation value it produces.<a name='564'></font>
+<a name='565'>
+<font color=#447700>! Complete the initial value with its equation evaluation<a name='566'></font>
+<font color=#447700>! (will take the role of the $n-2$ iterate at the first secant evaluation)<a name='567'></font>
+<a name='568'>
+niter_atsec = 0                        <font color=#447700>! zh_2 is the initial value;<a name='569'></font>
+<a name='570'>
+zh_2   = zh<a name='571'>
+zeqn_2 = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_3">(p_alktot, zh_2,     p_dictot, p_bortot,                 &amp;<a name='572'>
+                     p_po4tot, p_siltot,                                     &amp;<a name='573'>
+                     p_so4tot, p_flutot,                                     &amp;<a name='574'>
+                     K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi)<a name='575'>
+<a name='576'>
+zeqn_absmin        = ABS(zeqn_2)<a name='577'>
+<a name='578'>
+<font color=#447700>! Adapt bracketing interval and heuristically set zh_1<a name='579'></font>
+IF(zeqn_2 &lt; 0._wp) THEN<a name='580'>
+                                       <font color=#447700>! If zeqn_2 &lt; 0, then we adjust zh_max:<a name='581'></font>
+                                       <font color=#447700>! we can be sure that zh_min &lt; zh_2 &lt; zh_max.<a name='582'></font>
+   zh_max = zh_2<a name='583'>
+                                       <font color=#447700>! for zh_1, try 25% (0.1 pH units) below the current zh_max,<a name='584'></font>
+                                       <font color=#447700>! but stay above SQRT(zh_min*zh_max), which would be equivalent<a name='585'></font>
+                                       <font color=#447700>! to a bisection step on [pH@zh_min, pH@zh_max]<a name='586'></font>
+   zh_1   = MAX(zh_max/1.25_wp, SQRT(zh_min*zh_max))<a name='587'>
+ELSEIF(zeqn_2 &gt; 0._wp) THEN<a name='588'>
+                                       <font color=#447700>! If zeqn_2 &lt; 0, then we adjust zh_min:<a name='589'></font>
+                                       <font color=#447700>! we can be sure that zh_min &lt; zh_2 &lt; zh_max.<a name='590'></font>
+   zh_min = zh_2<a name='591'>
+                                       <font color=#447700>! for zh_1, try 25% (0.1 pH units) above the current zh_min,<a name='592'></font>
+                                       <font color=#447700>! but stay below SQRT(zh_min*zh_max) which would be equivalent<a name='593'></font>
+                                       <font color=#447700>! to a bisection step on [pH@zh_min, pH@zh_max]<a name='594'></font>
+   zh_1   = MIN(zh_min*1.25_wp, SQRT(zh_min*zh_max))<a name='595'>
+ELSE <font color=#447700>! we have got the root; unlikely, but one never knows<a name='596'></font>
+   solve_at_general_sec = zh_2<a name='597'>
+   IF(PRESENT(p_val)) p_val = zeqn_2<a name='598'>
+   RETURN<a name='599'>
+ENDIF<a name='600'>
+<a name='601'>
+<font color=#447700>! We now have the first pair completed (zh_2, zeqn_2).<a name='602'></font>
+<font color=#447700>! Define the second one (zh_1, zeqn_1), which is also the first iterate.<a name='603'></font>
+<font color=#447700>! zh_1 has already been set above<a name='604'></font>
+niter_atsec = 1                        <font color=#447700>! Update counter of iterations<a name='605'></font>
+<a name='606'>
+zeqn_1 = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_4">(p_alktot, zh_1,       p_dictot, p_bortot,                 &amp;<a name='607'>
+                     p_po4tot, p_siltot,                                       &amp;<a name='608'>
+                     p_so4tot, p_flutot,                                       &amp;<a name='609'>
+                     K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi)<a name='610'>
+<a name='611'>
+<font color=#447700>! Adapt bracketing interval: we know that zh_1 &lt;= zh &lt;= zh_max (if zeqn_1 &gt; 0)<a name='612'></font>
+<font color=#447700>! or zh_min &lt;= zh &lt;= zh_1 (if zeqn_1 &lt; 0), so this can always be done<a name='613'></font>
+IF(zeqn_1 &gt; 0._wp) THEN<a name='614'>
+   zh_min = zh_1<a name='615'>
+ELSEIF(zeqn_1 &lt; 0._wp) THEN<a name='616'>
+   zh_max = zh_1<a name='617'>
+ELSE <font color=#447700>! zh_1 is the root<a name='618'></font>
+   solve_at_general_sec = zh_1<a name='619'>
+   IF(PRESENT(p_val)) p_val = zeqn_1<a name='620'>
+ENDIF<a name='621'>
+<a name='622'>
+IF(ABS(zeqn_1) &gt; zeqn_absmin) THEN     <font color=#447700>! Swap zh_2 and zh_1 if ABS(zeqn_2) &lt; ABS(zeqn_1)<a name='623'></font>
+                                       <font color=#447700>! so that zh_2 and zh_1 lead to decreasing equation<a name='624'></font>
+                                       <font color=#447700>! values (in absolute value)<a name='625'></font>
+   zh     = zh_1<a name='626'>
+   zeqn   = zeqn_1<a name='627'>
+   zh_1   = zh_2<a name='628'>
+   zeqn_1 = zeqn_2<a name='629'>
+   zh_2   = zh<a name='630'>
+   zeqn_2 = zeqn<a name='631'>
+ELSE<a name='632'>
+   zeqn_absmin = ABS(zeqn_1)<a name='633'>
+ENDIF<a name='634'>
+<a name='635'>
+<font color=#447700>! Pre-calculate the first secant iterate (this is the second iterate)<a name='636'></font>
+niter_atsec = 2<a name='637'>
+<a name='638'>
+zh_delta = -zeqn_1/((zeqn_2-zeqn_1)/(zh_2 - zh_1))<a name='639'>
+zh = zh_1 + zh_delta<a name='640'>
+<a name='641'>
+<font color=#447700>! Make sure that zh_min &lt; zh &lt; zh_max (if not,<a name='642'></font>
+<font color=#447700>! bisect around zh_1 which is the best estimate)<a name='643'></font>
+IF (zh &gt; zh_max) THEN                  <font color=#447700>! this can only happen if zh_2 &lt; zh_1<a name='644'></font>
+                                       <font color=#447700>! and zeqn_2 &gt; zeqn_1 &gt; 0<a name='645'></font>
+   zh = SQRT(zh_1*zh_max)<a name='646'>
+ENDIF<a name='647'>
+<a name='648'>
+IF (zh &lt; zh_min) THEN                  <font color=#447700>! this can only happen if zh_2 &gt; zh_1<a name='649'></font>
+                                       <font color=#447700>! and zeqn_2 &lt; zeqn_1 &lt; 0<a name='650'></font>
+   zh = SQRT(zh_1*zh_min)<a name='651'>
+ENDIF<a name='652'>
+<a name='653'>
+DO<a name='654'>
+   IF(niter_atsec &gt;= jp_maxniter_atsec) THEN<a name='655'>
+      zh = -1._wp<a name='656'>
+      EXIT<a name='657'>
+   ENDIF<a name='658'>
+<a name='659'>
+   zeqn = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_5">(p_alktot, zh,       p_dictot, p_bortot,                  &amp;<a name='660'>
+                      p_po4tot, p_siltot,                                      &amp;<a name='661'>
+                      p_so4tot, p_flutot,                                      &amp;<a name='662'>
+                      K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi)<a name='663'>
+<a name='664'>
+   <font color=#447700>! Adapt bracketing interval: since initially, zh_min &lt;= zh &lt;= zh_max<a name='665'></font>
+   <font color=#447700>! we are sure that zh will improve either bracket, depending on the sign<a name='666'></font>
+   <font color=#447700>! of zeqn<a name='667'></font>
+   IF(zeqn &gt; 0._wp) THEN<a name='668'>
+     zh_min = zh<a name='669'>
+   ELSEIF(zeqn &lt; 0._wp) THEN<a name='670'>
+     zh_max = zh<a name='671'>
+   ELSE<a name='672'>
+     <font color=#447700>! zh is the root<a name='673'></font>
+     EXIT<a name='674'>
+   ENDIF<a name='675'>
+<a name='676'>
+   <font color=#447700>! start calculation of next iterate<a name='677'></font>
+   niter_atsec = niter_atsec + 1<a name='678'>
+<a name='679'>
+   zh_2   = zh_1<a name='680'>
+   zeqn_2 = zeqn_1<a name='681'>
+   zh_1   = zh<a name='682'>
+   zeqn_1 = zeqn<a name='683'>
+<a name='684'>
+   IF(ABS(zeqn) &gt;= 0.5_wp*zeqn_absmin) THEN<a name='685'>
+      <font color=#447700>! if the function evaluation at the current point<a name='686'></font>
+      <font color=#447700>! is not decreasing faster in absolute value than<a name='687'></font>
+      <font color=#447700>! we may expect for a bisection step, then take<a name='688'></font>
+      <font color=#447700>! one bisection step on [ph_min, ph_max]<a name='689'></font>
+      <font color=#447700>! ph_new = (ph_min + ph_max)/2d0<a name='690'></font>
+      <font color=#447700>! In terms of [H]_new:<a name='691'></font>
+      <font color=#447700>! [H]_new = 10**(-ph_new)<a name='692'></font>
+      <font color=#447700>!         = 10**(-(ph_min + ph_max)/2d0)<a name='693'></font>
+      <font color=#447700>!         = SQRT(10**(-(ph_min + phmax)))<a name='694'></font>
+      <font color=#447700>!         = SQRT(zh_max * zh_min)<a name='695'></font>
+      zh                = SQRT(zh_max * zh_min)<a name='696'>
+      zh_delta           = zh - zh_1<a name='697'>
+   ELSE<a name='698'>
+      <font color=#447700>! \Delta H = -zeqn_1*(h_2 - h_1)/(zeqn_2 - zeqn_1) <a name='699'></font>
+      <font color=#447700>! H_new = H_1 + \Delta H<a name='700'></font>
+      zh_delta = -zeqn_1/((zeqn_2-zeqn_1)/(zh_2 - zh_1))<a name='701'>
+      zh       = zh_1 + zh_delta<a name='702'>
+<a name='703'>
+      IF( zh &lt; zh_min ) THEN<a name='704'>
+         <font color=#447700>! if [H]_new &lt; [H]_min<a name='705'></font>
+         <font color=#447700>! i.e., if ph_new &gt; ph_max then<a name='706'></font>
+         <font color=#447700>! take one bisection step on [ph_prev, ph_max]<a name='707'></font>
+         <font color=#447700>! ph_new = (ph_prev + ph_max)/2d0<a name='708'></font>
+         <font color=#447700>! In terms of [H]_new:<a name='709'></font>
+         <font color=#447700>! [H]_new = 10**(-ph_new)<a name='710'></font>
+         <font color=#447700>!         = 10**(-(ph_prev + ph_max)/2d0)<a name='711'></font>
+         <font color=#447700>!         = SQRT(10**(-(ph_prev + phmax)))<a name='712'></font>
+         <font color=#447700>!         = SQRT([H]_old*10**(-ph_max))<a name='713'></font>
+         <font color=#447700>!         = SQRT([H]_old * zh_min)<a name='714'></font>
+         zh                = SQRT(zh_1 * zh_min)<a name='715'>
+         zh_delta          = zh - zh_1<a name='716'>
+      ENDIF<a name='717'>
+<a name='718'>
+      IF( zh &gt; zh_max ) THEN<a name='719'>
+         <font color=#447700>! if [H]_new &gt; [H]_max<a name='720'></font>
+         <font color=#447700>! i.e., if ph_new &lt; ph_min, then<a name='721'></font>
+         <font color=#447700>! take one bisection step on [ph_min, ph_prev]<a name='722'></font>
+         <font color=#447700>! ph_new = (ph_prev + ph_min)/2d0<a name='723'></font>
+         <font color=#447700>! In terms of [H]_new:<a name='724'></font>
+         <font color=#447700>! [H]_new = 10**(-ph_new)<a name='725'></font>
+         <font color=#447700>!         = 10**(-(ph_prev + ph_min)/2d0)<a name='726'></font>
+         <font color=#447700>!         = SQRT(10**(-(ph_prev + ph_min)))<a name='727'></font>
+         <font color=#447700>!         = SQRT([H]_old*10**(-ph_min))<a name='728'></font>
+         <font color=#447700>!         = SQRT([H]_old * zhmax)<a name='729'></font>
+         zh                 = SQRT(zh_1 * zh_max)<a name='730'>
+         zh_delta           = zh - zh_1<a name='731'>
+      ENDIF<a name='732'>
+   ENDIF<a name='733'>
+<a name='734'>
+   zeqn_absmin = MIN(ABS(zeqn), zeqn_absmin)<a name='735'>
+<a name='736'>
+   <font color=#447700>! Stop iterations once |([H]-[H_1])/[H_1]| &lt; rdel<a name='737'></font>
+   l_exitnow = (ABS(zh_delta) &lt; pp_rdel_ah_target*zh_1)<a name='738'>
+<a name='739'>
+   IF(l_exitnow) EXIT<a name='740'>
+ENDDO<a name='741'>
+<a name='742'>
+SOLVE_AT_GENERAL_SEC = zh<a name='743'>
+<a name='744'>
+IF(PRESENT(p_val)) THEN<a name='745'>
+   IF(zh &gt; 0._wp) THEN<a name='746'>
+      p_val = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL_SEC' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_6">(p_alktot, zh,       p_dictot, p_bortot,              &amp;<a name='747'>
+                          p_po4tot, p_siltot,                                  &amp;<a name='748'>
+                          p_so4tot, p_flutot,                                  &amp;<a name='749'>
+                          K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi)<a name='750'>
+   ELSE<a name='751'>
+     p_val = HUGE(1._wp)<a name='752'>
+   ENDIF<a name='753'>
+ENDIF<a name='754'>
+<a name='755'>
+RETURN<a name='756'>
+END FUNCTION SOLVE_AT_GENERAL_SEC<a name='757'>
+<a name='758'>
+<font color=#447700>!===============================================================================<a name='759'></font>
+<a name='760'>
+<A NAME='SOLVE_AT_FAST'><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_FAST' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='761'>
+<font color=#993300>FUNCTION </font><font color=#cc0000>SOLVE_AT_FAST</font>(p_alktot, p_dictot, p_bortot,                          &amp;,<A href='../../call_from/SOLVE_AT_FAST.html' TARGET='index'>4</A><a name='762'>
+                       p_po4tot, p_siltot,                                    &amp;<a name='763'>
+                       p_so4tot, p_flutot,                                    &amp; <a name='764'>
+                       K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi,        &amp;<a name='765'>
+                       p_hini,   p_val)<a name='766'>
+<a name='767'>
+<font color=#447700>! Fast version of SOLVE_AT_GENERAL, without any bounds checking.<a name='768'></font>
+<a name='769'>
+USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_FAST' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_17"><a name='770'>
+IMPLICIT NONE<a name='771'>
+REAL(KIND=wp) :: SOLVE_AT_FAST<a name='772'>
+<a name='773'>
+<font color=#447700>! Argument variables <a name='774'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_alktot<a name='775'>
+REAL(KIND=wp), INTENT(IN)            :: p_dictot<a name='776'>
+REAL(KIND=wp), INTENT(IN)            :: p_bortot<a name='777'>
+REAL(KIND=wp), INTENT(IN)            :: p_po4tot<a name='778'>
+REAL(KIND=wp), INTENT(IN)            :: p_siltot<a name='779'>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_nh4tot<a name='780'></font>
+<font color=#447700>!REAL(KIND=wp), INTENT(IN)            :: p_h2stot<a name='781'></font>
+REAL(KIND=wp), INTENT(IN)            :: p_so4tot<a name='782'>
+REAL(KIND=wp), INTENT(IN)            :: p_flutot<a name='783'>
+REAL(KIND=wp), INTENT(IN)            :: K0, K1, K2, Kb, Kw, Ks, Kf<a name='784'>
+REAL(KIND=wp), INTENT(IN)            :: K1p, K2p, K3p, Ksi<a name='785'>
+REAL(KIND=wp), INTENT(IN), OPTIONAL  :: p_hini<a name='786'>
+REAL(KIND=wp), INTENT(OUT), OPTIONAL :: p_val<a name='787'>
+<a name='788'>
+<font color=#447700>! Local variables<a name='789'></font>
+REAL(KIND=wp)  ::  zh_ini, zh, zh_prev, zh_lnfactor<a name='790'>
+REAL(KIND=wp)  ::  zhdelta<a name='791'>
+REAL(KIND=wp)  ::  zeqn, zdeqndh<a name='792'>
+<font color=#447700>!REAL(KIND=wp)  ::  aphscale<a name='793'></font>
+LOGICAL        :: l_exitnow<a name='794'>
+REAL(KIND=wp), PARAMETER :: pz_exp_threshold = 1.0_wp<a name='795'>
+<a name='796'>
+<font color=#447700>! TOTAL H+ scale: conversion factor for Htot = aphscale * Hfree<a name='797'></font>
+<font color=#447700>!aphscale = 1._wp + p_so4tot/Ks<a name='798'></font>
+<a name='799'>
+IF(PRESENT(p_hini)) THEN<a name='800'>
+   zh_ini = p_hini<a name='801'>
+ELSE<a name='802'>
+   CALL <A href='../../html_code/CGEM_2.0/phsolvers.f.html#AHINI_FOR_AT'>AHINI_FOR_AT</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_FAST' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="AHINI_FOR_AT_3">(p_alktot, p_dictot, p_bortot, K1, K2, Kb, zh_ini)<a name='803'>
+ENDIF<a name='804'>
+zh = zh_ini<a name='805'>
+<a name='806'>
+niter_atfast    = 0                 <font color=#447700>! Reset counters of iterations<a name='807'></font>
+DO<a name='808'>
+   niter_atfast = niter_atfast + 1<a name='809'>
+   IF(niter_atfast &gt; jp_maxniter_atfast) THEN<a name='810'>
+      zh = -1._wp<a name='811'>
+      EXIT<a name='812'>
+   ENDIF<a name='813'>
+<a name='814'>
+   zh_prev = zh<a name='815'>
+<a name='816'>
+   zeqn = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_FAST' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_7">(p_alktot, zh,       p_dictot, p_bortot,                  &amp;<a name='817'>
+                      p_po4tot, p_siltot,                                      &amp;<a name='818'>
+                      p_so4tot, p_flutot,                                      &amp; <a name='819'>
+                      K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi,          &amp;<a name='820'>
+                      P_DERIVEQN = zdeqndh)<a name='821'>
+<a name='822'>
+   IF(zeqn == 0._wp) EXIT               <font color=#447700>! zh is the root<a name='823'></font>
+<a name='824'>
+   zh_lnfactor = -zeqn/(zdeqndh*zh_prev)<a name='825'>
+   IF(ABS(zh_lnfactor) &gt; pz_exp_threshold) THEN<a name='826'>
+      zh          = zh_prev*EXP(zh_lnfactor)<a name='827'>
+   ELSE<a name='828'>
+      zhdelta     = zh_lnfactor*zh_prev<a name='829'>
+      zh          = zh_prev + zhdelta<a name='830'>
+   ENDIF<a name='831'>
+<a name='832'>
+   <font color=#447700>! Stop iterations once |\delta{[H]}/[H]| &lt; rdel<a name='833'></font>
+   <font color=#447700>! &lt;=&gt; |(zh - zh_prev)/zh_prev| = |EXP(-zeqn/(zdeqndh*zh_prev)) -1| &lt; rdel<a name='834'></font>
+   <font color=#447700>! |EXP(-zeqn/(zdeqndh*zh_prev)) -1| ~ |zeqn/(zdeqndh*zh_prev)|<a name='835'></font>
+<a name='836'>
+   <font color=#447700>! Alternatively:<a name='837'></font>
+   <font color=#447700>! |\Delta pH| = |zeqn/(zdeqndh*zh_prev*LOG(10))|<a name='838'></font>
+   <font color=#447700>!             ~ 1/LOG(10) * |\Delta [H]|/[H]<a name='839'></font>
+   <font color=#447700>!             &lt; 1/LOG(10) * rdel<a name='840'></font>
+<a name='841'>
+   <font color=#447700>! Hence |zeqn/(zdeqndh*zh)| &lt; rdel<a name='842'></font>
+<a name='843'>
+   <font color=#447700>! rdel &lt;- pp_rdel_ah_target<a name='844'></font>
+<a name='845'>
+   l_exitnow = (ABS(zh_lnfactor) &lt; pp_rdel_ah_target)<a name='846'>
+<a name='847'>
+   IF(l_exitnow) EXIT<a name='848'>
+ENDDO<a name='849'>
+<a name='850'>
+SOLVE_AT_FAST = zh<a name='851'>
+<a name='852'>
+IF(PRESENT(p_val)) THEN<a name='853'>
+   IF(zh &gt; 0._wp) THEN<a name='854'>
+      p_val = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#EQUATION_AT'>equation_at</A><A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_FAST' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="EQUATION_AT_8">(p_alktot, zh,       p_dictot, p_bortot,              &amp;<a name='855'>
+                          p_po4tot, p_siltot,                                  &amp;<a name='856'>
+                          p_so4tot, p_flutot,                                  &amp;<a name='857'>
+                          K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi)<a name='858'>
+   ELSE<a name='859'>
+      p_val = HUGE(1._wp)<a name='860'>
+   ENDIF<a name='861'>
+ENDIF<a name='862'>
+<a name='863'>
+RETURN<a name='864'>
+END FUNCTION solve_at_fast<a name='865'>
+<font color=#447700>!===============================================================================<a name='866'></font>
+<a name='867'>
+END MODULE mphsolvers<a name='868'>
+</pre></body></html>

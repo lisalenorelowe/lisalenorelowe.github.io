@@ -1,0 +1,631 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!&gt; \file constants.f90<a name='2'></font>
+<font color=#447700>!! \BRIEF <a name='3'></font>
+<font color=#447700>!&gt; Module with contants subroutine - computes carbonate system constants<a name='4'></font>
+<font color=#447700>!! from S,T,P <a name='5'></font>
+<A NAME='MCONSTANTS'><A href='../../html_code/CGEM_2.0/constants.f.html#MCONSTANTS' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='6'>
+<font color=#993300>MODULE </font><font color=#cc0000>mconstants</font> <A href='../../call_to/MCONSTANTS.html' TARGET='index'>2</A><a name='7'>
+CONTAINS<a name='8'>
+<font color=#447700>!&gt; Compute thermodynamic constants<a name='9'></font>
+<font color=#447700>!! FROM temperature, salinity, and pressure (1D arrays)<a name='10'></font>
+<A NAME='CONSTANTS'><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='11'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>constants</font>(K0, K1, K2, Kb, Kw, Ks, Kf, Kspc, Kspa,  &amp; <A href='../../call_to/CONSTANTS.html' TARGET='index'>2</A>,<A href='../../call_from/CONSTANTS.html' TARGET='index'>7</A><a name='12'>
+                     K1p, K2p, K3p, Ksi,                      &amp;<a name='13'>
+                     St, Ft, Bt,                              &amp;<a name='14'>
+                     temp, sal, Patm,                         &amp;<a name='15'>
+                     depth, lat, N,                           &amp;<a name='16'>
+                     optT, optP, optB, optK1K2, optKf, optGAS)<a name='17'>
+<a name='18'>
+  <font color=#447700>!   Purpose:<a name='19'></font>
+  <font color=#447700>!     Compute thermodynamic constants<a name='20'></font>
+  <font color=#447700>!     FROM: temperature, salinity, and pressure (1D arrays)<a name='21'></font>
+<a name='22'>
+  <font color=#447700>!     INPUT variables:<a name='23'></font>
+  <font color=#447700>!     ================<a name='24'></font>
+  <font color=#447700>!     Patm    = atmospheric pressure [atm]<a name='25'></font>
+  <font color=#447700>!     depth   = depth [m]     (with optP='m', i.e., for a z-coordinate model vertical grid is depth, not pressure)<a name='26'></font>
+  <font color=#447700>!             = pressure [db] (with optP='db')<a name='27'></font>
+  <font color=#447700>!     lat     = latitude [degrees] (needed to convert depth to pressure, i.e., when optP='m')<a name='28'></font>
+  <font color=#447700>!             = dummy array (unused when optP='db')<a name='29'></font>
+  <font color=#447700>!     temp    = potential temperature [degrees C] (with optT='Tpot', i.e., models carry tempot, not temp)<a name='30'></font>
+  <font color=#447700>!             = in situ   temperature [degrees C] (with optT='Tinsitu', e.g., for data)<a name='31'></font>
+  <font color=#447700>!     sal     = salinity in [psu]<a name='32'></font>
+  <font color=#447700>!     ---------<a name='33'></font>
+  <font color=#447700>!     optT: choose in situ vs. potential temperature as input<a name='34'></font>
+  <font color=#447700>!     ---------<a name='35'></font>
+  <font color=#447700>!     NOTE: Carbonate chem calculations require IN-SITU temperature (not potential Temperature)<a name='36'></font>
+  <font color=#447700>!       -&gt; 'Tpot' means input is pot. Temperature (in situ Temp "tempis" is computed)<a name='37'></font>
+  <font color=#447700>!       -&gt; 'Tinsitu' means input is already in-situ Temperature, not pot. Temp ("tempis" not computed)<a name='38'></font>
+  <font color=#447700>!     ---------<a name='39'></font>
+  <font color=#447700>!     optP: choose depth (m) vs pressure (db) as input<a name='40'></font>
+  <font color=#447700>!     ---------<a name='41'></font>
+  <font color=#447700>!       -&gt; 'm'  means "depth" input is in "m" (thus in situ Pressure "p" [db] is computed)<a name='42'></font>
+  <font color=#447700>!       -&gt; 'db' means "depth" input is already in situ pressure [db], not m (p = depth)<a name='43'></font>
+  <font color=#447700>!     ---------<a name='44'></font>
+  <font color=#447700>!     optB:<a name='45'></font>
+  <font color=#447700>!     ---------<a name='46'></font>
+  <font color=#447700>!       -&gt; 'u74' means use classic formulation of Uppström (1974) for total Boron<a name='47'></font>
+  <font color=#447700>!       -&gt; 'l10' means use newer   formulation of Lee et al. (2010) for total Boron<a name='48'></font>
+  <font color=#447700>!     ---------<a name='49'></font>
+  <font color=#447700>!     optK1K2:<a name='50'></font>
+  <font color=#447700>!     ---------<a name='51'></font>
+  <font color=#447700>!       -&gt; 'l'   means use Lueker et al. (2000) formulations for K1 &amp; K2 (recommended by Dickson et al. 2007)<a name='52'></font>
+  <font color=#447700>!                **** BUT this should only be used when 2 &lt; T &lt; 35 and 19 &lt; S &lt; 43<a name='53'></font>
+  <font color=#447700>!       -&gt; 'm10' means use Millero (2010) formulation for K1 &amp; K2 (see Dickson et al., 2007)<a name='54'></font>
+  <font color=#447700>!                **** Valid for 0 &lt; T &lt; 50°C and 1 &lt; S &lt; 50 psu<a name='55'></font>
+  <font color=#447700>!     -----------<a name='56'></font>
+  <font color=#447700>!     optKf:<a name='57'></font>
+  <font color=#447700>!     ----------<a name='58'></font>
+  <font color=#447700>!       -&gt; 'pf' means use Perez &amp; Fraga (1987) formulation for Kf (recommended by Dickson et al., 2007)<a name='59'></font>
+  <font color=#447700>!               **** BUT Valid for  9 &lt; T &lt; 33°C and 10 &lt; S &lt; 40.<a name='60'></font>
+  <font color=#447700>!       -&gt; 'dg' means use Dickson &amp; Riley (1979) formulation for Kf (recommended by Dickson &amp; Goyet, 1994)<a name='61'></font>
+  <font color=#447700>!     -----------<a name='62'></font>
+  <font color=#447700>!     optGAS: choose in situ vs. potential fCO2 and pCO2<a name='63'></font>
+  <font color=#447700>!     ---------<a name='64'></font>
+  <font color=#447700>!       PRESSURE corrections for K0 and the fugacity coefficient (Cf) <a name='65'></font>
+  <font color=#447700>!       -&gt; 'Pzero'   = 'zero order' fCO2 and pCO2 (typical approach, which is flawed)<a name='66'></font>
+  <font color=#447700>!                      considers in situ T &amp; only atm pressure (hydrostatic=0)<a name='67'></font>
+  <font color=#447700>!       -&gt; 'Ppot'    = 'potential' fCO2 and pCO2 (water parcel brought adiabatically to the surface)<a name='68'></font>
+  <font color=#447700>!                      considers potential T &amp; only atm pressure (hydrostatic press = 0)<a name='69'></font>
+  <font color=#447700>!       -&gt; 'Pinsitu' = 'in situ' fCO2 and pCO2 (accounts for huge effects of pressure)<a name='70'></font>
+  <font color=#447700>!                      considers in situ T &amp; total pressure (atm + hydrostatic)<a name='71'></font>
+  <font color=#447700>!     ---------<a name='72'></font>
+<a name='73'>
+  <font color=#447700>!     OUTPUT variables:<a name='74'></font>
+  <font color=#447700>!     =================<a name='75'></font>
+  <font color=#447700>!     K0, K1, K2, Kb, Kw, Ks, Kf, Kspc, Kspa, K1p, K2p, K3p, Ksi<a name='76'></font>
+  <font color=#447700>!     St, Ft, Bt<a name='77'></font>
+<a name='78'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_1"><a name='79'>
+  USE <A href='../../html_code/CGEM_2.0/p80.f.html#MP80'>mp80</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MP80_1"><a name='80'>
+  USE <A href='../../html_code/CGEM_2.0/sw_temp.f.html#MSW_TEMP'>msw_temp</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSW_TEMP_1"><a name='81'>
+  USE <A href='../../html_code/CGEM_2.0/sw_ptmp.f.html#MSW_PTMP'>msw_ptmp</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSW_PTMP_1"><a name='82'>
+  IMPLICIT NONE<a name='83'>
+<a name='84'>
+<font color=#447700>! Input variables<a name='85'></font>
+  <font color=#447700>!&gt;     number of records<a name='86'></font>
+  INTEGER, INTENT(in) :: N<a name='87'>
+  <font color=#447700>!&gt; in &lt;b&gt;situ temperature&lt;/b&gt; (when optT='Tinsitu', typical data) <a name='88'></font>
+  <font color=#447700>!! OR &lt;b&gt;potential temperature&lt;/b&gt; (when optT='Tpot', typical models) [degree C]<a name='89'></font>
+  REAL(kind=r4), INTENT(in),    DIMENSION(N) :: temp<a name='90'>
+  <font color=#447700>!&gt; depth in &lt;b&gt;meters&lt;/b&gt; (when optP='m') or &lt;b&gt;decibars&lt;/b&gt; (when optP='db')<a name='91'></font>
+  REAL(kind=r4), INTENT(in),    DIMENSION(N) :: depth<a name='92'>
+  <font color=#447700>!&gt; latitude &lt;b&gt;[degrees north]&lt;/b&gt;<a name='93'></font>
+  REAL(kind=r4), INTENT(in),    DIMENSION(N) :: lat<a name='94'>
+  <font color=#447700>!&gt; salinity &lt;b&gt;[psu]&lt;/b&gt;<a name='95'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: sal<a name='96'>
+<font color=#447700>!f2py optional , depend(sal) :: n=len(sal)<a name='97'></font>
+<a name='98'>
+  <font color=#447700>!&gt; atmospheric pressure &lt;b&gt;[atm]&lt;/b&gt;<a name='99'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: Patm<a name='100'>
+<a name='101'>
+  <font color=#447700>!&gt; for temp input, choose \b 'Tinsitu' for in situ Temp or <a name='102'></font>
+  <font color=#447700>!! \b 'Tpot' for potential temperature (in situ Temp is computed, needed for models)<a name='103'></font>
+  CHARACTER(7), INTENT(in) :: optT<a name='104'>
+  <font color=#447700>!&gt; for depth input, choose \b "db" for decibars (in situ pressure) or \b "m" for meters (pressure is computed, needed for models)<a name='105'></font>
+  CHARACTER(2), INTENT(in) :: optP<a name='106'>
+  <font color=#447700>!&gt; for total boron, choose either \b 'u74' (Uppstrom, 1974) or \b 'l10' (Lee et al., 2010).<a name='107'></font>
+  <font color=#447700>!! The 'l10' formulation is based on 139 measurements (instead of 20),<a name='108'></font>
+  <font color=#447700>!! uses a more accurate method, and<a name='109'></font>
+  <font color=#447700>!! generally increases total boron in seawater by 4% <a name='110'></font>
+<font color=#447700>!f2py character*3 optional, intent(in) :: optB='l10'<a name='111'></font>
+  CHARACTER(3), OPTIONAL, INTENT(in) :: optB<a name='112'>
+  <font color=#447700>!&gt; for Kf, choose either \b 'pf' (Perez &amp; Fraga, 1987) or \b 'dg' (Dickson &amp; Riley, 1979)<a name='113'></font>
+<font color=#447700>!f2py character*2 optional, intent(in) :: optKf='pf'<a name='114'></font>
+  CHARACTER(2), OPTIONAL, INTENT(in) :: optKf<a name='115'>
+  <font color=#447700>!&gt; for K1,K2 choose either \b 'l' (Lueker et al., 2000) or \b 'm10' (Millero, 2010) <a name='116'></font>
+<font color=#447700>!f2py character*3 optional, intent(in) :: optK1K2='l'<a name='117'></font>
+  CHARACTER(3), OPTIONAL, INTENT(in) :: optK1K2<a name='118'>
+  <font color=#447700>!&gt; for K0,fugacity coefficient choose either \b 'Ppot' (no pressure correction) or \b 'Pinsitu' (with pressure correction) <a name='119'></font>
+  <font color=#447700>!! 'Ppot'    - for 'potential' fCO2 and pCO2 (water parcel brought adiabatically to the surface)<a name='120'></font>
+  <font color=#447700>!! 'Pinsitu' - for 'in situ' values of fCO2 and pCO2, accounting for pressure on K0 and Cf<a name='121'></font>
+  <font color=#447700>!! with 'Pinsitu' the fCO2 and pCO2 will be many times higher in the deep ocean<a name='122'></font>
+<font color=#447700>!f2py character*7 optional, intent(in) :: optGAS='Pinsitu'<a name='123'></font>
+  CHARACTER(7), OPTIONAL, INTENT(in) :: optGAS<a name='124'>
+<a name='125'>
+<font color=#447700>! Ouput variables<a name='126'></font>
+  <font color=#447700>!&gt; solubility of CO2 in seawater (Weiss, 1974), also known as K0<a name='127'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: K0<a name='128'>
+  <font color=#447700>!&gt; K1 for the dissociation of carbonic acid from Lueker et al. (2000) or Millero (2010), depending on optK1K2<a name='129'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: K1<a name='130'>
+  <font color=#447700>!&gt; K2 for the dissociation of carbonic acid from Lueker et al. (2000) or Millero (2010), depending on optK1K2<a name='131'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: K2<a name='132'>
+  <font color=#447700>!&gt; equilibrium constant for dissociation of boric acid <a name='133'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Kb<a name='134'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of water (Millero, 1995)<a name='135'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Kw<a name='136'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of bisulfate (Dickson, 1990)<a name='137'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Ks<a name='138'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of hydrogen fluoride <a name='139'></font>
+  <font color=#447700>!! either from Dickson and Riley (1979) or from Perez and Fraga (1987), depending on optKf<a name='140'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Kf<a name='141'>
+  <font color=#447700>!&gt; solubility product for calcite (Mucci, 1983)<a name='142'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Kspc<a name='143'>
+  <font color=#447700>!&gt; solubility product for aragonite (Mucci, 1983)<a name='144'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Kspa<a name='145'>
+  <font color=#447700>!&gt; 1st dissociation constant for phosphoric acid (Millero, 1995)<a name='146'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: K1p<a name='147'>
+  <font color=#447700>!&gt; 2nd dissociation constant for phosphoric acid (Millero, 1995)<a name='148'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: K2p<a name='149'>
+  <font color=#447700>!&gt; 3rd dissociation constant for phosphoric acid (Millero, 1995)<a name='150'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: K3p<a name='151'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of silicic acid (Millero, 1995)<a name='152'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Ksi<a name='153'>
+  <font color=#447700>!&gt; total sulfate (Morris &amp; Riley, 1966)<a name='154'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: St<a name='155'>
+  <font color=#447700>!&gt; total fluoride  (Riley, 1965)<a name='156'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Ft<a name='157'>
+  <font color=#447700>!&gt; total boron<a name='158'></font>
+  <font color=#447700>!! from either Uppstrom (1974) or Lee et al. (2010), depending on optB<a name='159'></font>
+  REAL(kind=r8), INTENT(out), DIMENSION(N) :: Bt<a name='160'>
+<a name='161'>
+<font color=#447700>! Local variables<a name='162'></font>
+  REAL(kind=r4) :: ssal<a name='163'>
+  REAL(kind=r4) :: p<a name='164'>
+  REAL(kind=r4) :: tempot, tempis68, tempot68<a name='165'>
+  REAL(kind=r4) :: tempis<a name='166'>
+  REAL(kind=r8) :: is, invtk, dlogtk, is2, s2, sqrtis<a name='167'>
+  REAL(kind=r8) :: Ks_0p, Kf_0p<a name='168'>
+  REAL(kind=r8) :: total2free, free2SWS, total2SWS, SWS2total<a name='169'>
+  REAL(kind=r8) :: total2free_0p, free2SWS_0p, total2SWS_0p<a name='170'>
+<font color=#447700>! REAL(kind=r8) :: free2SWS, free2SWS_0p<a name='171'></font>
+<a name='172'>
+  REAL(kind=r8) :: dtempot, dtempot68<a name='173'>
+  REAL(kind=r8) :: R<a name='174'>
+<a name='175'>
+  REAL(kind=r8) :: pK1o, ma1, mb1, mc1, pK1<a name='176'>
+  REAL(kind=r8) :: pK2o, ma2, mb2, mc2, pK2<a name='177'>
+<a name='178'>
+  REAL(kind=r8), DIMENSION(12) :: a0, a1, a2, b0, b1, b2<a name='179'>
+  REAL(kind=r8), DIMENSION(12) :: deltav, deltak, lnkpok0<a name='180'>
+  REAL(kind=r8) :: tmp, nK0we74<a name='181'>
+<a name='182'>
+  INTEGER :: i, icount, ipc<a name='183'>
+<a name='184'>
+  REAL(kind=r8) :: t, tk, tk0, prb<a name='185'>
+  REAL(kind=r8) :: s, sqrts, s15, scl<a name='186'>
+<a name='187'>
+  REAL(kind=r8) :: Phydro_atm, Patmd, Ptot, Rgas_atm, vbarCO2<a name='188'>
+<a name='189'>
+<font color=#447700>! Arrays to pass optional arguments into or use defaults (Dickson et al., 2007)<a name='190'></font>
+  CHARACTER(3) :: opB<a name='191'>
+  CHARACTER(2) :: opKf<a name='192'>
+  CHARACTER(3) :: opK1K2<a name='193'>
+  CHARACTER(7) :: opGAS<a name='194'>
+<a name='195'>
+  <font color=#447700>! CONSTANTS<a name='196'></font>
+  <font color=#447700>! =========<a name='197'></font>
+  <font color=#447700>! Constants in formulation for Pressure effect on K's (Millero, 95)<a name='198'></font>
+  <font color=#447700>! with corrected coefficients for Kb, Kw, Ksi, etc.<a name='199'></font>
+<a name='200'>
+  <font color=#447700>! index: 1) K1 , 2) K2, 3) Kb, 4) Kw, 5) Ks, 6) Kf, 7) Kspc, 8) Kspa,<a name='201'></font>
+  <font color=#447700>!            9) K1P, 10) K2P, 11) K3P, 12) Ksi<a name='202'></font>
+<a name='203'>
+  DATA a0 /-25.5_r8, -15.82_r8, -29.48_r8, -20.02_r8, &amp;<a name='204'>
+          -18.03_r8,  -9.78_r8, -48.76_r8, -45.96_r8, &amp;<a name='205'>
+          -14.51_r8, -23.12_r8, -26.57_r8, -29.48_r8/<a name='206'>
+  DATA a1 /0.1271_r8, -0.0219_r8, 0.1622_r8, 0.1119_r8, &amp;<a name='207'>
+           0.0466_r8, -0.0090_r8, 0.5304_r8, 0.5304_r8, &amp;<a name='208'>
+           0.1211_r8, 0.1758_r8, 0.2020_r8, 0.1622_r8/<a name='209'>
+  DATA a2 /     0.0_r8,       0.0_r8, -2.608e-3_r8, -1.409e-3_r8, &amp;<a name='210'>
+           0.316e-3_r8, -0.942e-3_r8,  0.0_r8,       0.0_r8, &amp;<a name='211'>
+          -0.321e-3_r8, -2.647e-3_r8, -3.042e-3_r8, -2.6080e-3_r8/<a name='212'>
+  DATA b0 /-3.08e-3_r8, 1.13e-3_r8,  -2.84e-3_r8,   -5.13e-3_r8, &amp;<a name='213'>
+           -4.53e-3_r8, -3.91e-3_r8, -11.76e-3_r8, -11.76e-3_r8, &amp;<a name='214'>
+           -2.67e-3_r8, -5.15e-3_r8,  -4.08e-3_r8,  -2.84e-3_r8/<a name='215'>
+  DATA b1 /0.0877e-3_r8, -0.1475e-3_r8, 0.0_r8,       0.0794e-3_r8, &amp;<a name='216'>
+           0.09e-3_r8,    0.054e-3_r8,  0.3692e-3_r8, 0.3692e-3_r8, &amp;<a name='217'>
+           0.0427e-3_r8,  0.09e-3_r8,   0.0714e-3_r8, 0.0_r8/<a name='218'>
+  DATA b2 /12*0.0_r8/<a name='219'>
+<a name='220'>
+<font color=#447700>! Set defaults for optional arguments (in Fortran 90)<a name='221'></font>
+<font color=#447700>! Note:  Optional arguments with f2py (python) are set above with <a name='222'></font>
+<font color=#447700>!        the !f2py statements that precede each type declaraion<a name='223'></font>
+  IF (PRESENT(optB)) THEN<a name='224'>
+    opB = optB<a name='225'>
+  ELSE<a name='226'>
+    opB = 'l10'<a name='227'>
+  ENDIF<a name='228'>
+  IF (PRESENT(optKf)) THEN<a name='229'>
+    opKf = optKf<a name='230'>
+  ELSE<a name='231'>
+    opKf = 'pf'<a name='232'>
+  ENDIF<a name='233'>
+  IF (PRESENT(optK1K2)) THEN<a name='234'>
+    opK1K2 = optK1K2<a name='235'>
+  ELSE<a name='236'>
+    opK1K2 = 'l'<a name='237'>
+  ENDIF<a name='238'>
+  IF (PRESENT(optGAS)) THEN<a name='239'>
+    opGAS = optGAS<a name='240'>
+  ELSE<a name='241'>
+    opGAS = 'Pinsitu'<a name='242'>
+  ENDIF<a name='243'>
+<a name='244'>
+  R = 83.14472_r8<a name='245'>
+<a name='246'>
+  icount = 0<a name='247'>
+  DO i = 1, N<a name='248'>
+     icount = icount + 1<a name='249'>
+<font color=#447700>!    ===============================================================<a name='250'></font>
+<font color=#447700>!    Convert model depth -&gt; press; convert model Theta -&gt; T in situ<a name='251'></font>
+<font color=#447700>!    ===============================================================<a name='252'></font>
+<font color=#447700>!    * Model temperature tracer is usually "potential temperature"<a name='253'></font>
+<font color=#447700>!    * Model vertical grid is usually in meters<a name='254'></font>
+<font color=#447700>!    BUT carbonate chem routines require pressure &amp; in-situ T<a name='255'></font>
+<font color=#447700>!    Thus before computing chemistry, if appropriate,<a name='256'></font>
+<font color=#447700>!    convert these 2 model vars (input to this routine)<a name='257'></font>
+<font color=#447700>!     - depth [m] =&gt; convert to pressure [db]<a name='258'></font>
+<font color=#447700>!     - potential temperature (C) =&gt; convert to in-situ T (C)<a name='259'></font>
+<font color=#447700>!    -------------------------------------------------------<a name='260'></font>
+<font color=#447700>!    1)  Compute pressure [db] from depth [m] and latitude [degrees] (if input is m, for models)<a name='261'></font>
+     IF (trim(optP) == 'm' ) THEN<a name='262'>
+<font color=#447700>!       Compute pressure [db] from depth [m] and latitude [degrees]<a name='263'></font>
+        p = <A href='../../html_code/CGEM_2.0/p80.f.html#P80'>p80</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="P80_1">(depth(i), lat(i))<a name='264'>
+     ELSEIF (trim(optP) == 'db' ) THEN<a name='265'>
+<font color=#447700>!       In this case (where optP = 'db'), p is input &amp; output (no depth-&gt;pressure conversion needed)<a name='266'></font>
+        p = depth(i)<a name='267'>
+     ELSE<a name='268'>
+        PRINT *,"optP must be 'm' or 'db'"<a name='269'>
+        STOP<a name='270'>
+     ENDIF<a name='271'>
+<a name='272'>
+<font color=#447700>!    2) Convert potential T to in-situ T (if input is Tpot, i.e. case for models):<a name='273'></font>
+     IF (trim(optT) == 'Tpot' .OR. trim(optT) == 'tpot') THEN<a name='274'>
+        tempot = temp(i)<a name='275'>
+<font color=#447700>!       This is the case for most models and some data<a name='276'></font>
+<font color=#447700>!       a) Convert the pot. temp on today's "ITS 90" scale to older IPTS 68 scale<a name='277'></font>
+<font color=#447700>!          (see Dickson et al., Best Practices Guide, 2007, Chap. 5, p. 7, including footnote)<a name='278'></font>
+        tempot68 = (tempot - 0.0002) / 0.99975<a name='279'>
+<font color=#447700>!       b) Compute "in-situ Temperature" from "Potential Temperature" (both on IPTS 68)<a name='280'></font>
+        tempis68 = <A href='../../html_code/CGEM_2.0/sw_temp.f.html#SW_TEMP'>sw_temp</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SW_TEMP_1">(sal(i), tempot68, p, 0. )<a name='281'>
+<font color=#447700>!       c) Convert the in-situ temp on older IPTS 68 scale to modern scale (ITS 90)<a name='282'></font>
+        tempis = 0.99975*tempis68 + 0.0002<a name='283'>
+<font color=#447700>!       Note: parts (a) and (c) above are tiny corrections;<a name='284'></font>
+<font color=#447700>!             part  (b) is a big correction for deep waters (but zero at surface)<a name='285'></font>
+     ELSEIF (trim(optT) == 'Tinsitu' .OR. trim(optT) == 'tinsitu') THEN<a name='286'>
+<font color=#447700>!       When optT = 'Tinsitu', tempis is input &amp; output (no tempot needed)<a name='287'></font>
+        tempis    = temp(i)<a name='288'>
+        tempis68  = (temp(i) - 0.0002) / 0.99975<a name='289'>
+        dtempot68 = <A href='../../html_code/CGEM_2.0/sw_ptmp.f.html#SW_PTMP'>sw_ptmp</A><A href='../../html_code/CGEM_2.0/constants.f.html#CONSTANTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SW_PTMP_1">(DBLE(sal(i)), DBLE(tempis68), DBLE(p), 0.0d0)<a name='290'>
+        dtempot   = 0.99975*dtempot68 + 0.0002<a name='291'>
+     ELSE<a name='292'>
+        PRINT *,"optT must be either 'Tpot' or 'Tinsitu'"<a name='293'>
+        PRINT *,"you specified optT =", trim(optT) <a name='294'>
+        STOP<a name='295'>
+     ENDIF<a name='296'>
+<a name='297'>
+<font color=#447700>!    Compute constants:<a name='298'></font>
+     IF (temp(i) &gt;= -5. .AND. temp(i) &lt; 1.0e+2) THEN<a name='299'>
+<font color=#447700>!       Test to indicate if any of input variables are unreasonable<a name='300'></font>
+        IF (      sal(i) &lt; 0.  .OR.  sal(i) &gt; 1e+3) THEN<a name='301'>
+           PRINT *, 'i, icount, temp, sal =', i, icount, temp(i), sal(i)<a name='302'>
+        ENDIF<a name='303'>
+<font color=#447700>!       Zero out negative salinity (prev case for OCMIP2 model w/ slightly negative S in some coastal cells)<a name='304'></font>
+        IF (sal(i) &lt; 0.0) THEN<a name='305'>
+           ssal = 0.0<a name='306'>
+        ELSE<a name='307'>
+           ssal = sal(i)<a name='308'>
+        ENDIF<a name='309'>
+<a name='310'>
+<font color=#447700>!       Absolute temperature (Kelvin) and related values<a name='311'></font>
+        t = DBLE(tempis)<a name='312'>
+        tk = 273.15d0 + t<a name='313'>
+        invtk=1.0d0/tk<a name='314'>
+        dlogtk=LOG(tk)<a name='315'>
+<a name='316'>
+<font color=#447700>!       Atmospheric pressure<a name='317'></font>
+        Patmd = DBLE(Patm(i))<a name='318'>
+<a name='319'>
+<font color=#447700>!       Hydrostatic pressure (prb is in bars)<a name='320'></font>
+        prb = DBLE(p) / 10.0d0<a name='321'>
+<a name='322'>
+<font color=#447700>!       Salinity and simply related values<a name='323'></font>
+        s = DBLE(ssal)<a name='324'>
+        s2=s*s<a name='325'>
+        sqrts=SQRT(s)<a name='326'>
+        s15=s**1.5d0<a name='327'>
+        scl=s/1.80655d0<a name='328'>
+<a name='329'>
+<font color=#447700>!       Ionic strength:<a name='330'></font>
+        is = 19.924d0*s/(1000.0d0 - 1.005d0*s)<a name='331'>
+        is2 = is*is<a name='332'>
+        sqrtis = SQRT(is)<a name='333'>
+<a name='334'>
+<font color=#447700>!       Total concentrations for sulfate, fluoride, and boron<a name='335'></font>
+<a name='336'>
+<font color=#447700>!       Sulfate: Morris &amp; Riley (1966)<a name='337'></font>
+        St(i) = 0.14d0 * scl/96.062d0<a name='338'>
+<a name='339'>
+<font color=#447700>!       Fluoride:  Riley (1965)<a name='340'></font>
+        Ft(i) = 0.000067d0 * scl/18.9984d0<a name='341'>
+<a name='342'>
+<font color=#447700>!       Boron:<a name='343'></font>
+        IF (trim(opB) == 'l10') THEN<a name='344'>
+<font color=#447700>!          New formulation from Lee et al (2010)<a name='345'></font>
+           Bt(i) = 0.0002414d0 * scl/10.811d0<a name='346'>
+        ELSEIF (trim(opB) == 'u74') THEN<a name='347'>
+<font color=#447700>!          Classic formulation from Uppström (1974)<a name='348'></font>
+           Bt(i) = 0.000232d0  * scl/10.811d0<a name='349'>
+        ELSE<a name='350'>
+           PRINT *,"optB must be 'l10' or 'u74'"<a name='351'>
+           STOP<a name='352'>
+        ENDIF<a name='353'>
+<a name='354'>
+<font color=#447700>!       K0 (K Henry)<a name='355'></font>
+<font color=#447700>!       CO2(g) &lt;-&gt; CO2(aq.)<a name='356'></font>
+<font color=#447700>!       K0  = [CO2]/ fCO2<a name='357'></font>
+<font color=#447700>!       Weiss (1974)   [mol/kg/atm]<a name='358'></font>
+        IF     (trim(opGAS) == 'Pzero'   .OR. trim(opGAS) == 'pzero') THEN<a name='359'>
+           tk0 = tk                   <font color=#447700>!in situ temperature (K) for K0 calculation<a name='360'></font>
+           Ptot = Patmd               <font color=#447700>!total pressure (in atm) = atmospheric pressure ONLY<a name='361'></font>
+        ELSEIF (trim(opGAS) == 'Ppot'    .OR. trim(opGAS) == 'ppot') THEN<a name='362'>
+           tk0 = dtempot + 273.15d0   <font color=#447700>!potential temperature (K) for K0 calculation as needed for potential fCO2 &amp; pCO2<a name='363'></font>
+           Ptot = Patmd               <font color=#447700>!total pressure (in atm) = atmospheric pressure ONLY<a name='364'></font>
+        ELSEIF (trim(opGAS) == 'Pinsitu' .OR. trim(opGAS) == 'pinsitu') THEN<a name='365'>
+           tk0 = tk                     <font color=#447700>!in situ temperature (K) for K0 calculation<a name='366'></font>
+           Phydro_atm = prb / 1.01325d0 <font color=#447700>!convert hydrostatic pressure from bar to atm (1.01325 bar / atm)<a name='367'></font>
+           Ptot = Patmd + Phydro_atm    <font color=#447700>!total pressure (in atm) = atmospheric pressure + hydrostatic pressure<a name='368'></font>
+        ELSE<a name='369'>
+           PRINT *, "optGAS must be 'Pzero', 'Ppot', or 'Pinsitu'"<a name='370'>
+           STOP<a name='371'>
+        ENDIF<a name='372'>
+        tmp = 9345.17d0/tk0 - 60.2409d0 + 23.3585d0 * LOG(tk0/100.0d0)<a name='373'>
+        nK0we74 = tmp + s*(0.023517d0 - 0.00023656d0*tk0 + 0.0047036e-4_r8*tk0*tk0)<a name='374'>
+        K0(i) = EXP(nK0we74)<a name='375'>
+<a name='376'>
+<font color=#447700>!       K1 = [H][HCO3]/[H2CO3]<a name='377'></font>
+<font color=#447700>!       K2 = [H][CO3]/[HCO3]<a name='378'></font>
+        IF (trim(opK1K2) == 'l') THEN<a name='379'>
+<font color=#447700>!         Mehrbach et al. (1973) refit, by Lueker et al. (2000) (total pH scale)<a name='380'></font>
+          K1(i) = 10.0d0**(-1.0d0*(3633.86d0*invtk - 61.2172d0 + 9.6777d0*dlogtk  &amp;<a name='381'>
+                  - 0.011555d0*s + 0.0001152d0*s2))<a name='382'>
+          K2(i) = 10.0d0**(-1*(471.78d0*invtk + 25.9290d0 - 3.16967d0*dlogtk      &amp;<a name='383'>
+                  - 0.01781d0*s + 0.0001122d0*s2))<a name='384'>
+        ELSEIF (trim(opK1K2) == 'm10') THEN<a name='385'>
+<font color=#447700>!         Millero (2010, Mar. Fresh Wat. Res.) (total pH scale)<a name='386'></font>
+<font color=#447700>!         pK1o = 6320.813d0*invtk + 19.568224d0*dlogtk -126.34048d0<a name='387'></font>
+<font color=#447700>!         ma1 = 13.4051d0*sqrts + 0.03185d0*s - (5.218e-5)*s2<a name='388'></font>
+<font color=#447700>!         mb1 = -531.095d0*sqrts - 5.7789d0*s<a name='389'></font>
+<font color=#447700>!         mc1 = -2.0663d0*sqrts<a name='390'></font>
+<font color=#447700>!         pK1 = pK1o + ma1 + mb1*invtk + mc1*dlogtk<a name='391'></font>
+<font color=#447700>!         K1(i) = 10.0d0**(-pK1) <a name='392'></font>
+<a name='393'>
+<font color=#447700>!         pK2o = 5143.692d0*invtk + 14.613358d0*dlogtk -90.18333d0<a name='394'></font>
+<font color=#447700>!         ma2 = 21.5724d0*sqrts + 0.1212d0*s - (3.714e-4)*s2<a name='395'></font>
+<font color=#447700>!         mb2 = -798.292d0*sqrts - 18.951d0*s<a name='396'></font>
+<font color=#447700>!         mc2 = -3.403d0*sqrts<a name='397'></font>
+<font color=#447700>!         pK2 = pK2o + ma2 + mb2*invtk + mc2*dlogtk<a name='398'></font>
+<font color=#447700>!         K2(i) = 10.0d0**(-pK2)<a name='399'></font>
+<a name='400'>
+<font color=#447700>!         Millero (2010, Mar. Fresh Wat. Res.) (seawater pH scale)<a name='401'></font>
+          pK1o = 6320.813d0*invtk + 19.568224d0*dlogtk -126.34048d0<a name='402'>
+          ma1 = 13.4038d0*sqrts + 0.03206d0*s - (5.242e-5)*s2<a name='403'>
+          mb1 = -530.659d0*sqrts - 5.8210d0*s<a name='404'>
+          mc1 = -2.0664d0*sqrts<a name='405'>
+          pK1 = pK1o + ma1 + mb1*invtk + mc1*dlogtk<a name='406'>
+          K1(i) = 10.0d0**(-pK1) <a name='407'>
+<a name='408'>
+          pK2o = 5143.692d0*invtk + 14.613358d0*dlogtk -90.18333d0<a name='409'>
+          ma2 = 21.3728d0*sqrts + 0.1218d0*s - (3.688e-4)*s2<a name='410'>
+          mb2 = -788.289d0*sqrts - 19.189d0*s<a name='411'>
+          mc2 = -3.374d0*sqrts<a name='412'>
+          pK2 = pK2o + ma2 + mb2*invtk + mc2*dlogtk<a name='413'>
+          K2(i) = 10.0d0**(-pK2)<a name='414'>
+        ELSE<a name='415'>
+           PRINT *, "optK1K2 must be either 'l' or 'm10'"<a name='416'>
+           STOP<a name='417'>
+        ENDIF<a name='418'>
+<a name='419'>
+<font color=#447700>!       Kb = [H][BO2]/[HBO2]<a name='420'></font>
+<font color=#447700>!       (total scale)<a name='421'></font>
+<font color=#447700>!       Millero p.669 (1995) using data from Dickson (1990)<a name='422'></font>
+        Kb(i) = EXP((-8966.90d0 - 2890.53d0*sqrts - 77.942d0*s +  &amp;<a name='423'>
+                1.728d0*s15 - 0.0996d0*s2)*invtk +              &amp;<a name='424'>
+                (148.0248d0 + 137.1942d0*sqrts + 1.62142d0*s) +   &amp;<a name='425'>
+                (-24.4344d0 - 25.085d0*sqrts - 0.2474d0*s) *      &amp;<a name='426'>
+                dlogtk + 0.053105d0*sqrts*tk)<a name='427'>
+<a name='428'>
+<font color=#447700>!       K1p = [H][H2PO4]/[H3PO4]<a name='429'></font>
+<font color=#447700>!       (seawater scale)<a name='430'></font>
+<font color=#447700>!       DOE(1994) eq 7.2.20 with footnote using data from Millero (1974)<a name='431'></font>
+<font color=#447700>!       Millero (1995), p.670, eq. 65<a name='432'></font>
+<font color=#447700>!       Use Millero equation's 115.540 constant instead of 115.525 (Dickson et al., 2007).<a name='433'></font>
+<font color=#447700>!       The latter is only an crude approximation to convert to Total scale (by subtracting 0.015)<a name='434'></font>
+<font color=#447700>!       And we want to stay on the SWS scale anyway for the pressure correction later.<a name='435'></font>
+        K1p(i) = EXP(-4576.752d0*invtk + 115.540d0 - 18.453d0*dlogtk +  &amp;<a name='436'>
+                 (-106.736d0*invtk + 0.69171d0) * sqrts +             &amp;<a name='437'>
+                 (-0.65643d0*invtk - 0.01844d0) * s)<a name='438'>
+<a name='439'>
+<font color=#447700>!       K2p = [H][HPO4]/[H2PO4]<a name='440'></font>
+<font color=#447700>!       (seawater scale)<a name='441'></font>
+<font color=#447700>!       DOE(1994) eq 7.2.23 with footnote using data from Millero (1974))<a name='442'></font>
+<font color=#447700>!       Millero (1995), p.670, eq. 66<a name='443'></font>
+<font color=#447700>!       Use Millero equation's 172.1033 constant instead of 172.0833 (Dickson et al., 2007).<a name='444'></font>
+<font color=#447700>!       The latter is only an crude approximation to convert to Total scale (by subtracting 0.015)<a name='445'></font>
+<font color=#447700>!       And we want to stay on the SWS scale anyway for the pressure correction later.<a name='446'></font>
+        K2p(i) = EXP(-8814.715d0*invtk + 172.1033d0 - 27.927d0*dlogtk +  &amp;<a name='447'>
+                 (-160.340d0*invtk + 1.3566d0)*sqrts +                 &amp;<a name='448'>
+                 (0.37335d0*invtk - 0.05778d0)*s)<a name='449'>
+<a name='450'>
+<font color=#447700>!       K3p = [H][PO4]/[HPO4]<a name='451'></font>
+<font color=#447700>!       (seawater scale)<a name='452'></font>
+<font color=#447700>!       DOE(1994) eq 7.2.26 with footnote using data from Millero (1974)<a name='453'></font>
+<font color=#447700>!       Millero (1995), p.670, eq. 67<a name='454'></font>
+<font color=#447700>!       Use Millero equation's 18.126 constant instead of 18.141 (Dickson et al., 2007).<a name='455'></font>
+<font color=#447700>!       The latter is only an crude approximation to convert to Total scale (by subtracting 0.015)<a name='456'></font>
+<font color=#447700>!       And we want to stay on the SWS scale anyway for the pressure correction later.<a name='457'></font>
+        K3p(i) = EXP(-3070.75d0*invtk - 18.126d0 +            &amp;<a name='458'>
+                 (17.27039d0*invtk + 2.81197d0) *             &amp;<a name='459'>
+                 sqrts + (-44.99486d0*invtk - 0.09984d0) * s)<a name='460'>
+<a name='461'>
+<font color=#447700>!       Ksi = [H][SiO(OH)3]/[Si(OH)4]<a name='462'></font>
+<font color=#447700>!       (seawater scale)<a name='463'></font>
+<font color=#447700>!       Millero (1995), p.671, eq. 72<a name='464'></font>
+<font color=#447700>!       Use Millero equation's 117.400 constant instead of 117.385 (Dickson et al., 2007).<a name='465'></font>
+<font color=#447700>!       The latter is only an crude approximation to convert to Total scale (by subtracting 0.015)<a name='466'></font>
+<font color=#447700>!       And we want to stay on the SWS scale anyway for the pressure correction later.<a name='467'></font>
+        Ksi(i) = EXP(-8904.2d0*invtk  + 117.400d0 - 19.334d0*dlogtk +  &amp;<a name='468'>
+                 (-458.79d0*invtk + 3.5913d0) * sqrtis +             &amp;<a name='469'>
+                 (188.74d0*invtk - 1.5998d0) * is +                  &amp;<a name='470'>
+                 (-12.1652d0*invtk + 0.07871d0) * is2 +              &amp;<a name='471'>
+                 LOG(1.0 - 0.001005d0*s))<a name='472'>
+<a name='473'>
+<font color=#447700>!       Kw = [H][OH]<a name='474'></font>
+<font color=#447700>!       (seawater scale)<a name='475'></font>
+<font color=#447700>!       Millero (1995) p.670, eq. 63 from composite data<a name='476'></font>
+<font color=#447700>!       Use Millero equation's 148.9802 constant instead of 148.9652 (Dickson et al., 2007).<a name='477'></font>
+<font color=#447700>!       The latter is only an crude approximation to convert to Total scale (by subtracting 0.015)<a name='478'></font>
+<font color=#447700>!       And we want to stay on the SWS scale anyway for the pressure correction later.<a name='479'></font>
+        Kw(i) = EXP(-13847.26d0*invtk + 148.9802d0 - 23.6521d0*dlogtk +  &amp;<a name='480'>
+               (118.67d0*invtk - 5.977d0 + 1.0495d0 * dlogtk) *          &amp;<a name='481'>
+               sqrts - 0.01615d0 * s)<a name='482'>
+<a name='483'>
+<font color=#447700>!       Ks = [H][SO4]/[HSO4]<a name='484'></font>
+<font color=#447700>!       (free scale)<a name='485'></font>
+<font color=#447700>!       Dickson (1990, J. chem. Thermodynamics 22, 113)<a name='486'></font>
+        Ks_0p = EXP(-4276.1d0*invtk + 141.328d0 - 23.093d0*dlogtk          &amp;<a name='487'>
+                + (-13856.d0*invtk + 324.57d0 - 47.986d0*dlogtk) * sqrtis  &amp;<a name='488'>
+                + (35474.d0*invtk - 771.54 + 114.723d0*dlogtk) * is      &amp;<a name='489'>
+                - 2698.d0*invtk*is**1.5 + 1776.d0*invtk*is2              &amp;<a name='490'>
+                + LOG(1.0d0 - 0.001005d0*s))<a name='491'>
+<a name='492'>
+<font color=#447700>!       Kf = [H][F]/[HF]<a name='493'></font>
+<font color=#447700>!       (total scale)<a name='494'></font>
+        IF (trim(opKf) == 'dg') THEN<a name='495'>
+<font color=#447700>!          Dickson and Riley (1979) -- change pH scale to total (following Dickson &amp; Goyet, 1994)<a name='496'></font>
+           Kf_0p = EXP(1590.2d0*invtk - 12.641d0 + 1.525d0*sqrtis +  &amp;<a name='497'>
+                   LOG(1.0d0 - 0.001005d0*s) +                     &amp;<a name='498'>
+                   LOG(1.0d0 + St(i)/Ks_0p))<a name='499'>
+        ELSEIF (trim(opKf) == 'pf') THEN<a name='500'>
+<font color=#447700>!          Perez and Fraga (1987) - Already on Total scale (no need for last line above)<a name='501'></font>
+<font color=#447700>!          Formulation as given in Dickson et al. (2007)<a name='502'></font>
+           Kf_0p = EXP(874.d0*invtk - 9.68d0 + 0.111d0*sqrts)<a name='503'>
+        ELSE<a name='504'>
+           PRINT *, "optKf must be either 'dg' or 'pf'"<a name='505'>
+           STOP<a name='506'>
+        ENDIF<a name='507'>
+<a name='508'>
+<font color=#447700>!       Kspc (calcite) - apparent solubility product of calcite<a name='509'></font>
+<font color=#447700>!       (no scale)<a name='510'></font>
+<font color=#447700>!       Kspc = [Ca2+] [CO32-] when soln is in equilibrium w/ calcite<a name='511'></font>
+<font color=#447700>!       Mucci 1983 mol/kg-soln<a name='512'></font>
+        Kspc(i) = 10d0**(-171.9065d0 - 0.077993d0*tk + 2839.319d0/tk    &amp;<a name='513'>
+                 + 71.595d0*LOG10(tk)                             &amp;<a name='514'>
+                 + (-0.77712d0 + 0.0028426d0*tk + 178.34d0/tk)*sqrts  &amp;<a name='515'>
+                 -0.07711d0*s + 0.0041249d0*s15 )<a name='516'>
+<a name='517'>
+<a name='518'>
+<font color=#447700>!       Kspa (aragonite) - apparent solubility product of aragonite<a name='519'></font>
+<font color=#447700>!       (no scale)<a name='520'></font>
+<font color=#447700>!       Kspa = [Ca2+] [CO32-] when soln is in equilibrium w/ aragonite<a name='521'></font>
+<font color=#447700>!       Mucci 1983 mol/kg-soln<a name='522'></font>
+        Kspa(i) = 10.d0**(-171.945d0 - 0.077993d0*tk + 2903.293d0/tk &amp;<a name='523'>
+             +71.595d0*LOG10(tk) &amp;<a name='524'>
+             +(-0.068393d0 + 0.0017276d0*tk + 88.135d0/tk)*sqrts &amp;<a name='525'>
+             -0.10018d0*s + 0.0059415d0*s15 )<a name='526'>
+<a name='527'>
+<font color=#447700>!       Pressure effect on K0 based on Weiss (1974, equation 5)<a name='528'></font>
+        Rgas_atm = 82.05736_r8      <font color=#447700>! (cm3 * atm) / (mol * K)  CODATA (2006)<a name='529'></font>
+        vbarCO2 = 32.3_r8           <font color=#447700>! partial molal volume (cm3 / mol) from Weiss (1974, Appendix, paragraph 3)<a name='530'></font>
+        K0(i) = K0(i) * exp( ((1-Ptot)*vbarCO2)/(Rgas_atm*tk0) )   <font color=#447700>! Weiss (1974, equation 5)<a name='531'></font>
+<a name='532'>
+<font color=#447700>!       Pressure effect on all other K's (based on Millero, (1995)<a name='533'></font>
+<font color=#447700>!           index: K1(1), K2(2), Kb(3), Kw(4), Ks(5), Kf(6), Kspc(7), Kspa(8),<a name='534'></font>
+<font color=#447700>!                  K1p(9), K2p(10), K3p(11), Ksi(12)<a name='535'></font>
+        DO ipc = 1, 12<a name='536'>
+           deltav(ipc)  =  a0(ipc) + a1(ipc) *t + a2(ipc) *t*t<a name='537'>
+           deltak(ipc)   = (b0(ipc)  + b1(ipc) *t + b2(ipc) *t*t)<a name='538'>
+           lnkpok0(ipc)  = (-(deltav(ipc)) &amp;<a name='539'>
+                +(0.5d0*deltak(ipc) * prb) &amp;<a name='540'>
+                )                         * prb/(R*tk)<a name='541'>
+        END DO<a name='542'>
+<a name='543'>
+<font color=#447700>!       Pressure correction on Ks (Free scale)<a name='544'></font>
+        Ks(i) = Ks_0p*EXP(lnkpok0(5))<a name='545'>
+<font color=#447700>!       Conversion factor total -&gt; free scale<a name='546'></font>
+        total2free     = 1.d0/(1.d0 + St(i)/Ks(i))   <font color=#447700>! Kfree = Ktotal*total2free<a name='547'></font>
+<font color=#447700>!       Conversion factor total -&gt; free scale at pressure zero<a name='548'></font>
+        total2free_0p  = 1.d0/(1.d0 + St(i)/Ks_0p)   <font color=#447700>! Kfree = Ktotal*total2free<a name='549'></font>
+<a name='550'>
+<font color=#447700>!       Pressure correction on Kf<a name='551'></font>
+<font color=#447700>!       Kf must be on FREE scale before correction<a name='552'></font>
+        Kf_0p = Kf_0p * total2free_0p   <font color=#447700>!Convert from Total to Free scale (pressure 0)<a name='553'></font>
+        Kf(i) = Kf_0p * EXP(lnkpok0(6)) <font color=#447700>!Pressure correction (on Free scale)<a name='554'></font>
+        Kf(i) = Kf(i)/total2free        <font color=#447700>!Convert back from Free to Total scale<a name='555'></font>
+<a name='556'>
+<font color=#447700>!       Convert between seawater and total hydrogen (pH) scales<a name='557'></font>
+        free2SWS  = 1.d0 + St(i)/Ks(i) + Ft(i)/(Kf(i)*total2free)  <font color=#447700>! using Kf on free scale<a name='558'></font>
+        total2SWS = total2free * free2SWS                          <font color=#447700>! KSWS = Ktotal*total2SWS<a name='559'></font>
+        SWS2total = 1.d0 / total2SWS<a name='560'>
+<font color=#447700>!       Conversion at pressure zero<a name='561'></font>
+        free2SWS_0p  = 1.d0 + St(i)/Ks_0p + Ft(i)/(Kf_0p)  <font color=#447700>! using Kf on free scale<a name='562'></font>
+        total2SWS_0p = total2free_0p * free2SWS_0p         <font color=#447700>! KSWS = Ktotal*total2SWS<a name='563'></font>
+<a name='564'>
+<font color=#447700>!       Convert from Total to Seawater scale before pressure correction<a name='565'></font>
+<font color=#447700>!       Must change to SEAWATER scale: K1, K2, Kb<a name='566'></font>
+        IF (trim(optK1K2) == 'l') THEN<a name='567'>
+          K1(i)  = K1(i)*total2SWS_0p<a name='568'>
+          K2(i)  = K2(i)*total2SWS_0p<a name='569'>
+          <font color=#447700>!This conversion is unnecessary for the K1,K2 from Millero (2010),<a name='570'></font>
+          <font color=#447700>!since we use here the formulation already on the seawater scale<a name='571'></font>
+        ENDIF<a name='572'>
+        Kb(i)  = Kb(i)*total2SWS_0p<a name='573'>
+<a name='574'>
+<font color=#447700>!       Already on SEAWATER scale: K1p, K2p, K3p, Kb, Ksi, Kw<a name='575'></font>
+<a name='576'>
+<font color=#447700>!       Other contants (keep on another scale):<a name='577'></font>
+<font color=#447700>!          - K0         (independent of pH scale, already pressure corrected)<a name='578'></font>
+<font color=#447700>!          - Ks         (already on Free scale;   already pressure corrected)<a name='579'></font>
+<font color=#447700>!          - Kf         (already on Total scale;  already pressure corrected)<a name='580'></font>
+<font color=#447700>!          - Kspc, Kspa (independent of pH scale; pressure-corrected below)<a name='581'></font>
+<a name='582'>
+<font color=#447700>!       Perform actual pressure correction (on seawater scale)<a name='583'></font>
+        K1(i)   = K1(i)*EXP(lnkpok0(1))<a name='584'>
+        K2(i)   = K2(i)*EXP(lnkpok0(2))<a name='585'>
+        Kb(i)   = Kb(i)*EXP(lnkpok0(3))<a name='586'>
+        Kw(i)   = Kw(i)*EXP(lnkpok0(4))<a name='587'>
+        Kspc(i) = Kspc(i)*EXP(lnkpok0(7))<a name='588'>
+        Kspa(i) = Kspa(i)*EXP(lnkpok0(8))<a name='589'>
+        K1p(i)  = K1p(i)*EXP(lnkpok0(9))<a name='590'>
+        K2p(i)  = K2p(i)*EXP(lnkpok0(10))<a name='591'>
+        K3p(i)  = K3p(i)*EXP(lnkpok0(11))<a name='592'>
+        Ksi(i)  = Ksi(i)*EXP(lnkpok0(12))<a name='593'>
+<a name='594'>
+<font color=#447700>!       Convert back to original total scale:<a name='595'></font>
+        K1(i)  = K1(i) *SWS2total<a name='596'>
+        K2(i)  = K2(i) *SWS2total<a name='597'>
+        K1p(i) = K1p(i)*SWS2total<a name='598'>
+        K2p(i) = K2p(i)*SWS2total<a name='599'>
+        K3p(i) = K3p(i)*SWS2total<a name='600'>
+        Kb(i)  = Kb(i) *SWS2total<a name='601'>
+        Ksi(i) = Ksi(i)*SWS2total<a name='602'>
+        Kw(i)  = Kw(i) *SWS2total<a name='603'>
+<a name='604'>
+     ELSE<a name='605'>
+<a name='606'>
+        K0(i)   = 1.e20_r8<a name='607'>
+        K1(i)   = 1.e20_r8<a name='608'>
+        K2(i)   = 1.e20_r8<a name='609'>
+        Kb(i)   = 1.e20_r8<a name='610'>
+        Kw(i)   = 1.e20_r8<a name='611'>
+        Ks(i)   = 1.e20_r8<a name='612'>
+        Kf(i)   = 1.e20_r8<a name='613'>
+        Kspc(i) = 1.e20_r8<a name='614'>
+        Kspa(i) = 1.e20_r8<a name='615'>
+        K1p(i)  = 1.e20_r8<a name='616'>
+        K2p(i)  = 1.e20_r8<a name='617'>
+        K3p(i)  = 1.e20_r8<a name='618'>
+        Ksi(i)  = 1.e20_r8<a name='619'>
+        Bt(i)   = 1.e20_r8<a name='620'>
+        Ft(i)   = 1.e20_r8<a name='621'>
+        St(i)   = 1.e20_r8<a name='622'>
+<a name='623'>
+     ENDIF<a name='624'>
+<a name='625'>
+  END DO<a name='626'>
+<a name='627'>
+  RETURN<a name='628'>
+END SUBROUTINE constants<a name='629'>
+END MODULE mconstants<a name='630'>
+</pre></body></html>

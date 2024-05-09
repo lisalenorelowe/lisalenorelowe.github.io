@@ -1,0 +1,254 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!&gt; \file varsolver.f90<a name='2'></font>
+<font color=#447700>!! \BRIEF <a name='3'></font>
+<font color=#447700>!&gt; Module with varsolver subroutine - solve for pH and other carbonate system variables<a name='4'></font>
+<A NAME='MVARSOLVER'><A href='../../html_code/CGEM_2.0/varsolver.f.html#MVARSOLVER' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='5'>
+<font color=#993300>MODULE </font><font color=#cc0000>mvarsolver</font> <A href='../../call_to/MVARSOLVER.html' TARGET='index'>2</A><a name='6'>
+CONTAINS<a name='7'>
+<font color=#447700>!&gt;    Solve for pH and other carbonate system variables (with input from vars routine)<a name='8'></font>
+<A NAME='VARSOLVER'><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='9'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>varsolver</font>(ph, pco2, fco2, co2, hco3, co3, OmegaA, OmegaC,             &amp; <A href='../../call_to/VARSOLVER.html' TARGET='index'>4</A>,<A href='../../call_from/VARSOLVER.html' TARGET='index'>6</A><a name='10'>
+                    temp, salt, ta, tc, pt, sit,                                 &amp;<a name='11'>
+                    Bt, St, Ft,                                                  &amp;<a name='12'>
+                    K0, K1, K2, Kb, Kw, Ks, Kf, Kspc, Kspa, K1p, K2p, K3p, Ksi,  &amp; <a name='13'>
+                    Patm, Phydro_bar, rhodum, optGAS                             )<a name='14'>
+<a name='15'>
+  <font color=#447700>!   Purpose: Solve for pH and other carbonate system variables (with input from vars routine)<a name='16'></font>
+<a name='17'>
+  <font color=#447700>!     INPUT variables:<a name='18'></font>
+  <font color=#447700>!     ================<a name='19'></font>
+  <font color=#447700>!     temp    = in situ temperature [degrees C]<a name='20'></font>
+  <font color=#447700>!     ta      = total alkalinity                     in [eq/m^3] or [eq/kg]   based on optCON in calling routine (vars)<a name='21'></font>
+  <font color=#447700>!     tc      = dissolved inorganic carbon           in [mol/m^3] or [mol/kg] based on optCON in calling routine (vars)<a name='22'></font>
+  <font color=#447700>!     pt      = total dissolved inorganic phosphorus in [mol/m^3] or [mol/kg] based on optCON in calling routine (vars)<a name='23'></font>
+  <font color=#447700>!     sit     = total dissolved inorganic silicon    in [mol/m^3] or [mol/kg] based on optCON in calling routine (vars)<a name='24'></font>
+  <font color=#447700>!     Bt      = total dissolved inorganic boron      computed in calling routine (vars)<a name='25'></font>
+  <font color=#447700>!     St      = total dissolved inorganic sulfur     computed in calling routine (vars)<a name='26'></font>
+  <font color=#447700>!     Ft      = total dissolved inorganic fluorine   computed in calling routine (vars)<a name='27'></font>
+  <font color=#447700>!     K's     = K0, K1, K2, Kb, Kw, Ks, Kf, Kspc, Kspa, K1p, K2p, K3p, Ksi <a name='28'></font>
+  <font color=#447700>!     Patm    = atmospheric pressure [atm]<a name='29'></font>
+  <font color=#447700>!     Phydro_bar = hydrostatic pressure [bar]<a name='30'></font>
+  <font color=#447700>!     rhodum  = density factor as computed in calling routine  (vars)<a name='31'></font>
+  <font color=#447700>!     -----------<a name='32'></font>
+  <font color=#447700>!     optGAS: choose in situ vs. potential fCO2 and pCO2 (default optGAS = 'Pinsitu')<a name='33'></font>
+  <font color=#447700>!     ---------<a name='34'></font>
+  <font color=#447700>!       PRESSURE &amp; T corrections for K0 and the fugacity coefficient (Cf) <a name='35'></font>
+  <font color=#447700>!       -&gt; 'Pzero'   = 'zero order' fCO2 and pCO2 (typical approach, which is flawed)<a name='36'></font>
+  <font color=#447700>!                      considers in situ T &amp; only atm pressure (hydrostatic=0)<a name='37'></font>
+  <font color=#447700>!       -&gt; 'Ppot'    = 'potential' fCO2 and pCO2 (water parcel brought adiabatically to the surface)<a name='38'></font>
+  <font color=#447700>!                      considers potential T &amp; only atm pressure (hydrostatic press = 0)<a name='39'></font>
+  <font color=#447700>!       -&gt; 'Pinsitu' = 'in situ' fCO2 and pCO2 (accounts for huge effects of pressure)<a name='40'></font>
+  <font color=#447700>!                      considers in situ T &amp; total pressure (atm + hydrostatic)<a name='41'></font>
+  <font color=#447700>!     ---------<a name='42'></font>
+<a name='43'>
+  <font color=#447700>!     OUTPUT variables:<a name='44'></font>
+  <font color=#447700>!     =================<a name='45'></font>
+  <font color=#447700>!     ph   = pH on total scale<a name='46'></font>
+  <font color=#447700>!     pco2 = CO2 partial pressure (uatm)<a name='47'></font>
+  <font color=#447700>!     fco2 = CO2 fugacity (uatm)<a name='48'></font>
+  <font color=#447700>!     co2  = aqueous CO2 concentration in [mol/kg] or [mol/m^3] determined by rhodum (depends on optCON in calling routine)<a name='49'></font>
+  <font color=#447700>!     hco3 = bicarbonate (HCO3-) concentration in [mol/kg] or [mol/m^3] determined by rhodum<a name='50'></font>
+  <font color=#447700>!     co3  = carbonate (CO3--) concentration in [mol/kg] or [mol/m^3] determined by rhodum<a name='51'></font>
+  <font color=#447700>!     OmegaA = Omega for aragonite, i.e., the aragonite saturation state<a name='52'></font>
+  <font color=#447700>!     OmegaC = Omega for calcite, i.e., the   calcite saturation state<a name='53'></font>
+<a name='54'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_25"><a name='55'>
+  USE <A href='../../html_code/CGEM_2.0/phsolvers.f.html#MPHSOLVERS'>mphsolvers</A><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MPHSOLVERS_1"><a name='56'>
+  USE <A href='../../html_code/CGEM_2.0/sw_ptmp.f.html#MSW_PTMP'>msw_ptmp</A><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSW_PTMP_3"><a name='57'>
+<a name='58'>
+  IMPLICIT NONE<a name='59'>
+<a name='60'>
+<font color=#447700>! Input variables<a name='61'></font>
+  <font color=#447700>!&gt; &lt;b&gt;in situ temperature&lt;/b&gt; [degrees C]<a name='62'></font>
+  REAL(kind=r8), INTENT(in) :: temp<a name='63'>
+  <font color=#447700>!&gt; &lt;b&gt;salinity&lt;/b&gt; [on the practical salinity scale, dimensionless]<a name='64'></font>
+  REAL(kind=r8), INTENT(in) :: salt<a name='65'>
+  <font color=#447700>!&gt; total alkalinity in &lt;b&gt;[eq/m^3]&lt;/b&gt; OR in &lt;b&gt;[eq/kg]&lt;/b&gt;, depending on optCON in calling routine<a name='66'></font>
+  REAL(kind=r8), INTENT(in) :: ta<a name='67'>
+  <font color=#447700>!&gt; dissolved inorganic carbon in &lt;b&gt;[mol/m^3]&lt;/b&gt; OR in &lt;b&gt;[mol/kg]&lt;/b&gt;, depending on optCON in calling routine<a name='68'></font>
+  REAL(kind=r8), INTENT(in) :: tc<a name='69'>
+  <font color=#447700>!&gt; phosphate concentration in &lt;b&gt;[mol/m^3]&lt;/b&gt; OR in &lt;b&gt;[mol/kg]&lt;/b&gt;, depending on optCON in calling routine<a name='70'></font>
+  REAL(kind=r8), INTENT(in) :: pt<a name='71'>
+  <font color=#447700>!&gt; total dissolved inorganic silicon concentration in &lt;b&gt;[mol/m^3]&lt;/b&gt; OR in &lt;b&gt;[mol/kg]&lt;/b&gt;, depending on optCON in calling routine<a name='72'></font>
+  REAL(kind=r8), INTENT(in) :: sit<a name='73'>
+  <font color=#447700>!&gt; total boron from either Uppstrom (1974) or Lee et al. (2010), depending on optB in calling routine<a name='74'></font>
+  REAL(kind=r8), INTENT(in) :: Bt<a name='75'>
+  <font color=#447700>!&gt; total sulfate (Morris &amp; Riley, 1966)<a name='76'></font>
+  REAL(kind=r8), INTENT(in) :: St<a name='77'>
+  <font color=#447700>!&gt; total fluoride  (Riley, 1965)<a name='78'></font>
+  REAL(kind=r8), INTENT(in) :: Ft<a name='79'>
+  <font color=#447700>!&gt; solubility of CO2 in seawater (Weiss, 1974), also known as K0<a name='80'></font>
+  REAL(kind=r8), INTENT(in) :: K0<a name='81'>
+  <font color=#447700>!&gt; K1 for the dissociation of carbonic acid from Lueker et al. (2000) or Millero (2010), depending on optK1K2<a name='82'></font>
+  REAL(kind=r8), INTENT(in) :: K1<a name='83'>
+  <font color=#447700>!&gt; K2 for the dissociation of carbonic acid from Lueker et al. (2000) or Millero (2010), depending on optK1K2<a name='84'></font>
+  REAL(kind=r8), INTENT(in) :: K2<a name='85'>
+  <font color=#447700>!&gt; equilibrium constant for dissociation of boric acid <a name='86'></font>
+  REAL(kind=r8), INTENT(in) :: Kb<a name='87'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of water (Millero, 1995)<a name='88'></font>
+  REAL(kind=r8), INTENT(in) :: Kw<a name='89'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of bisulfate (Dickson, 1990)<a name='90'></font>
+  REAL(kind=r8), INTENT(in) :: Ks<a name='91'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of hydrogen fluoride <a name='92'></font>
+  <font color=#447700>!! from Dickson and Riley (1979) or Perez and Fraga (1987), depending on optKf<a name='93'></font>
+  REAL(kind=r8), INTENT(in) :: Kf<a name='94'>
+  <font color=#447700>!&gt; solubility product for calcite (Mucci, 1983)<a name='95'></font>
+  REAL(kind=r8), INTENT(in) :: Kspc<a name='96'>
+  <font color=#447700>!&gt; solubility product for aragonite (Mucci, 1983)<a name='97'></font>
+  REAL(kind=r8), INTENT(in) :: Kspa<a name='98'>
+  <font color=#447700>!&gt; 1st dissociation constant for phosphoric acid (Millero, 1995)<a name='99'></font>
+  REAL(kind=r8), INTENT(in) :: K1p<a name='100'>
+  <font color=#447700>!&gt; 2nd dissociation constant for phosphoric acid (Millero, 1995)<a name='101'></font>
+  REAL(kind=r8), INTENT(in) :: K2p<a name='102'>
+  <font color=#447700>!&gt; 3rd dissociation constant for phosphoric acid (Millero, 1995)<a name='103'></font>
+  REAL(kind=r8), INTENT(in) :: K3p<a name='104'>
+  <font color=#447700>!&gt; equilibrium constant for the dissociation of silicic acid (Millero, 1995)<a name='105'></font>
+  REAL(kind=r8), INTENT(in) :: Ksi<a name='106'>
+  <font color=#447700>!&gt; total atmospheric pressure &lt;b&gt;[atm]&lt;/b&gt;<a name='107'></font>
+  REAL(kind=r8), INTENT(in) :: Patm<a name='108'>
+  <font color=#447700>!&gt; total hydrostatic pressure &lt;b&gt;[bar]&lt;/b&gt;<a name='109'></font>
+  REAL(kind=r8), INTENT(in) :: Phydro_bar<a name='110'>
+  <font color=#447700>!&gt; density factor as computed incalling routine  (vars)<a name='111'></font>
+  REAL(kind=r8), INTENT(in) :: rhodum<a name='112'>
+  <font color=#447700>!&gt; for K0,fugacity coefficient choose either \b 'Ppot' (no pressure correction) or \b 'Pinsitu' (with pressure correction) <a name='113'></font>
+  <font color=#447700>!! 'Ppot'    - for 'potential' fCO2 and pCO2 (water parcel brought adiabatically to the surface)<a name='114'></font>
+  <font color=#447700>!! 'Pinsitu' - for 'in situ' values of fCO2 and pCO2, accounting for pressure on K0 and Cf<a name='115'></font>
+  <font color=#447700>!! with 'Pinsitu' the fCO2 and pCO2 will be many times higher in the deep ocean<a name='116'></font>
+<font color=#447700>!f2py character*7 optional, intent(in) :: optGAS='Pinsitu'<a name='117'></font>
+  CHARACTER(7), OPTIONAL, INTENT(in) :: optGAS<a name='118'>
+<a name='119'>
+<font color=#447700>! Output variables:<a name='120'></font>
+  <font color=#447700>!&gt; pH on the &lt;b&gt;total scale&lt;/b&gt;<a name='121'></font>
+  REAL(kind=r8), INTENT(out) :: ph<a name='122'>
+  <font color=#447700>!&gt; CO2 partial pressure &lt;b&gt;[uatm]&lt;/b&gt;<a name='123'></font>
+  REAL(kind=r8), INTENT(out) :: pco2<a name='124'>
+  <font color=#447700>!&gt; CO2 fugacity &lt;b&gt;[uatm]&lt;/b&gt;<a name='125'></font>
+  REAL(kind=r8), INTENT(out) :: fco2<a name='126'>
+  <font color=#447700>!&gt; aqueous CO2* concentration, either in &lt;b&gt;[mol/m^3]&lt;/b&gt; or &lt;b&gt;[mol/kg&lt;/b&gt;] depending on choice for optCON<a name='127'></font>
+  REAL(kind=r8), INTENT(out) :: co2<a name='128'>
+  <font color=#447700>!&gt; bicarbonate ion (HCO3-) concentration, either in &lt;b&gt;[mol/m^3]&lt;/b&gt; or &lt;b&gt;[mol/kg]&lt;/b&gt; depending on choice for optCON<a name='129'></font>
+  REAL(kind=r8), INTENT(out) :: hco3<a name='130'>
+  <font color=#447700>!&gt; carbonate ion (CO3--) concentration, either in &lt;b&gt;[mol/m^3]&lt;/b&gt; or &lt;b&gt;[mol/kg]&lt;/b&gt; depending on choice for optCON<a name='131'></font>
+  REAL(kind=r8), INTENT(out) :: co3<a name='132'>
+  <font color=#447700>!&gt; Omega for aragonite, i.e., the aragonite saturation state<a name='133'></font>
+  REAL(kind=r8), INTENT(out) :: OmegaA<a name='134'>
+  <font color=#447700>!&gt; Omega for calcite, i.e., the calcite saturation state<a name='135'></font>
+  REAL(kind=r8), INTENT(out) :: OmegaC<a name='136'>
+<a name='137'>
+<font color=#447700>! Local variables<a name='138'></font>
+  REAL(kind=r8) :: Phydro_atm, Ptot<a name='139'>
+  REAL(kind=r8) :: Rgas_atm, B, Del, xCO2approx, xc2, fugcoeff<a name='140'>
+  REAL(kind=r8) :: tk, tk0<a name='141'>
+  real(kind=r8) :: temp68, tempot, tempot68<a name='142'>
+  REAL(kind=r8) :: Hinit, H<a name='143'>
+  REAL(kind=r8) :: HSO4, HF, HSI, HPO4<a name='144'>
+  REAL(kind=r8) :: ab, aw, ac<a name='145'>
+  REAL(kind=r8) :: cu, cb, cc<a name='146'>
+  REAL(kind=r8) :: Ca<a name='147'>
+<font color=#447700>! Array to pass optional arguments<a name='148'></font>
+  CHARACTER(7) :: opGAS<a name='149'>
+<a name='150'>
+  IF (PRESENT(optGAS)) THEN<a name='151'>
+    opGAS = optGAS<a name='152'>
+  ELSE<a name='153'>
+    opGAS = 'Pinsitu'<a name='154'>
+  ENDIF<a name='155'>
+<a name='156'>
+<font color=#447700>! Compute pH from constants and total concentrations<a name='157'></font>
+<font color=#447700>! - use SolveSAPHE v1.0.1 routines from Munhoven (2013, GMD) modified to use mocsy's Ks instead of its own<a name='158'></font>
+<font color=#447700>! 1) Compute best starting point for H+ calculation<a name='159'></font>
+  call <A href='../../html_code/CGEM_2.0/phsolvers.f.html#AHINI_FOR_AT'>ahini_for_at</A><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="AHINI_FOR_AT_4">(ta, tc, Bt, K1, K2, Kb, Hinit)<a name='160'>
+<font color=#447700>! 2) Solve for H+ using above result as the initial H+ value<a name='161'></font>
+  H = <A href='../../html_code/CGEM_2.0/phsolvers.f.html#SOLVE_AT_GENERAL'>solve_at_general</A><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SOLVE_AT_GENERAL_1">(ta, tc, Bt,                                         &amp; <a name='162'>
+                       pt,     sit,                                        &amp;<a name='163'>
+                       St, Ft,                                             &amp;<a name='164'>
+                       K0, K1, K2, Kb, Kw, Ks, Kf, K1p, K2p, K3p, Ksi,     &amp;<a name='165'>
+                       Hinit)<a name='166'>
+<font color=#447700>! 3) Calculate pH from from H+ concentration (mol/kg)<a name='167'></font>
+  IF (H &gt; 0.d0) THEN<a name='168'>
+     pH = -1.*LOG10(H)<a name='169'>
+  ELSE<a name='170'>
+     pH = 1.e20_r8<a name='171'>
+  ENDIF<a name='172'>
+<a name='173'>
+<font color=#447700>! Compute carbonate Alk (Ac) by difference: from total Alk and other Alk components<a name='174'></font>
+  HSO4 = St/(1.0d0 + Ks/(H/(1.0d0 + St/Ks)))<a name='175'>
+  HF = 1.0d0/(1.0d0 + Kf/H)<a name='176'>
+  HSI = 1.0d0/(1.0d0 + H/Ksi)<a name='177'>
+  HPO4 = (K1p*K2p*(H + 2.*K3p) - H**3) /                &amp;<a name='178'>
+  (H**3 + K1p*H**2 + K1p*K2p*H + K1p*K2p*K3p)<a name='179'>
+  ab = Bt/(1.0d0 + H/Kb)<a name='180'>
+  aw = Kw/H - H/(1.0d0 + St/Ks)<a name='181'>
+  ac = ta + hso4 - sit*hsi - ab - aw + Ft*hf - pt*hpo4<a name='182'>
+<a name='183'>
+<font color=#447700>! Calculate CO2*, HCO3-, &amp; CO32- (in mol/kg soln) from Ct, Ac, H+, K1, &amp; K2<a name='184'></font>
+  cu = (2.0d0 * tc - ac) / (2.0d0 + K1 / H)<a name='185'>
+  cb = K1 * cu / H<a name='186'>
+  cc = K2 * cb / H<a name='187'>
+<a name='188'>
+<font color=#447700>! When optCON = 'mol/m3' in calling routine (vars), then:<a name='189'></font>
+<font color=#447700>! convert output var concentrations from mol/kg to mol/m^3<a name='190'></font>
+<font color=#447700>! e.g., for case when drho = 1028, multiply by [1.028 kg/L  x  1000 L/m^3])<a name='191'></font>
+  co2  = cu * rhodum<a name='192'>
+  hco3 = cb * rhodum<a name='193'>
+  co3  = cc * rhodum<a name='194'>
+<a name='195'>
+<font color=#447700>! Determine CO2 fugacity [uatm]<a name='196'></font>
+<font color=#447700>! NOTE: equation just below requires CO2* in mol/kg<a name='197'></font>
+  fCO2 = cu * 1.e6_r8/K0<a name='198'>
+<a name='199'>
+<font color=#447700>! Determine CO2 partial pressure from CO2 fugacity [uatm]<a name='200'></font>
+  tk = 273.15d0 + temp<a name='201'>
+  <font color=#447700>!Compute EITHER "potential pCO2" OR "in situ pCO2" (T and P used for calculations will differ)<a name='202'></font>
+  IF     (trim(opGAS) == 'Pzero'   .OR. trim(opGAS) == 'pzero') THEN<a name='203'>
+     tk0 = tk                 <font color=#447700>!in situ temperature (K) for K0 calculation<a name='204'></font>
+     Ptot = Patm              <font color=#447700>!total pressure (in atm) = atmospheric pressure ONLY<a name='205'></font>
+  ELSEIF (trim(opGAS) == 'Ppot' .OR. trim(opGAS) == 'ppot') THEN<a name='206'>
+     <font color=#447700>!Use potential temperature and atmospheric pressure (water parcel adiabatically brought back to surface)<a name='207'></font>
+     <font color=#447700>!temp68 = (temp - 0.0002d0) / 0.99975d0          !temp = in situ T; temp68 is same converted to ITPS-68 scale<a name='208'></font>
+     <font color=#447700>!tempot68 = sw_ptmp(salt, temp68, Phydro_bar*10d0, 0.0d0) !potential temperature (C)<a name='209'></font>
+     <font color=#447700>!tempot   = 0.99975*tempot68 + 0.0002<a name='210'></font>
+     <font color=#447700>!tk0 = tempot + 273.15d0  !potential temperature (K) for fugacity coeff. calc as needed for potential fCO2 &amp; pCO2<a name='211'></font>
+     tempot = <A href='../../html_code/CGEM_2.0/sw_ptmp.f.html#SW_PTMP'>sw_ptmp</A><A href='../../html_code/CGEM_2.0/varsolver.f.html#VARSOLVER' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="SW_PTMP_3">(salt, temp, Phydro_bar*10d0, 0.0d0) <font color=#447700>!potential temperature (C)<a name='212'></font>
+     tk0 = tempot + 273.15d0  <font color=#447700>!potential temperature (K) for fugacity coeff. calc as needed for potential fCO2 &amp; pCO2<a name='213'></font>
+     Ptot = Patm              <font color=#447700>!total pressure (in atm) = atmospheric pressure ONLY<a name='214'></font>
+  ELSEIF (trim(opGAS) == 'Pinsitu' .OR. trim(opGAS) == 'pinsitu') THEN<a name='215'>
+     <font color=#447700>!Use in situ temperature and total pressure <a name='216'></font>
+     tk0 = tk                             <font color=#447700>!in situ temperature (K) for fugacity coefficient calculation<a name='217'></font>
+     Phydro_atm = Phydro_bar / 1.01325d0  <font color=#447700>!convert hydrostatic pressure from bar to atm (1.01325 bar / atm)<a name='218'></font>
+     Ptot = Patm + Phydro_atm            <font color=#447700>!total pressure (in atm) = atmospheric pressure + hydrostatic pressure<a name='219'></font>
+  ELSE<a name='220'>
+     PRINT *, "optGAS must be 'Pzero', 'Ppot', or 'Pinsitu'"<a name='221'>
+     STOP<a name='222'>
+  ENDIF<a name='223'>
+<a name='224'>
+<font color=#447700>! Now that we have T and P in the right form, continue with calculation of fugacity coefficient (and pCO2)<a name='225'></font>
+  Rgas_atm = 82.05736_r8      <font color=#447700>! (cm3 * atm) / (mol * K)  CODATA (2006)<a name='226'></font>
+<font color=#447700>! To compute fugcoeff, we need 3 other terms (B, Del, xc2) in addition to 3 others above (tk, Ptot, Rgas_atm)<a name='227'></font>
+  B = -1636.75d0 + 12.0408d0*tk0 - 0.0327957d0*(tk0*tk0) + 0.0000316528d0*(tk0*tk0*tk0)<a name='228'>
+  Del = 57.7d0 - 0.118d0*tk0<a name='229'>
+<font color=#447700>! "x2" term often neglected (assumed = 1) in applications of Weiss's (1974) equation 9<a name='230'></font>
+<font color=#447700>! x2 = 1 - x1 = 1 - xCO2 (it is very close to 1, but not quite)<a name='231'></font>
+<font color=#447700>! Let's assume that xCO2 = fCO2. Resulting fugcoeff is identical to 8th digit after the decimal.<a name='232'></font>
+  xCO2approx = fCO2 * 1.e-6_r8<a name='233'>
+  IF (trim(opGAS) == 'Pinsitu' .OR. trim(opGAS) == 'pinsitu') THEN<a name='234'>
+<font color=#447700>!    xCO2approx = 400.0e-6_r8      !a simple test (gives about same result as seacarb for pCO2insitu)<a name='235'></font>
+<font color=#447700>!    approximate surface xCO2 ~ surface fCO2 (i.e., in situ fCO2 d by exponential pressure correction)<a name='236'></font>
+     xCO2approx = xCO2approx * exp( ((1-Ptot)*32.3_r8)/(82.05736_r8*tk0) )   <font color=#447700>! of K0 press. correction, see Weiss (1974, equation 5)<a name='237'></font>
+  ENDIF<a name='238'>
+  xc2 = (1.0d0 - xCO2approx)**2 <a name='239'>
+  fugcoeff = exp( Ptot*(B + 2.0d0*xc2*Del)/(Rgas_atm*tk0) )<a name='240'>
+  pCO2 = fCO2 / fugcoeff<a name='241'>
+<a name='242'>
+<font color=#447700>! Determine Omega Calcite et Aragonite<a name='243'></font>
+<font color=#447700>! OmegaA = ((0.01028d0*salt/35.0d0)*cc) / Kspa<a name='244'></font>
+<font color=#447700>! OmegaC = ((0.01028d0*salt/35.0d0)*cc) / Kspc<a name='245'></font>
+<font color=#447700>! - see comments from Munhoven on the best value "0.02128" which differs slightly from the best practices guide (0.02127)<a name='246'></font>
+  Ca = (0.02128d0/40.078d0) * salt/1.80655d0<a name='247'>
+  OmegaA = (Ca*cc) / Kspa<a name='248'>
+  OmegaC = (Ca*cc) / Kspc<a name='249'>
+<a name='250'>
+  RETURN<a name='251'>
+END SUBROUTINE varsolver<a name='252'>
+END MODULE mvarsolver<a name='253'>
+</pre></body></html>

@@ -1,0 +1,185 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>! ----------------------------------------------------------------<a name='2'></font>
+<A NAME='GEPAFLX_TINTERP'><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>gEPAflx_Tinterp</font>(TC_8, Ux, Vx, Wx, istatus) <A href='../../call_to/GEPAFLX_TINTERP.html' TARGET='index'>2</A>,<A href='../../call_from/GEPAFLX_TINTERP.html' TARGET='index'>6</A><a name='4'>
+<font color=#447700>!--------------------------------------------------------------------<a name='5'></font>
+<font color=#447700>!        Written  by ::  D.S.Ko/NRL<a name='6'></font>
+<font color=#447700>!        Modified by ::  Barry Herchenroder/EMVL, April/May 2010<a name='7'></font>
+<font color=#447700>!                                                 June      2011<a name='8'></font>
+<font color=#447700>! ----------------------------------------------------------------<a name='9'></font>
+<font color=#447700>!     to get (find &amp; read) EPANFS outputs<a name='10'></font>
+<font color=#447700>!     type: output file type - 3d flux file  .flx<a name='11'></font>
+<font color=#447700>!<a name='12'></font>
+<font color=#447700>!     TC_8 - Seconds after Model_dim::iYr0.<a name='13'></font>
+<font color=#447700>!     F   - 2D/3D nowcast fields<a name='14'></font>
+<font color=#447700>!     istatus = 1 - ok; = 0 - bad (no data)<a name='15'></font>
+<font color=#447700>!--------------------------------<a name='16'></font>
+<a name='17'>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_26"> <font color=#447700>! For iYr0, etc.<a name='18'></font>
+      USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_6"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='19'></font>
+<a name='20'>
+      IMPLICIT NONE<a name='21'>
+<a name='22'>
+<font color=#447700>!---- Parameter statements<a name='23'></font>
+      real(kind=8), parameter:: Dayi_8 = 1.0_8/24.0_8  <font color=#447700>! Ux,Vx,Wx output hourly<a name='24'></font>
+<a name='25'>
+<font color=#447700>! --- Input:<a name='26'></font>
+      integer(kind=8), intent(in) ::  TC_8<a name='27'>
+      real   , intent(out) ::  Ux(im,jm,nsl)<a name='28'>
+      real   , intent(out) ::  Vx(im,jm,nsl)<a name='29'>
+      real   , intent(out) ::  Wx(im,jm,nsl)<a name='30'>
+      integer, intent(out) ::  istatus    <font color=#447700>! = 1 : ok; = 0 : bad<a name='31'></font>
+<a name='32'>
+<font color=#447700>! --- Local:<a name='33'></font>
+      integer(8):: SECONDS<a name='34'>
+      real(kind=8) ::  Day_8<a name='35'>
+      integer  iYx  , iMx  , iDx, iHx, iMinx, iSecx<a name='36'>
+      integer  iDay1, iDay2, i  , j  , k<a name='37'>
+      real         :: Day1  , Day2<a name='38'>
+      real(kind=8) :: Day1_8, Day2_8<a name='39'>
+      real(kind=8), save :: Day1b_8 = 0.0_8<a name='40'>
+      real(kind=8), save :: Day2b_8 = 0.0_8<a name='41'>
+      real          R1, R2<a name='42'>
+      real, save :: F1(im,jm,nsl),F2(im,jm,nsl)<a name='43'>
+      real, save :: F3(im,jm,nsl),F4(im,jm,nsl)<a name='44'>
+      real, save :: F5(im,jm,nsl),F6(im,jm,nsl)<a name='45'>
+<font color=#447700>! ----------------------------------------------------------------------<a name='46'></font>
+<a name='47'>
+      Day_8 = TC_8<a name='48'>
+      Day_8 = Day_8 / SECONDS_PER_DAY<a name='49'>
+<a name='50'>
+      Day1_8 = Dayi_8 * real( int(Day_8/Dayi_8, kind=8), kind=8 )<a name='51'>
+      Day1   = real(Day1_8,kind=4)<a name='52'>
+<a name='53'>
+      Day2_8 = Day1_8 + Dayi_8<a name='54'>
+      Day2   = real(Day2_8,kind=4)<a name='55'>
+<a name='56'>
+   if (Day_8.ge.Day1b_8.and.Day_8.le.Day2b_8) then<a name='57'>
+<a name='58'>
+      R2 = real((Day_8-Day1b_8)/(Day2b_8-Day1b_8), kind=4)<a name='59'>
+      R1 = 1. - R2<a name='60'>
+<a name='61'>
+      do k = 1, nsl<a name='62'>
+        do j = 1, jm<a name='63'>
+          do i = 1, im<a name='64'>
+            Ux(i,j,k) = F1(i,j,k)*R1+F2(i,j,k)*R2<a name='65'>
+            Vx(i,j,k) = F3(i,j,k)*R1+F4(i,j,k)*R2<a name='66'>
+            Wx(i,j,k) = F5(i,j,k)*R1+F6(i,j,k)*R2<a name='67'>
+          enddo<a name='68'>
+        enddo<a name='69'>
+      enddo<a name='70'>
+<a name='71'>
+      return<a name='72'>
+<a name='73'>
+   else<a name='74'>
+<a name='75'>
+      iDay1 = 0<a name='76'>
+      iDay2 = 0<a name='77'>
+<a name='78'>
+      if (Day1_8.eq.Day2b_8) then<a name='79'>
+<a name='80'>
+         do k = 1, nsl<a name='81'>
+           do j = 1, jm<a name='82'>
+             do i = 1, im<a name='83'>
+              F1(i,j,k) = F2(i,j,k)<a name='84'>
+              F3(i,j,k) = F4(i,j,k)<a name='85'>
+              F5(i,j,k) = F6(i,j,k)<a name='86'>
+            enddo<a name='87'>
+           enddo<a name='88'>
+         enddo<a name='89'>
+<a name='90'>
+         Day1b_8 = Day1_8<a name='91'>
+         iDay1   = 1<a name='92'>
+<a name='93'>
+      else if (Day2_8.eq.Day1b_8) then<a name='94'>
+<a name='95'>
+         do k = 1, nsl<a name='96'>
+           do j = 1, jm<a name='97'>
+             do i = 1, im<a name='98'>
+               F2(i,j,k) = F1(i,j,k)<a name='99'>
+               F4(i,j,k) = F3(i,j,k)<a name='100'>
+               F6(i,j,k) = F5(i,j,k)<a name='101'>
+            enddo<a name='102'>
+          enddo<a name='103'>
+        enddo<a name='104'>
+<a name='105'>
+        Day2b_8  = Day2_8<a name='106'>
+        iDay2 = 1<a name='107'>
+<a name='108'>
+      endif<a name='109'>
+<a name='110'>
+      if (iDay1.eq.0) then<a name='111'>
+<a name='112'>
+        <font color=#447700>! Compute date-time of Day1_8:<a name='113'></font>
+<a name='114'>
+        SECONDS = NINT( Day1_8 * SECONDS_PER_DAY, KIND=8 )<a name='115'>
+        CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_7">( iYr0, SECONDS, iYx, iMx, iDx, iHx, iMinx, iSecx )<a name='116'>
+<a name='117'>
+        call <A href='../../html_code/CGEM_2.0/gEPAflx.f.html#GEPAFLX'>gEPAflx</A><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPAFLX_1">(iYx,iMx,iDx,iHx,F1,F3,F5,istatus)<a name='118'>
+<a name='119'>
+        if (istatus.eq.0) then<a name='120'>
+          WRITE(6, "(' ')")<a name='121'>
+          WRITE(6, "('An error was encountered in subroutine')")<a name='122'>
+          WRITE(6, "('gEPAflx_Tinterp when attempting to read ')")<a name='123'>
+          WRITE(6, "('fluxes for model Day_8 = ', F16.8, ',' )") Day_8<a name='124'>
+          WRITE(6, "('IDay1 = 0, ')")<a name='125'>
+          WRITE(6, "('which corresponds to:')")<a name='126'>
+          WRITE(6, "('iYx   = ', I4, ' iMx   = ', I2)") iYx, iMx<a name='127'>
+          WRITE(6, "('iDx   = ', I2, ' iHx   = ', I2)") iDx, iHx<a name='128'>
+          WRITE(6, "('iMinx = ', I2, ' iSecx = ', I2)") iMinx, iSecx  	<a name='129'>
+          WRITE(6, "(' ')")	 	<a name='130'>
+          WRITE(6, "('Abort Run ')")<a name='131'>
+          WRITE(6, "(' ')")	<a name='132'>
+          STOP	<a name='133'>
+        endif<a name='134'>
+<a name='135'>
+        Day1b_8 = Day1_8<a name='136'>
+<a name='137'>
+      endif<a name='138'>
+<a name='139'>
+      if (iDay2.eq.0) then<a name='140'>
+<a name='141'>
+        <font color=#447700>! Compute date-time of Day2_8:<a name='142'></font>
+<a name='143'>
+        SECONDS = NINT( Day2_8 * SECONDS_PER_DAY, KIND=8 )<a name='144'>
+        CALL <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIMESTAMP'>DATE_TIMESTAMP</A><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIMESTAMP_8">( iYr0, SECONDS, iYx, iMx, iDx, iHx, iMinx, iSecx )<a name='145'>
+<a name='146'>
+        call <A href='../../html_code/CGEM_2.0/gEPAflx.f.html#GEPAFLX'>gEPAflx</A><A href='../../html_code/CGEM_2.0/gEPAflx_Tinterp.f.html#GEPAFLX_TINTERP' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GEPAFLX_2">(iYx,iMx,iDx,iHx,F2,F4,F6, istatus)<a name='147'>
+	<a name='148'>
+        if (istatus.eq.0) then<a name='149'>
+          WRITE(6, "(' ')")<a name='150'>
+          WRITE(6, "('An error was encountered in subroutine')")<a name='151'>
+          WRITE(6, "('gEPAflx_Tinterp when attempting to')")<a name='152'>
+          WRITE(6, "('read fluxes for model Day_8 = ', F13.5, ',' )") Day_8<a name='153'>
+          WRITE(6, "('IDay2 =0, ')")<a name='154'>
+          WRITE(6, "('which corresponds to:')")<a name='155'>
+          WRITE(6, "('iYx   = ', I4, ' iMx   = ', I2)") iYx  , iMx<a name='156'>
+          WRITE(6, "('iDx   = ', I2, ' iHx   = ', I2)") iDx  , iHx<a name='157'>
+          WRITE(6, "('iMinx = ', I2, ' iSecx = ', I2)") iMinx, iSecx<a name='158'>
+          WRITE(6, "(' ')")	 	<a name='159'>
+          WRITE(6, "('Abort Run ')")<a name='160'>
+          STOP	<a name='161'>
+        endif<a name='162'>
+<a name='163'>
+        Day2b_8 = Day2_8<a name='164'>
+<a name='165'>
+      endif<a name='166'>
+<a name='167'>
+      R2 = real((Day_8-Day1b_8)/(Day2b_8-Day1b_8) ,kind=4)<a name='168'>
+      R1 = 1. - R2<a name='169'>
+<a name='170'>
+      do k = 1, nsl<a name='171'>
+       do j = 1, jm<a name='172'>
+         do i = 1, im<a name='173'>
+            Ux(i,j,k) = F1(i,j,k)*R1+F2(i,j,k)*R2<a name='174'>
+            Vx(i,j,k) = F3(i,j,k)*R1+F4(i,j,k)*R2<a name='175'>
+            Wx(i,j,k) = F5(i,j,k)*R1+F6(i,j,k)*R2<a name='176'>
+          enddo<a name='177'>
+        enddo<a name='178'>
+      enddo<a name='179'>
+<a name='180'>
+   endif<a name='181'>
+<a name='182'>
+      return<a name='183'>
+      END Subroutine gEPAflx_Tinterp<a name='184'>
+</pre></body></html>

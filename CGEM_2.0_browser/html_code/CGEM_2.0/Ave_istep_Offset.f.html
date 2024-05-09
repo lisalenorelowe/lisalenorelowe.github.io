@@ -1,0 +1,34 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='AVE_ISTEP_OFFSET'><A href='../../html_code/CGEM_2.0/Ave_istep_Offset.f.html#AVE_ISTEP_OFFSET' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='2'>
+<font color=#993300>Subroutine </font><font color=#cc0000>Ave_istep_offset</font>(istep_wait,print_ave) <A href='../../call_to/AVE_ISTEP_OFFSET.html' TARGET='index'>2</A>,<A href='../../call_from/AVE_ISTEP_OFFSET.html' TARGET='index'>2</A><a name='3'>
+<a name='4'>
+USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Ave_istep_Offset.f.html#AVE_ISTEP_OFFSET' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_5"><a name='5'>
+USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/Ave_istep_Offset.f.html#AVE_ISTEP_OFFSET' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_5"><a name='6'>
+<a name='7'>
+IMPLICIT NONE<a name='8'>
+<a name='9'>
+integer,intent(out) :: istep_wait <font color=#447700>! How many timesteps to wait before averaging<a name='10'></font>
+integer,intent(out) :: print_ave  <font color=#447700>! How many timesteps in a day (when to print)<a name='11'></font>
+<a name='12'>
+integer :: iSec_diff   <font color=#447700>! Difference between starting time and time to start averaging<a name='13'></font>
+integer :: iSec_wait   <font color=#447700>! How many seconds to wait before averaging<a name='14'></font>
+<font color=#447700>!  dT == timestep, decimal secs<a name='15'></font>
+<a name='16'>
+<font color=#447700>! We want to start counting at 0600 UTC (Midnight in the GOM).<a name='17'></font>
+<font color=#447700>! Need to find starting time offset in seconds, then convert to timesteps.<a name='18'></font>
+<a name='19'>
+<font color=#447700>! Start time of simulation is iHrS:iMinS:iSecS<a name='20'></font>
+      iSec_diff = iHrS * 3600 + iMinS * 60 + iSecS - 6 * 3600<a name='21'>
+<a name='22'>
+      if(iSec_diff.le.0) then<a name='23'>
+        iSec_wait = ABS(iSec_diff)<a name='24'>
+      else<a name='25'>
+        iSec_wait = 86400 - iSec_diff<a name='26'>
+      endif<a name='27'>
+<a name='28'>
+      istep_wait = iSec_wait/dT     <font color=#447700>! Timesteps to wait<a name='29'></font>
+      print_ave  = 86400/dT         <font color=#447700>! Timesteps to print<a name='30'></font>
+<a name='31'>
+RETURN<a name='32'>
+END Subroutine Ave_istep_offset <a name='33'>
+</pre></body></html>

@@ -1,0 +1,49 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!&gt; \file depth2press.f90<a name='2'></font>
+<font color=#447700>!! \BRIEF <a name='3'></font>
+<font color=#447700>!&gt; Module with depth2press subroutine - converts depth to pressure<a name='4'></font>
+<font color=#447700>!! with Saunders (1981) formula<a name='5'></font>
+<A NAME='MDEPTH2PRESS'><A href='../../html_code/CGEM_2.0/depth2press.f.html#MDEPTH2PRESS' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='6'>
+<font color=#993300>MODULE </font><font color=#cc0000>mdepth2press</font> <A href='../../call_to/MDEPTH2PRESS.html' TARGET='index'>5</A><a name='7'>
+CONTAINS<a name='8'>
+<font color=#447700>!&gt;     Compute pressure [db] from depth [m] &amp; latitude [degrees north].<a name='9'></font>
+<font color=#447700>!!     This subroutine is needed because p80 is a function (using scalars not arrays)<a name='10'></font>
+<A NAME='DEPTH2PRESS'><A href='../../html_code/CGEM_2.0/depth2press.f.html#DEPTH2PRESS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='11'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>depth2press</font>(depth, lat, pdbar, N) <A href='../../call_to/DEPTH2PRESS.html' TARGET='index'>5</A>,<A href='../../call_from/DEPTH2PRESS.html' TARGET='index'>3</A><a name='12'>
+<a name='13'>
+  <font color=#447700>!     Purpose:<a name='14'></font>
+  <font color=#447700>!     Compute pressure [db] from depth [m] &amp; latitude [degrees north].<a name='15'></font>
+  <font color=#447700>!     Needed because p80 is a function <a name='16'></font>
+<a name='17'>
+  USE <A href='../../html_code/CGEM_2.0/singledouble.f.html#MSINGLEDOUBLE'>msingledouble</A><A href='../../html_code/CGEM_2.0/depth2press.f.html#DEPTH2PRESS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MSINGLEDOUBLE_2"><a name='18'>
+  USE <A href='../../html_code/CGEM_2.0/p80.f.html#MP80'>mp80</A><A href='../../html_code/CGEM_2.0/depth2press.f.html#DEPTH2PRESS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MP80_2"><a name='19'>
+  IMPLICIT NONE<a name='20'>
+<a name='21'>
+  <font color=#447700>!&gt; number of records<a name='22'></font>
+  INTEGER, intent(in) :: N<a name='23'>
+<a name='24'>
+<font color=#447700>! INPUT variables<a name='25'></font>
+  <font color=#447700>!&gt; depth [m]<a name='26'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: depth<a name='27'>
+  <font color=#447700>!&gt; latitude [degrees]<a name='28'></font>
+  REAL(kind=r4), INTENT(in), DIMENSION(N) :: lat<a name='29'>
+<font color=#447700>!f2py optional , depend(depth) :: n=len(depth)<a name='30'></font>
+<a name='31'>
+<font color=#447700>! OUTPUT variables:<a name='32'></font>
+  <font color=#447700>!&gt; pressure [db]<a name='33'></font>
+  REAL(kind=r4), INTENT(out), DIMENSION(N) :: pdbar<a name='34'>
+<a name='35'>
+  <font color=#447700>!     Local variables<a name='36'></font>
+  INTEGER :: i<a name='37'>
+<a name='38'>
+<font color=#447700>! REAL(kind=r4) ::  p80<a name='39'></font>
+<font color=#447700>! EXTERNAL p80<a name='40'></font>
+<a name='41'>
+  DO i = 1,N<a name='42'>
+     pdbar(i) = <A href='../../html_code/CGEM_2.0/p80.f.html#P80'>p80</A><A href='../../html_code/CGEM_2.0/depth2press.f.html#DEPTH2PRESS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="P80_2">(depth(i), lat(i))<a name='43'>
+  END DO<a name='44'>
+<a name='45'>
+  RETURN<a name='46'>
+END SUBROUTINE depth2press<a name='47'>
+END MODULE mdepth2press<a name='48'>
+</pre></body></html>

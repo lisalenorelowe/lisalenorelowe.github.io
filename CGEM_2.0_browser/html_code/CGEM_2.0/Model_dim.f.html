@@ -1,0 +1,29 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<A NAME='MODEL_DIM'><A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM' TARGET='top_target'><IMG SRC="../../gif/bar_purple.gif" border=0></A><a name='2'>
+<font color=#993300>Module </font><font color=#cc0000>Model_dim</font> <A href='../../call_to/MODEL_DIM.html' TARGET='index'>62</A><a name='3'>
+<a name='4'>
+<font color=#447700>! Reference year all timestamps are relative to.<a name='5'></font>
+<a name='6'>
+      INTEGER, PARAMETER :: iYr0 = 2002<a name='7'>
+<a name='8'>
+<font color=#447700>! Array sizes and indices<a name='9'></font>
+ <a name='10'>
+      INTEGER, PARAMETER :: IM  =320 , JM=176   , KB  =35   <font color=#447700>!Grid sizes<a name='11'></font>
+      INTEGER, PARAMETER :: IMM1=IM-1, JMM1=JM-1, KBM1=KB-1      <a name='12'>
+      <a name='13'>
+      INTEGER, PARAMETER :: nsl  = 21     <font color=#447700>!Number of sigma layers <a name='14'></font>
+<a name='15'>
+      INTEGER, PARAMETER :: no  = 42898   <font color=#447700>!Number of horizonal water cells<a name='16'></font>
+      INTEGER, PARAMETER :: nko = 998863  <font color=#447700>!Total number of water cells     <a name='17'></font>
+      <a name='18'>
+<font color=#447700>!     (io,jo) indexes for ocean grids<a name='19'></font>
+<font color=#447700>!     'ko' shows how many grids are above bottom for ocean grid<a name='20'></font>
+       INTEGER            :: io(no), jo(no), ko(no)<a name='21'>
+       INTEGER, PARAMETER :: nospA = 6    <font color=#447700>!Number of phyoplankton groups<a name='22'></font>
+       INTEGER, PARAMETER :: nospZ = 2    <font color=#447700>!Number of zooplankton groups<a name='23'></font>
+       INTEGER, PARAMETER :: nf = 36      <font color=#447700>!Number of state variables<a name='24'></font>
+       INTEGER, PARAMETER :: nr = 95      <font color=#447700>!Number of rivers<a name='25'></font>
+       INTEGER, PARAMETER :: nz = nsl-1   <font color=#447700>!Numer of active k layers<a name='26'></font>
+<a name='27'>
+END Module Model_dim<a name='28'>
+</pre></body></html>

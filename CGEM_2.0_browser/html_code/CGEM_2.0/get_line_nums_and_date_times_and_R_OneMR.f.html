@@ -1,0 +1,617 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!#define DEBUG<a name='2'></font>
+<a name='3'>
+<font color=#447700>! file: get_line_nums_and_date_times_and_R_OneMR.F90<a name='4'></font>
+<a name='5'>
+<font color=#447700>!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$<a name='6'></font>
+<A NAME='GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR'><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='7'>
+<font color=#993300>SUBROUTINE </font><font color=#cc0000>get_line_nums_and_date_times_and_R_OneMR</font>(                   &amp; <A href='../../call_to/GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR.html' TARGET='index'>1</A>,<A href='../../call_from/GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR.html' TARGET='index'>6</A><a name='8'>
+&amp;  iSecc          , iMinn          , iHrr           ,                  &amp;<a name='9'>
+&amp;  iDayy          , iMonn          , iYrr           , DTC_8 ,          &amp;<a name='10'>
+&amp;  num_days_in_month_iMon, num_days_prev_month      ,                  &amp;<a name='11'>
+&amp;  iSec_1         , iMin_1         , iHr_1          ,                  &amp;<a name='12'>
+&amp;  iDay_1         , iMon_1         , iYr_1          , DTC_1_8,         &amp;<a name='13'>
+&amp;  iSec_2         , iMin_2         , iHr_2          ,                  &amp;<a name='14'>
+&amp;  iDay_2         , iMon_2         , iYr_2          , DTC_2_8,         &amp;<a name='15'>
+&amp;  data_line_num_1, data_line_num_2, R              , OneMR ,          &amp;<a name='16'>
+&amp;  R_8            , OneMR_8                                           ) <a name='17'>
+<a name='18'>
+<font color=#447700>!----------------------------------------------------------------<a name='19'></font>
+<font color=#447700>! Calculate various auxiliary arrays &amp; variables needed to do<a name='20'></font>
+<font color=#447700>! date and time calculations and the data line in John Lehrter's<a name='21'></font>
+<font color=#447700>! file containing river bio-geo-chem data, i.e. the file <a name='22'></font>
+<font color=#447700>!<a name='23'></font>
+<font color=#447700>!    MR_and_AR_for_GEM_gmt.prn<a name='24'></font>
+<font color=#447700>!<a name='25'></font>
+<font color=#447700>! Also, return some of the arrays thru th sub. interface<a name='26'></font>
+<font color=#447700>! Note that for this routine, iSec = = and iHr = 12, midday.<a name='27'></font>
+<font color=#447700>! Times are assumed to be CST.<a name='28'></font>
+<font color=#447700>!----------------------------------------------------------------<a name='29'></font>
+<a name='30'>
+    USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_31"> <font color=#447700>! For iYr0, etc.<a name='31'></font>
+    USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_11"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='32'></font>
+<a name='33'>
+    IMPLICIT NONE<a name='34'>
+<a name='35'>
+<font color=#447700>!------------------------------------------<a name='36'></font>
+<font color=#447700>! Declare variables in subroutine Inteface<a name='37'></font>
+<font color=#447700>!------------------------------------------    <a name='38'></font>
+<a name='39'>
+    INTEGER,      INTENT(IN)  :: iSecc  <font color=#447700>! gmt<a name='40'></font>
+    INTEGER,      INTENT(IN)  :: iMinn  <font color=#447700>! gmt<a name='41'></font>
+    INTEGER,      INTENT(IN)  :: iHrr   <font color=#447700>! gmt <a name='42'></font>
+    INTEGER,      INTENT(IN)  :: iDayy  <font color=#447700>! gmt    <a name='43'></font>
+    INTEGER,      INTENT(IN)  :: iMonn  <font color=#447700>! gmt    <a name='44'></font>
+    INTEGER,      INTENT(IN)  :: iYrr   <font color=#447700>! gmt    <a name='45'></font>
+    REAL(KIND=8), INTENT(IN)  :: DTC_8   <font color=#447700>! calculated using GMT<a name='46'></font>
+    <a name='47'>
+    INTEGER,      INTENT(IN)  :: num_days_in_month_iMon(12,2002:2011)<a name='48'>
+    INTEGER,      INTENT(IN)  :: num_days_prev_month(12,2002:2011)    <a name='49'>
+    <a name='50'>
+    INTEGER,      INTENT(OUT) :: iSec_1  <font color=#447700>! gmt<a name='51'></font>
+    INTEGER,      INTENT(OUT) :: iMin_1  <font color=#447700>! gmt<a name='52'></font>
+    INTEGER,      INTENT(OUT) :: iHr_1   <font color=#447700>! gmt <a name='53'></font>
+    INTEGER,      INTENT(OUT) :: iDay_1  <font color=#447700>! gmt    <a name='54'></font>
+    INTEGER,      INTENT(OUT) :: iMon_1  <font color=#447700>! gmt    <a name='55'></font>
+    INTEGER,      INTENT(OUT) :: iYr_1   <font color=#447700>! gmt    <a name='56'></font>
+    REAL(KIND=8), INTENT(OUT) :: DTC_1_8  <font color=#447700>! calculated using GMT	<a name='57'></font>
+    <a name='58'>
+    INTEGER,      INTENT(OUT) :: iSec_2  <font color=#447700>! gmt<a name='59'></font>
+    INTEGER,      INTENT(OUT) :: iMin_2  <font color=#447700>! gmt<a name='60'></font>
+    INTEGER,      INTENT(OUT) :: iHr_2   <font color=#447700>! gmt <a name='61'></font>
+    INTEGER,      INTENT(OUT) :: iDay_2  <font color=#447700>! gmt    <a name='62'></font>
+    INTEGER,      INTENT(OUT) :: iMon_2  <font color=#447700>! gmt    <a name='63'></font>
+    INTEGER,      INTENT(OUT) :: iYr_2   <font color=#447700>! gmt    <a name='64'></font>
+    REAL(KIND=8), INTENT(OUT) :: DTC_2_8  <font color=#447700>! calculated using GMT	    <a name='65'></font>
+    <a name='66'>
+    INTEGER,      INTENT(OUT) :: data_line_num_1 <a name='67'>
+    INTEGER,      INTENT(OUT) :: data_line_num_2<a name='68'>
+<a name='69'>
+<a name='70'>
+    REAL   ,      INTENT(OUT) :: OneMR      <a name='71'>
+    REAL   ,      INTENT(OUT) :: R        <a name='72'>
+    <a name='73'>
+    REAL(KIND=8), INTENT(OUT) :: OneMR_8<a name='74'>
+    REAL(KIND=8), INTENT(OUT) :: R_8         <a name='75'>
+         <a name='76'>
+<font color=#447700>!-----------------<a name='77'></font>
+<font color=#447700>! Local Variables            <a name='78'></font>
+<font color=#447700>!------------------<a name='79'></font>
+<a name='80'>
+    INTEGER, SAVE :: init = 1<a name='81'>
+<a name='82'>
+    INTEGER(8):: SECONDS<a name='83'>
+    INTEGER :: iDay<a name='84'>
+    INTEGER :: iHr  <a name='85'>
+    INTEGER :: iMin      <a name='86'>
+    INTEGER :: iMon<a name='87'>
+    INTEGER :: iSec    <a name='88'>
+    INTEGER :: iYr      <a name='89'>
+    <a name='90'>
+    INTEGER :: iDay_2_new<a name='91'>
+    INTEGER :: iMon_2_new  <a name='92'>
+    INTEGER :: iYr_2_new  <a name='93'>
+<a name='94'>
+    INTEGER :: num_days  <a name='95'>
+<a name='96'>
+    INTEGER, SAVE :: day_switch_from_CST_to_CDT(2002:2011)  <a name='97'>
+    INTEGER, SAVE :: day_switch_from_CDT_to_CST(2002:2011)    <a name='98'>
+    <a name='99'>
+    INTEGER, SAVE :: linenum_switch_from_CST_to_CDT(2002:2011)    <a name='100'>
+    INTEGER, SAVE :: linenum_switch_from_CDT_to_CST(2002:2011) <a name='101'>
+    <a name='102'>
+    INTEGER, SAVE :: month_switch_from_CST_to_CDT(2002:2011)  <a name='103'>
+    INTEGER, SAVE :: month_switch_from_CDT_to_CST(2002:2011)                <a name='104'>
+<a name='105'>
+    INTEGER, SAVE :: num_days_in_year_iYr(2002:2011)<a name='106'>
+    INTEGER, SAVE ::                                                   &amp;<a name='107'>
+    &amp; num_days_in_year_iYr_up_to_end_of_prev_month(12,2002:2011)  <a name='108'>
+       <a name='109'>
+    INTEGER, SAVE ::                                                   &amp;<a name='110'>
+    &amp; num_days_AtBeginOfMonth_iMon_since_Startof_01Jan2002(12,2002:2011)<a name='111'>
+    <a name='112'>
+    INTEGER       :: temp1 <a name='113'>
+<a name='114'>
+<font color=#447700>!--------------------------------    <a name='115'></font>
+<font color=#447700>! REAL and REAL(KIND=8) scalars     <a name='116'></font>
+<font color=#447700>!-------------------------------- <a name='117'></font>
+    REAL(KIND=8) :: DTC_8_beg_mon    <a name='118'>
+<font color=#447700>!--------------------------------    <a name='119'></font>
+<font color=#447700>! REAL and REAL(KIND=8) arrays     <a name='120'></font>
+<font color=#447700>!-------------------------------- <a name='121'></font>
+    REAL(KIND=8)       ::  DTC_8_diff<a name='122'>
+    <a name='123'>
+    REAL(KIND=8), SAVE ::  DTC_8_AtBeginOfMonth_iMon(12,2002:2010)<a name='124'>
+        <a name='125'>
+<font color=#447700>!--------------------------------    <a name='126'></font>
+<font color=#447700>! Logical and Character variables     <a name='127'></font>
+<font color=#447700>!--------------------------------            <a name='128'></font>
+    CHARACTER(LEN=16), SAVE :: switch_from_CST_to_CDT(2002:2011)<a name='129'>
+    CHARACTER(LEN=16), SAVE :: switch_from_CDT_to_CST(2002:2011) <a name='130'>
+<a name='131'>
+<font color=#447700>!--------------------    <a name='132'></font>
+<font color=#447700>! External Functions    <a name='133'></font>
+<font color=#447700>!--------------------<a name='134'></font>
+    <a name='135'>
+    INTEGER  :: JY     <font color=#447700>! Check this declaration for correctness    <a name='136'></font>
+<a name='137'>
+<font color=#447700>!----------------    <a name='138'></font>
+<font color=#447700>! Begin main code       <a name='139'></font>
+<font color=#447700>!----------------  <a name='140'></font>
+<a name='141'>
+ IF( init == 1) THEN<a name='142'>
+<a name='143'>
+    <font color=#447700>! The two arrays below are now fed in through the interface of<a name='144'></font>
+    <font color=#447700>! the present subroutine <a name='145'></font>
+    <font color=#447700>!      get_line_nums_and_date_times_and_R_OneMR<a name='146'></font>
+    <a name='147'>
+    <font color=#447700>!-------------------------------------------------------------	<a name='148'></font>
+    <font color=#447700>! Calc num_days_prev_month(iMon,iYr)== <a name='149'></font>
+    <font color=#447700>!                                  number of days in previous<a name='150'></font>
+    <font color=#447700>!                                  month iMon-1 of year iYr<a name='151'></font>
+    <font color=#447700>! <a name='152'></font>
+    <font color=#447700>! Calc num_days_in_month_iMon(iMon,iYr) ==<a name='153'></font>
+    <font color=#447700>!                                  number of days in month<a name='154'></font>
+    <font color=#447700>!                                  iMon of year iYr<a name='155'></font>
+    <font color=#447700>!-------------------------------------------------------------	<a name='156'></font>
+<a name='157'>
+<font color=#447700>!-------------------------------------------------------------------------      <a name='158'></font>
+<font color=#447700>!    CALL calc_num_days_in_month_and_prev_month(num_days_in_month_iMon, &amp;<a name='159'></font>
+<font color=#447700>!    &amp; num_days_prev_month                                             )<a name='160'></font>
+<font color=#447700>!-------------------------------------------------------------------------    <a name='161'></font>
+    <a name='162'>
+    <font color=#447700>! Calc num_days_in_year_iYr(iYr) = number of full days in year iYr<a name='163'></font>
+    <font color=#447700>!                                  for computational purposes.<a name='164'></font>
+       <a name='165'>
+    DO iYr = 2002,2010<a name='166'>
+       IF(<A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_3">(iYr) ==2) THEN<a name='167'>
+         <font color=#447700>! Leap year<a name='168'></font>
+	   num_days_in_year_iYr(iYr) = 366<a name='169'>
+       ELSE<a name='170'>
+	 <font color=#447700>! Not Leap year<a name='171'></font>
+	   num_days_in_year_iYr(iYr) = 365<a name='172'>
+       ENDIF    <a name='173'>
+    ENDDO<a name='174'>
+                    <a name='175'>
+   <font color=#447700>! Calc. num_days_in_year_iYr_up_to_end_of_prev_month(iMon,iYr) == <a name='176'></font>
+   <font color=#447700>!                                  number of days in year iYr<a name='177'></font>
+   <font color=#447700>!                                  up to end of previous month<a name='178'></font>
+   <font color=#447700>!                                  If previous month in Dec<a name='179'></font>
+   <font color=#447700>!                                  in previous year iYr-1, then<a name='180'></font>
+   <font color=#447700>!                                  we take: <a name='181'></font>
+   <font color=#447700>!        num_days_in_year_iYr_up_to_end_of_prev_month(iMon,iYr) = 0<a name='182'></font>
+   <font color=#447700>!<a name='183'></font>
+   <font color=#447700>! Calc num_days_AtBeginOfMonth_iMon_since_Startof_31Dec2001(iMon,iYr) <a name='184'></font>
+   <font color=#447700>!                               ==<a name='185'></font>
+   <font color=#447700>!                                  number of days in since<a name='186'></font>
+   <font color=#447700>!                                  start of 31 Dec 2001,(including<a name='187'></font>
+   <font color=#447700>!                                  this day too)<a name='188'></font>
+   <font color=#447700>!<a name='189'></font>
+   <font color=#447700>! Calc DTC_8_AtBeginOfMonth_iMon(iMon,iYr) == <a name='190'></font>
+   <font color=#447700>!                                  model time DTC_8 at beginning of <a name='191'></font>
+   <font color=#447700>!                                  month iMon of year iYr<a name='192'></font>
+ <a name='193'>
+  <a name='194'>
+  <font color=#447700>! Calc num_days_in_year_iYr_up_to_end_of_prev_month(iMon,iYr)  <a name='195'></font>
+       	<a name='196'>
+    DO iYr = 2002, 2010                  <a name='197'>
+          iMon     = 1<a name='198'>
+	  num_days = 0 <a name='199'>
+          num_days_in_year_iYr_up_to_end_of_prev_month(iMon,iYr)    =  0<a name='200'>
+	  	     <a name='201'>
+          DO iMon = 2,12<a name='202'>
+             num_days                                               =  &amp;<a name='203'>
+	     &amp;      num_days + num_days_prev_month(iMon,iYr)<a name='204'>
+	     	     <a name='205'>
+	     num_days_in_year_iYr_up_to_end_of_prev_month(iMon,iYr) =  &amp;<a name='206'>
+	     &amp;      num_days<a name='207'>
+          ENDDO		   <a name='208'>
+    ENDDO<a name='209'>
+      <a name='210'>
+  <font color=#447700>! Calc num_days_AtBeginOfMonth_iMon_since_Startof_01Jan2002(iMon,iYr)<a name='211'></font>
+<a name='212'>
+DO iYr = 2002, 2010 <a name='213'>
+  <a name='214'>
+   SELECT CASE(iYr)<a name='215'>
+   CASE(2002)       <a name='216'>
+      DO iMon = 1, 12<a name='217'>
+         SELECT CASE(iMon)<a name='218'>
+         CASE(1)<a name='219'>
+    num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr) = 0<a name='220'>
+         CASE(2:12)<a name='221'>
+    num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr) = 0 &amp;<a name='222'>
+    &amp; + num_days_in_year_iYr_up_to_end_of_prev_month(iMon,iYr)      <a name='223'>
+	 END SELECT <a name='224'>
+      ENDDO   <a name='225'>
+      	<a name='226'>
+   CASE (2003:2010)<a name='227'>
+	<a name='228'>
+       DO iMon = 1, 12   <a name='229'>
+         SELECT CASE(iMon)<a name='230'>
+         CASE(1)       <a name='231'>
+      num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr) = &amp;<a name='232'>
+ &amp;  + num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(12,iYr-1)   &amp;<a name='233'>
+ &amp;  + 31<a name='234'>
+	 CASE(2:12)<a name='235'>
+    num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)  =  &amp;<a name='236'>
+ &amp;  num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon-1,iYr)   &amp;<a name='237'>
+ &amp;  + num_days_in_month_iMon(iMon-1,iYr) 	<a name='238'>
+	  END SELECT  	  <a name='239'>
+       ENDDO       <a name='240'>
+   END SELECT		 <a name='241'>
+ENDDO<a name='242'>
+<a name='243'>
+    <font color=#447700>! Calc DTC_8 for beginning of each month iMon of each year iYr and <a name='244'></font>
+    <font color=#447700>! store DTC_8 value in DTC_8_AtBeginOfMonth_iMon(iMon,iYr)<a name='245'></font>
+<a name='246'>
+      iDay = 1<a name='247'>
+      iHr  = 0<a name='248'>
+      iMin = 0<a name='249'>
+      iSec = 0<a name='250'>
+<a name='251'>
+DO iYr = 2002, 2010  <font color=#447700>! these are GMT years<a name='252'></font>
+   DO iMon = 1,12    <font color=#447700>! these are GMT months<a name='253'></font>
+      SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_13">( iYr0, iYr, iMon, iDay, iHr, iMin, iSec )<a name='254'>
+      DTC_8_beg_mon = SECONDS<a name='255'>
+      DTC_8_beg_mon = DTC_8_beg_mon / SECONDS_PER_DAY<a name='256'>
+      DTC_8_AtBeginOfMonth_iMon(iMon,iYr) = DTC_8_beg_mon<a name='257'>
+   ENDDO<a name='258'>
+ENDDO<a name='259'>
+<a name='260'>
+#ifdef DEBUG<a name='261'>
+ WRITE(6, "(' ')")<a name='262'>
+ WRITE(6, "('In sub. get_line_nums_and_date_times_and_R_OneMr ')")<a name='263'>
+ WRITE(6, "('write the elements of the array: ')") <a name='264'>
+ WRITE(6, "('num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)')")<a name='265'>
+ WRITE(6, "('for year iYr = 2002--&gt;2010, iMon = 1--&gt;12 ')") <a name='266'>
+ WRITE(6, "(' ')") <a name='267'>
+       <a name='268'>
+ DO iYr = 2002, 2010<a name='269'>
+    WRITE(6, "(' ')")    <a name='270'>
+    DO iMon = 1,12<a name='271'>
+       WRITE(6, "('iMon = ', I2, ' iYr = ', I4)") iMon, iYr<a name='272'>
+WRITE(6,                                                                     &amp;<a name='273'>
+&amp; "('num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)= ',I6)") &amp;<a name='274'>
+&amp;    num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)<a name='275'>
+    ENDDO <a name='276'>
+ ENDDO<a name='277'>
+    WRITE(6, "(' ')") <a name='278'>
+    WRITE(6, "('check array elements ')")    <a name='279'>
+    WRITE(6, "(' ')")<a name='280'>
+#endif<a name='281'>
+<a name='282'>
+<font color=#447700>!--------------------------------------------------------------------------<a name='283'></font>
+<font color=#447700>! I don't believe we need these(the variables calculated in the next DO iYr <a name='284'></font>
+<font color=#447700>! loop) anymore for now since all our times are<a name='285'></font>
+<font color=#447700>! GMT so no switching back and forth between LST and LDT and GMT. But<a name='286'></font>
+<font color=#447700>! keep the next loop anyway just in case we do need it at some time in <a name='287'></font>
+<font color=#447700>! future..<a name='288'></font>
+<font color=#447700>!--------------------------------------------------------------------------<a name='289'></font>
+<font color=#447700>! Specify the Daylight Saving Time(DST) switchover dates in the Spring  and <a name='290'></font>
+<font color=#447700>! in the Fall for each year, 2001--&gt; 2008.<a name='291'></font>
+<font color=#447700>!--------------------------------------------------------------------------<a name='292'></font>
+<a name='293'>
+  DO iYr = 2002,2010<a name='294'>
+     SELECT CASE(iYr)<a name='295'>
+     CASE(2002)<a name='296'>
+        switch_from_CST_to_CDT(iYr)         = "2002-04-08-05-00"<a name='297'>
+	linenum_switch_from_CST_to_CDT(iYr) = 101		<a name='298'>
+        switch_from_CDT_to_CST(iYr)         = "2002-10-28-06-00"  <a name='299'>
+	linenum_switch_from_CDT_to_CST(iYr) = 304<a name='300'>
+	month_switch_from_CST_to_CDT(iYr)   = 4<a name='301'>
+        month_switch_from_CDT_to_CST(iYr)   = 10<a name='302'>
+	day_switch_from_CST_to_CDT(iYr)     = 8<a name='303'>
+        day_switch_from_CDT_to_CST(iYr)     = 28		<a name='304'>
+     CASE(2003)<a name='305'>
+        switch_from_CST_to_CDT(iYr)         = "2003-04-07-05-00" <a name='306'>
+	linenum_switch_from_CST_to_CDT(iYr) = 465	<a name='307'>
+        switch_from_CDT_to_CST(iYr)         = "2003-10-27-06-00" <a name='308'>
+	linenum_switch_from_CDT_to_CST(iYr) = 668	<a name='309'>
+	month_switch_from_CST_to_CDT(iYr)   = 4<a name='310'>
+        month_switch_from_CDT_to_CST(iYr)   = 10<a name='311'>
+	day_switch_from_CST_to_CDT(iYr)     = 7<a name='312'>
+        day_switch_from_CDT_to_CST(iYr)     = 27	<a name='313'>
+     CASE(2004)<a name='314'>
+        switch_from_CST_to_CDT(iYr)         = "2004-04-05-05-00"<a name='315'>
+	linenum_switch_from_CST_to_CDT(iYr) = 829		<a name='316'>
+        switch_from_CDT_to_CST(iYr)         = "2004-11-01-06-00" <a name='317'>
+	linenum_switch_from_CDT_to_CST(iYr) = 1039<a name='318'>
+	month_switch_from_CST_to_CDT(iYr)   = 4<a name='319'>
+        month_switch_from_CDT_to_CST(iYr)   = 11<a name='320'>
+	day_switch_from_CST_to_CDT(iYr)     = 5<a name='321'>
+        day_switch_from_CDT_to_CST(iYr)     = 1			<a name='322'>
+     CASE(2005)<a name='323'>
+        switch_from_CST_to_CDT(iYr)         = "2005-04-04-05-00" <a name='324'>
+	linenum_switch_from_CST_to_CDT(iYr) = 1193		<a name='325'>
+        switch_from_CDT_to_CST(iYr)         = "2005-10-31-06-00" <a name='326'>
+	linenum_switch_from_CDT_to_CST(iYr) = 1403<a name='327'>
+	month_switch_from_CST_to_CDT(iYr)   = 4<a name='328'>
+        month_switch_from_CDT_to_CST(iYr)   = 10<a name='329'>
+	day_switch_from_CST_to_CDT(iYr)     = 4<a name='330'>
+        day_switch_from_CDT_to_CST(iYr)     = 31		 <a name='331'>
+     CASE(2006)<a name='332'>
+        switch_from_CST_to_CDT(iYr)         = "2006-04-03-05-00"<a name='333'>
+	linenum_switch_from_CST_to_CDT(iYr) = 1557		  <a name='334'>
+        switch_from_CDT_to_CST(iYr)         = "2006-10-30-06-00"<a name='335'>
+	linenum_switch_from_CDT_to_CST(iYr) = 1767<a name='336'>
+	month_switch_from_CST_to_CDT(iYr)   = 4<a name='337'>
+        month_switch_from_CDT_to_CST(iYr)   = 10<a name='338'>
+	day_switch_from_CST_to_CDT(iYr)     = 3<a name='339'>
+        day_switch_from_CDT_to_CST(iYr)     = 30		  	<a name='340'>
+     CASE(2007)<a name='341'>
+        switch_from_CST_to_CDT(iYr)         = "2007-03-12-05-00"<a name='342'>
+	linenum_switch_from_CST_to_CDT(iYr) = 1900		 <a name='343'>
+        switch_from_CDT_to_CST(iYr)         = "2007-11-05-06-00"<a name='344'>
+	linenum_switch_from_CDT_to_CST(iYr) = 2138<a name='345'>
+	month_switch_from_CST_to_CDT(iYr)   = 3<a name='346'>
+        month_switch_from_CDT_to_CST(iYr)   = 11<a name='347'>
+	day_switch_from_CST_to_CDT(iYr)     = 12<a name='348'>
+        day_switch_from_CDT_to_CST(iYr)     = 5				  <a name='349'>
+     CASE(2008)<a name='350'>
+        switch_from_CST_to_CDT(iYr)         = "2008-03-12-05-00"  <font color=#447700>! guesstimate<a name='351'></font>
+	linenum_switch_from_CST_to_CDT(iYr) = 2196		  <font color=#447700>! placeholder<a name='352'></font>
+        switch_from_CDT_to_CST(iYr)         = "2008-11-05-06-00"  <font color=#447700>! guesstimate	<a name='353'></font>
+	linenum_switch_from_CDT_to_CST(iYr) = 2198		  <font color=#447700>! placeholder	<a name='354'></font>
+	month_switch_from_CST_to_CDT(iYr)   = 3                   <font color=#447700>! guesstimate<a name='355'></font>
+        month_switch_from_CDT_to_CST(iYr)   = 11                  <font color=#447700>! guesstimate<a name='356'></font>
+	day_switch_from_CST_to_CDT(iYr)     = 12                  <font color=#447700>! guesstimate<a name='357'></font>
+        day_switch_from_CDT_to_CST(iYr)     = 05                  <font color=#447700>! guesstimate<a name='358'></font>
+     CASE(2009)<a name='359'>
+        switch_from_CST_to_CDT(iYr)         = "2009-03-12-05-00"  <font color=#447700>! guesstimate<a name='360'></font>
+	linenum_switch_from_CST_to_CDT(iYr) = 1900		  <font color=#447700>! placeholder<a name='361'></font>
+        switch_from_CDT_to_CST(iYr)         = "2009-11-05-06-00"  <font color=#447700>! guesstimate <a name='362'></font>
+	linenum_switch_from_CDT_to_CST(iYr) = 2138		  <font color=#447700>! placeholder <a name='363'></font>
+	month_switch_from_CST_to_CDT(iYr)   = 3 		  <font color=#447700>! guesstimate<a name='364'></font>
+        month_switch_from_CDT_to_CST(iYr)   = 11		  <font color=#447700>! guesstimate<a name='365'></font>
+	day_switch_from_CST_to_CDT(iYr)     = 12		  <font color=#447700>! guesstimate<a name='366'></font>
+        day_switch_from_CDT_to_CST(iYr)     = 5			  <font color=#447700>! guesstimate <a name='367'></font>
+     CASE(2010)<a name='368'>
+        switch_from_CST_to_CDT(iYr)         = "2010-03-12-05-00"  <font color=#447700>! guesstimate<a name='369'></font>
+	linenum_switch_from_CST_to_CDT(iYr) = 2196		  <font color=#447700>! placeholder<a name='370'></font>
+        switch_from_CDT_to_CST(iYr)         = "2010-11-05-06-00"  <font color=#447700>! guesstimate	<a name='371'></font>
+	linenum_switch_from_CDT_to_CST(iYr) = 2198		  <font color=#447700>! placeholder	<a name='372'></font>
+	month_switch_from_CST_to_CDT(iYr)   = 3                   <font color=#447700>! guesstimate<a name='373'></font>
+        month_switch_from_CDT_to_CST(iYr)   = 11                  <font color=#447700>! guesstimate<a name='374'></font>
+	day_switch_from_CST_to_CDT(iYr)     = 12                  <font color=#447700>! guesstimate<a name='375'></font>
+        day_switch_from_CDT_to_CST(iYr)     = 05                  <font color=#447700>! guesstimate	<a name='376'></font>
+		<a name='377'>
+     END SELECT      	   <a name='378'>
+  ENDDO <a name='379'>
+  <a name='380'>
+#ifdef DEBUG<a name='381'>
+ WRITE(6, "(' ')")<a name='382'>
+ WRITE(6, "('In sub. get_line_nums_and_date_times_and_R_OneMr ')")<a name='383'>
+ WRITE(6, "('init = ', I2)") init<a name='384'>
+ WRITE(6, "('Now write the elements of the array: ')") <a name='385'>
+ WRITE(6, "('num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)')")<a name='386'>
+ WRITE(6, "('for year iYr = 2002--&gt;2010, iMon = 1--&gt;12 ')") <a name='387'>
+ WRITE(6, "(' ')") <a name='388'>
+       <a name='389'>
+ DO iYr = 2002, 2010<a name='390'>
+    WRITE(6, "(' ')")    <a name='391'>
+    DO iMon = 1,12<a name='392'>
+       WRITE(6, "('iMon = ', I2, ' iYr = ', I4)") iMon, iYr<a name='393'>
+WRITE(6,                                                                     &amp;<a name='394'>
+&amp; "('num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)= ',I6)") &amp;<a name='395'>
+&amp;    num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002(iMon,iYr)<a name='396'>
+    ENDDO <a name='397'>
+ ENDDO<a name='398'>
+    WRITE(6, "(' ')") <a name='399'>
+    WRITE(6, "('check array elements ')")    <a name='400'>
+    WRITE(6, "(' ')")<a name='401'>
+#endif<a name='402'>
+<font color=#447700>! reset init to 0 so that this block If is only executed once.<a name='403'></font>
+<a name='404'>
+  init = 0 <a name='405'>
+<a name='406'>
+ENDIF  <font color=#447700>! End of "IF( init == 1)" block if   <a name='407'></font>
+  <a name='408'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='409'></font>
+<font color=#447700>! Derive statement function expression or function that returns the 2 <a name='410'></font>
+<font color=#447700>! file line numbers needed to do a linear time interpolation of <a name='411'></font>
+<font color=#447700>! bio-geo-chem variables in the file Miss_and_Atch_Rivs_for_GEM.prn. <a name='412'></font>
+<font color=#447700>! The Cxcel form of  this file was supplied by John Lehrter.<a name='413'></font>
+<font color=#447700>!<a name='414'></font>
+<font color=#447700>! Given date-time_C, i.e. iYrr,iMonn,iDayy,iHrr,iMinn,iSecc, determine <a name='415'></font>
+<font color=#447700>! which 2 lines of data in the data file supplied by John Lehrter are <a name='416'></font>
+<font color=#447700>! needed to do the linear time interpolation and calculate the value of <a name='417'></font>
+<font color=#447700>! variable VAR at that model date-time.<a name='418'></font>
+<a name='419'>
+<font color=#447700>! Use the following code in this order:<a name='420'></font>
+<a name='421'>
+<font color=#447700>! Let:the date time correspond to one the date-tomes in the Lehrter <a name='422'></font>
+<font color=#447700>! file.these date times are either 6:00AM gmt (when CST time occurs) or <a name='423'></font>
+<font color=#447700>! 5:00AM gmt (when CDT time occurs) every day from 31 Dec 2001 to 1 Jan <a name='424'></font>
+<font color=#447700>! 2008. I don't agree with these times (conversion from std and daylight <a name='425'></font>
+<font color=#447700>! time to gmt) and will have to talk with John about them.<a name='426'></font>
+<a name='427'>
+<font color=#447700>! Define the variables (Are RHS of these GMT or cst?--It looks like GMT--YES):<a name='428'></font>
+<font color=#447700>! So, iYr,..., are all in GMT   <a name='429'></font>
+<a name='430'>
+iYr  = iYrr<a name='431'>
+iMon = iMonn<a name='432'>
+iDay = iDayy<a name='433'>
+iHr  = iHrr<a name='434'>
+iMin = iMinn  <font color=#447700>! minutes after iHrr<a name='435'></font>
+iSec = iSecc  <font color=#447700>! seconds after iMin<a name='436'></font>
+<a name='437'>
+<font color=#447700>! DTC_8 is the model time associated with the date-time just above<a name='438'></font>
+<a name='439'>
+<a name='440'>
+  <font color=#447700>! We need the data dates/times for date_time_1 and date_time_2 which<a name='441'></font>
+  <font color=#447700>! bracket date-time_C, the date time for which the time interpolated<a name='442'></font>
+  <font color=#447700>! value of some Variable Var is needed. We assume:<a name='443'></font>
+  <font color=#447700>!<a name='444'></font>
+  <font color=#447700>! date_time_1 &lt;= date_time_C &lt;  date_time_2<a name='445'></font>
+  <font color=#447700>!<a name='446'></font>
+  <font color=#447700>! Note that two cases exists:<a name='447'></font>
+  <font color=#447700>!<a name='448'></font>
+  <font color=#447700>! Case 1: date_time_1 = 12:00 midnight GMT on day of date_time_C<a name='449'></font>
+  <font color=#447700>!         data_time_2 = 12:00 noon GMT on day of date_time_C<a name='450'></font>
+  <font color=#447700>!         For this case: 0 &lt;= iHrS &lt; 12<a name='451'></font>
+  <font color=#447700>!<a name='452'></font>
+  <font color=#447700>! Case 2: data_time_1 = 12:00 noon GMT on day of date_time_C<a name='453'></font>
+  <font color=#447700>!         data_time_2 = 12:00 midnight GMT on (day of date_time_C) + 1<a name='454'></font>
+<a name='455'>
+<font color=#447700>! Do Case 1 <a name='456'></font>
+  IF((0 &lt;= iHr) .AND. (iHr &lt; 12)) THEN<a name='457'>
+  <a name='458'>
+<font color=#447700>! date_time_1 == iYr_1,iMon_1, iDay_1 = iDay, iHr_1 = 0, <a name='459'></font>
+<font color=#447700>! iMin_1 = 0, iSec_1 = 0. Some of these may need to be adjusted <a name='460'></font>
+iYr_1  = iYr<a name='461'>
+iMon_1 = iMon<a name='462'>
+iDay_1 = iDay <a name='463'>
+iHr_1  = 0  <a name='464'>
+iMin_1 = 0   <a name='465'>
+iSec_1 = 0   <a name='466'>
+  <a name='467'>
+<font color=#447700>! date_time_2 = iYr_2,iMon_2, iDay_2, iHr_2, iMin_2, iSec_2  ! ok   <a name='468'></font>
+iYr_2  = iYr<a name='469'>
+iMon_2 = iMon<a name='470'>
+iDay_2 = iDay<a name='471'>
+iHr_2  = 12<a name='472'>
+iMin_2 = 0<a name='473'>
+iSec_2 = 0   <a name='474'>
+                                  <a name='475'>
+<font color=#447700>! End Case 1<a name='476'></font>
+<a name='477'>
+<font color=#447700>! Do case 2<a name='478'></font>
+ELSEIF(12 &lt;= iHr  .AND. iHr &lt; 24) THEN<a name='479'>
+<a name='480'>
+<font color=#447700>! date_time_1 == iYr_1,iMon_1, iDay_1, iHr_1, iMin_1, iSec_1 <a name='481'></font>
+iYr_1  = iYr<a name='482'>
+iMon_1 = iMon<a name='483'>
+iDay_1 = iDay<a name='484'>
+iHr_1  = 12<a name='485'>
+iMin_1 = 0<a name='486'>
+iSec_1 = 0 <a name='487'>
+<a name='488'>
+<font color=#447700>! date_time_2 = iYr_2,iMon_2, iDay_2, iHr_2, iMin_2, iSec_2  One or<a name='489'></font>
+<font color=#447700>! more of these may have to be adjusted  <a name='490'></font>
+iYr_2  = iYr<a name='491'>
+iMon_2 = iMon<a name='492'>
+iDay_2 = iDay + 1<a name='493'>
+iHr_2  = 0  <a name='494'>
+iMin_2 = 0<a name='495'>
+iSec_2 = 0 <a name='496'>
+<a name='497'>
+<font color=#447700>! May have to reset some constituents of date_time_2. Minutes and <a name='498'></font>
+<font color=#447700>! seconds and hours don't change (I think--but verify later)<a name='499'></font>
+<a name='500'>
+  IF(iDay_2 &gt; num_days_in_month_iMon(iMon_2,iYr_2) .AND.               &amp;<a name='501'>
+  &amp;  iMon_2 &lt;= 11) THEN<a name='502'>
+  <a name='503'>
+     iDay_2_new = iDay_2 - num_days_in_month_iMon(iMon_2,iYr_2)<a name='504'>
+     iMon_2_new = iMon + 1 <a name='505'>
+     iDay_2     = iDay_2_new<a name='506'>
+     iMon_2     = iMon_2_new<a name='507'>
+<a name='508'>
+  ELSEIF(iDay_2 &gt; num_days_in_month_iMon(iMon_2,iYr_2) .AND.           &amp;<a name='509'>
+  &amp;      iMon_2 == 12) THEN  <a name='510'>
+  <a name='511'>
+     iDay_2_new = iDay_2 - num_days_in_month_iMon(iMon_2,iYr_2)<a name='512'>
+     iMon_2_new = 1<a name='513'>
+     iYr_2_new  = iYr_2 + 1<a name='514'>
+     iDay_2     = iDay_2_new<a name='515'>
+     iMon_2     = iMon_2_new    <a name='516'>
+     iYr_2      = iYr_2_new <a name='517'>
+     <a name='518'>
+  ENDIF      <a name='519'>
+ENDIF<a name='520'>
+<font color=#447700>! End Case 2<a name='521'></font>
+<a name='522'>
+<font color=#447700>! date_time_1 and date_time_2, both in gmt, have been recalculated and <a name='523'></font>
+<font color=#447700>! are now consistent. <a name='524'></font>
+<a name='525'>
+   SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_14">( iYr0, iYr_1, iMon_1, iDay_1, iHr_1, iMin_1, iSec_1)<a name='526'>
+   DTC_1_8 = SECONDS<a name='527'>
+   DTC_1_8 = DTC_1_8 / SECONDS_PER_DAY<a name='528'>
+<a name='529'>
+   SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_15">( iYr0, iYr_2, iMon_2, iDay_2, iHr_2, iMin_2, iSec_2)<a name='530'>
+   DTC_2_8 = SECONDS<a name='531'>
+   DTC_2_8 = DTC_2_8 / SECONDS_PER_DAY<a name='532'>
+<a name='533'>
+<a name='534'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='535'></font>
+<font color=#447700>! Determine line number for data associated with date_time_1 and <a name='536'></font>
+<font color=#447700>! date_time_2. Both date-times are in gmt<a name='537'></font>
+<font color=#447700>!<a name='538'></font>
+<font color=#447700>! Calculate data_line_num_2 and data_line_num_1, the line numbers of:   <a name='539'></font>
+<font color=#447700>! data in the data file from J. Lehrter <a name='540'></font>
+<font color=#447700>!<a name='541'></font>
+<font color=#447700>!    MR_and_AR_for_GEM_gmt.prn<a name='542'></font>
+<font color=#447700>!<a name='543'></font>
+<font color=#447700>! Data in this file is used to linearly time interpolate the value of <a name='544'></font>
+<font color=#447700>! river bio-geo-chem variables at <a name='545'></font>
+<font color=#447700>!<a name='546'></font>
+<font color=#447700>!     date_time_C = iSecc, iMinn, iHrr, iDayy, iMonn, iYrr<a name='547'></font>
+<font color=#447700>!<a name='548'></font>
+<font color=#447700>! Note that data_line_2 and data_line_num_1 are given by the formulae <a name='549'></font>
+<font color=#447700>! just below:<a name='550'></font>
+<font color=#447700>!------------------------------------------------------------------------<a name='551'></font>
+<font color=#447700>!<a name='552'></font>
+<font color=#447700>! NB: temp1 belowis number of data lines (excluding the first four lines<a name='553'></font>
+<font color=#447700>!     in the data file since they are not data lines) up to but not <a name='554'></font>
+<font color=#447700>!     including the data line associated with the start of month iMon<a name='555'></font>
+<font color=#447700>!     of year iYr.<a name='556'></font>
+<font color=#447700>!------------------------------------------------------------------------<a name='557'></font>
+<a name='558'>
+   temp1     =  2 *                                                    &amp;<a name='559'>
+   &amp;            num_days_AtBeginOfMonth_iMon_since_StartOf_01Jan2002   &amp;<a name='560'>
+   &amp;                                                  (iMon,iYr) <a name='561'>
+    <a name='562'>
+   DTC_8_diff = DTC_8 - DTC_8_AtBeginOfMonth_iMon(iMon,iYr)<a name='563'>
+           <a name='564'>
+   data_line_num_1    =  4   +  FLOOR(2_8*DTC_8_diff) + temp1    <a name='565'>
+   data_line_num_2    =  data_line_num_1 + 1  <a name='566'>
+   <a name='567'>
+#ifdef DEBUG<a name='568'>
+ WRITE(6, "(' ')")<a name='569'>
+ WRITE(6, "('In sub. get_line_nums_and_date_times_and_R_OneMr ')")  <a name='570'>
+ WRITE(6, "('for: ')") <a name='571'>
+ WRITE(6, "(' ')") <a name='572'>
+ WRITE(6, "('iYr                = ', I4)") iYr<a name='573'>
+ WRITE(6, "('iMon               = ', I2)") iMon<a name='574'>
+ WRITE(6, "('iDay               = ', I2)") iDay<a name='575'>
+ WRITE(6, "('iHr                = ', I2)") iHr <a name='576'>
+ WRITE(6, "('iMin               = ', I2)") iMin<a name='577'>
+ WRITE(6, "('iSec               = ', I2)") iSec    <a name='578'>
+ WRITE(6, "('we have: ')")<a name='579'>
+ WRITE(6, "(' ')")    <a name='580'>
+ WRITE(6, "('4 + 2*(iDay_1 - 1) = ', I6)") (4 + 2*(iDay_1 - 1))<a name='581'>
+ WRITE(6, "('temp1              = ', I6)") temp1<a name='582'>
+ WRITE(6, "('data_line_num_1    = ', I6)") data_line_num_1<a name='583'>
+ WRITE(6, "('data_line_num_2    = ', I6)") data_line_num_2<a name='584'>
+ WRITE(6, "(' ')") <a name='585'>
+#endif  <a name='586'>
+<a name='587'>
+<font color=#447700>!-----------------------------------------------------------------------  <a name='588'></font>
+<font color=#447700>! Calculate R_8,  R, and OneMR = 1.0 - R  which are needed <a name='589'></font>
+<font color=#447700>! for time interpolation.of river variable at date_time_C<a name='590'></font>
+<font color=#447700>!-----------------------------------------------------------------------  <a name='591'></font>
+<a name='592'>
+#ifdef DEBUG<a name='593'>
+ WRITE(6, "(' ')")<a name='594'>
+ WRITE(6, "('In sub. get_line_nums_and_date_times_and_R_OneMr ')") <a name='595'>
+ WRITE(6, "('DTC_8   = ', F35.15)")  DTC_8<a name='596'>
+ WRITE(6, "('DTC_1_8 = ', F35.15)")  DTC_1_8 <a name='597'>
+ WRITE(6, "('DTC_2_8 = ', F35.15)")  DTC_2_8  <a name='598'>
+ WRITE(6, "(' ')") <a name='599'>
+#endif  <a name='600'>
+  <a name='601'>
+  R_8     = (DTC_8 - DTC_1_8)/(DTC_2_8 - DTC_1_8)<a name='602'>
+  <a name='603'>
+#ifdef DEBUG <a name='604'>
+ WRITE(6, "(' ')")<a name='605'>
+ WRITE(6, "('In sub. get_line_nums_and_date_times_and_R_OneMr ')") <a name='606'>
+ WRITE(6, "('R_8 = ', F35.15)")  R_8<a name='607'>
+ WRITE(6, "(' ')") <a name='608'>
+#endif <a name='609'>
+ <a name='610'>
+  OneMR_8 = 1_8 - R_8<a name='611'>
+  R      = REAL(R_8,KIND=4)<a name='612'>
+  OneMR  = REAL(OneMR_8,KIND=4)<a name='613'>
+<a name='614'>
+END SUBROUTINE get_line_nums_and_date_times_and_R_OneMR   <a name='615'>
+<a name='616'>
+</pre></body></html>

@@ -1,0 +1,1120 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!-----------------------------------------------------------------------<a name='2'></font>
+<A NAME='GET_RIVER_NUTRIENTS'><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='3'>
+     <font color=#993300>Subroutine </font><font color=#cc0000>get_river_nutrients</font>(                                   &amp; <A href='../../call_to/GET_RIVER_NUTRIENTS.html' TARGET='index'>3</A>,<A href='../../call_from/GET_RIVER_NUTRIENTS.html' TARGET='index'>8</A><a name='4'>
+     &amp; TC_8			 , wtrv 		     ,         &amp;     <a name='5'>
+     &amp; Riv_NO3                   , Riv_NH4                   ,         &amp;<a name='6'>
+     &amp; Riv_Si                    , Riv_PO4                   ,         &amp;<a name='7'>
+     &amp; Riv_DIC                   , Riv_O2                    ,         &amp;<a name='8'>
+     &amp; Riv_OM1_R                 , Riv_OM2_R, Riv_Chl        )<a name='9'>
+<a name='10'>
+<font color=#447700>!------------------------------------------------------------------<a name='11'></font>
+<font color=#447700>! Original version of this subroutine written by Ko at NRL<a name='12'></font>
+<font color=#447700>!<a name='13'></font>
+<font color=#447700>! Modified version (incoRoration of river CDOM) written by Barry<a name='14'></font>
+<font color=#447700>! Herchenroder, July 2011<a name='15'></font>
+<a name='16'>
+<font color=#447700>! Modified to read in John Lehrter's N, P and O2 river variables for <a name='17'></font>
+<font color=#447700>! Miss and Atch rivers at 1 day intervals (assumed to be noon each <a name='18'></font>
+<font color=#447700>! day) and calculate these river variables at computation time-level.<a name='19'></font>
+<font color=#447700>! istep, model time TC_8 (seconds from 12:00 midnight at beginning of <a name='20'></font>
+<font color=#447700>! 1 Jan 2002)<a name='21'></font>
+<font color=#447700>! <a name='22'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='23'></font>
+<a name='24'>
+<font color=#447700>!--------------------------------------------------------------------<a name='25'></font>
+<font color=#447700>! Reads in total Mississippi River River loads of:<a name='26'></font>
+<font color=#447700>!  volume flow, i.e. volume discharge (m**3/sec), (MR_flow for Miss River <a name='27'></font>
+<font color=#447700>!		and AR_flow for Achafalaya River) <a name='28'></font>
+<font color=#447700>!<a name='29'></font>
+<font color=#447700>!  NO3  (MR_NO3 mmol-NO3/m*3 for Miss Riv and AR_NO3 mmol-NO3/m**3 for Atch.)<a name='30'></font>
+<font color=#447700>!<a name='31'></font>
+<font color=#447700>!  NH4  (MR_NH4 mmol-NH4/m**3 for Miss Riv and AR_NH4 mmol-NH4/m**3 for Atch.) <a name='32'></font>
+<font color=#447700>!<a name='33'></font>
+<font color=#447700>!  Si   (MR_Si mmol-Si/m**3 for Miss Riv and AR_Si mmol-Si/m**3 for <a name='34'></font>
+<font color=#447700>!	 Atch.) <a name='35'></font>
+<font color=#447700>!<a name='36'></font>
+<font color=#447700>!  PO4  (MR_PO4 mmol-PO4/m**3 for Miss Riv and AR_PO4 mmol-PO4/m**3 for Atch.)<a name='37'></font>
+<font color=#447700>!<a name='38'></font>
+<font color=#447700>!  DIC  (MR_DIC mmol-DIC/m**3 for Miss Riv and AR_DIC mmol-DIC/m**3 for Atch.) <a name='39'></font>
+<font color=#447700>!  <a name='40'></font>
+<font color=#447700>!  O2   (MR_O2 mmol-O2/m**3  for Miss Riv and AR_O2  mmol-O2/m**3  for Atch.)	<a name='41'></font>
+<font color=#447700>!<a name='42'></font>
+<font color=#447700>!  POC  (MR_POC mmol-POC/m**3 for Miss Riv and AR_POC mmol-POC/m**3 for Atch.) <a name='43'></font>
+<font color=#447700>!<a name='44'></font>
+<font color=#447700>!  DOC  (MR_DOC mmol-DOC/m**3 for Miss Riv and AR_DOC mmol-DOC/m**3 for Atch.)<a name='45'></font>
+<font color=#447700>!<a name='46'></font>
+<font color=#447700>!  DON  (MR_DON mmol-DON/m**3 for Miss Riv and AR_DON mmol-DON/m**3 for Atch.)  <a name='47'></font>
+<font color=#447700>!<a name='48'></font>
+<font color=#447700>!  PN   (MR_PN mmol-PN/m**3  for Miss Riv and AR_PN  mmol-PN/m**3  for Atch.)  <a name='49'></font>
+<font color=#447700>!<a name='50'></font>
+<font color=#447700>!  DOP  (MR_DOP mmol-DON/m**3 for Miss Riv and AR_DOP mmol-DOP/m**3 for Atch.)<a name='51'></font>
+<font color=#447700>!   <a name='52'></font>
+<font color=#447700>!  PP   (MR_PP mmol-PP/m**3  for Miss Riv and AR_PP  mmol-PP/m**3  for Atch.) <a name='53'></font>
+<font color=#447700>!<a name='54'></font>
+<font color=#447700>!  Chl  (MR_Chl mg-Chl/m**3 for Miss Riv and AR_Chl mg-Chl/m**3 for Atch.)  <a name='55'></font>
+<font color=#447700>!<a name='56'></font>
+<font color=#447700>! The above variables are assumed to represent cross-sectionally averaged<a name='57'></font>
+<font color=#447700>! values upstream of the river mouth before any splits take place. <a name='58'></font>
+<font color=#447700>!-----------------------------------------------------------------------------<a name='59'></font>
+<a name='60'>
+      USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_34"> <font color=#447700>! For iYr0, etc.<a name='61'></font>
+      USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_14"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='62'></font>
+      USE <A href='../../html_code/CGEM_2.0/INPUT_VARS.f.html#INPUT_VARS'>INPUT_VARS</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="INPUT_VARS_23"><a name='63'>
+<a name='64'>
+      IMPLICIT NONE<a name='65'>
+<a name='66'>
+<font color=#447700>!------------------------------------------<a name='67'></font>
+<font color=#447700>! Declare variables in subroutine Inteface<a name='68'></font>
+<font color=#447700>!------------------------------------------ <a name='69'></font>
+      INTEGER(KIND=8), INTENT(IN) :: TC_8  <font color=#447700>! Model time in seconds since iYr0.<a name='70'></font>
+                                         <a name='71'>
+      REAL   , INTENT(IN) :: wtrv(nsl,nr)    <a name='72'>
+				   <font color=#447700>! wtrv(k,l) is flow weight factor for<a name='73'></font>
+				   <font color=#447700>! river variables for layer k of river l<a name='74'></font>
+				    <a name='75'>
+<font color=#447700>!--------------------------      <a name='76'></font>
+<font color=#447700>! Output thru sub.interface<a name='77'></font>
+<font color=#447700>!--------------------------<a name='78'></font>
+      REAL   , INTENT(OUT) :: Riv_NO3(nr) <font color=#447700>! mmol/m3 <a name='79'></font>
+      REAL   , INTENT(OUT) :: Riv_NH4(nr) <font color=#447700>! mmol/m3 <a name='80'></font>
+      REAL   , INTENT(OUT) :: Riv_Si(nr)  <font color=#447700>! mmol/m3<a name='81'></font>
+      REAL   , INTENT(OUT) :: Riv_PO4(nr) <font color=#447700>! mmol/m3 <a name='82'></font>
+      REAL   , INTENT(OUT) :: Riv_DIC(nr) <font color=#447700>! mmol/m3 <a name='83'></font>
+      REAL   , INTENT(OUT) :: Riv_O2(nr)  <font color=#447700>! mmol/m3 <a name='84'></font>
+      REAL   , INTENT(OUT) :: Riv_OM1_R(nr) <font color=#447700>! mmol/m3 <a name='85'></font>
+      REAL   , INTENT(OUT) :: Riv_OM2_R(nr) <font color=#447700>! mmol/m3 <a name='86'></font>
+      REAL   , INTENT(OUT) :: Riv_Chl(nr) <font color=#447700>! mg/m3<a name='87'></font>
+<font color=#447700>! Local variables:				  <a name='88'></font>
+<a name='89'>
+      REAL   :: MR_NO3   <font color=#447700>! mmol/m3<a name='90'></font>
+      REAL   :: MR_NH4   <font color=#447700>! mmol/m3<a name='91'></font>
+      REAL   :: MR_Si    <font color=#447700>! mmol/m3<a name='92'></font>
+      REAL   :: MR_PO4   <font color=#447700>! mmol/m3<a name='93'></font>
+      REAL   :: MR_DIC   <font color=#447700>! mmol/m3<a name='94'></font>
+      REAL   :: MR_O2    <font color=#447700>! mmol/m3<a name='95'></font>
+      REAL   :: MR_POC   <font color=#447700>! mmol/m3<a name='96'></font>
+      REAL   :: MR_DOC   <font color=#447700>! mmol/m3<a name='97'></font>
+      REAL   :: MR_DON   <font color=#447700>! mmol/m3<a name='98'></font>
+      REAL   :: MR_PN    <font color=#447700>! mmol/m3<a name='99'></font>
+      REAL   :: MR_DOP   <font color=#447700>! mmol/m3<a name='100'></font>
+      REAL   :: MR_PP    <font color=#447700>! mmol/m3<a name='101'></font>
+      REAL   :: MR_Chl   <font color=#447700>! mg/m3<a name='102'></font>
+      REAL, SAVE   :: MR_flow_1, MR_flow_2  <font color=#447700>! m3/sec<a name='103'></font>
+      REAL, SAVE   :: MR_NO3_1 , MR_NO3_2   <font color=#447700>! mmol/m3<a name='104'></font>
+      REAL, SAVE   :: MR_NH4_1 , MR_NH4_2   <font color=#447700>! mmol/m3<a name='105'></font>
+      REAL, SAVE   :: MR_Si_1, MR_Si_2  <font color=#447700>! mmol/m3<a name='106'></font>
+      REAL, SAVE   :: MR_PO4_1 , MR_PO4_2   <font color=#447700>! mmol/m3<a name='107'></font>
+      REAL, SAVE   :: MR_DIC_1 , MR_DIC_2   <font color=#447700>! mmol/m3<a name='108'></font>
+      REAL, SAVE   :: MR_O2_1  , MR_O2_2    <font color=#447700>! mmol/m3<a name='109'></font>
+      REAL, SAVE   :: MR_POC_1 , MR_POC_2   <font color=#447700>! mmol/m3<a name='110'></font>
+      REAL, SAVE   :: MR_DOC_1 , MR_DOC_2   <font color=#447700>! mmol/m3<a name='111'></font>
+      REAL, SAVE   :: MR_DON_1 , MR_DON_2   <font color=#447700>! mmol/m3<a name='112'></font>
+      REAL, SAVE   :: MR_PN_1  , MR_PN_2    <font color=#447700>! mmol/m3<a name='113'></font>
+      REAL, SAVE   :: MR_DOP_1 , MR_DOP_2   <font color=#447700>! mmol/m3<a name='114'></font>
+      REAL, SAVE   :: MR_PP_1  , MR_PP_2    <font color=#447700>! mmol/m3<a name='115'></font>
+      REAL, SAVE   :: MR_Chl_1 , MR_Chl_2   <font color=#447700>! mg/m3<a name='116'></font>
+<font color=#447700>!***********************************************************<a name='117'></font>
+      REAL   :: AR_NO3    <font color=#447700>! mmol/m3<a name='118'></font>
+      REAL   :: AR_NH4   <font color=#447700>! mmol/m3<a name='119'></font>
+      REAL   :: AR_Si  <font color=#447700>! mmol/m3<a name='120'></font>
+      REAL   :: AR_PO4   <font color=#447700>! mmol/m3<a name='121'></font>
+      REAL   :: AR_DIC   <font color=#447700>! mmol/m3<a name='122'></font>
+      REAL   :: AR_O2    <font color=#447700>! mmol/m3<a name='123'></font>
+      REAL   :: AR_POC   <font color=#447700>! mmol/m3<a name='124'></font>
+      REAL   :: AR_DOC   <font color=#447700>! mmol/m3<a name='125'></font>
+      REAL   :: AR_DON   <font color=#447700>! mmol/m3<a name='126'></font>
+      REAL   :: AR_PN    <font color=#447700>! mmol/m3<a name='127'></font>
+      REAL   :: AR_DOP   <font color=#447700>! mmol/m3<a name='128'></font>
+      REAL   :: AR_PP    <font color=#447700>! mmol/m3<a name='129'></font>
+      REAL   :: AR_Chl   <font color=#447700>! mg/m3<a name='130'></font>
+      REAL, SAVE   :: AR_flow_1, AR_flow_2  <font color=#447700>! m3/sec <a name='131'></font>
+      REAL, SAVE   :: AR_NO3_1 , AR_NO3_2   <font color=#447700>! mmol/m3  <a name='132'></font>
+      REAL, SAVE   :: AR_NH4_1 , AR_NH4_2   <font color=#447700>! mmol/m3 <a name='133'></font>
+      REAL, SAVE   :: AR_Si_1, AR_Si_2  <font color=#447700>! mmol/m3    <a name='134'></font>
+      REAL, SAVE   :: AR_PO4_1 , AR_PO4_2   <font color=#447700>! mmol/m3  <a name='135'></font>
+      REAL, SAVE   :: AR_DIC_1 , AR_DIC_2   <font color=#447700>! mmol/m3 <a name='136'></font>
+      REAL, SAVE   :: AR_O2_1  , AR_O2_2    <font color=#447700>! mmol/m3 <a name='137'></font>
+      REAL, SAVE   :: AR_POC_1 , AR_POC_2   <font color=#447700>! mmol/m3  <a name='138'></font>
+      REAL, SAVE   :: AR_DOC_1 , AR_DOC_2   <font color=#447700>! mmol/m3 <a name='139'></font>
+      REAL, SAVE   :: AR_DON_1 , AR_DON_2   <font color=#447700>! mmol/m3    <a name='140'></font>
+      REAL, SAVE   :: AR_PN_1  , AR_PN_2    <font color=#447700>! mmol/m3  <a name='141'></font>
+      REAL, SAVE   :: AR_DOP_1 , AR_DOP_2   <font color=#447700>! mmol/m3 <a name='142'></font>
+      REAL, SAVE   :: AR_PP_1  , AR_PP_2    <font color=#447700>! mmol/m3<a name='143'></font>
+      REAL, SAVE   :: AR_Chl_1 , AR_Chl_2   <font color=#447700>! mg/m3 <a name='144'></font>
+<font color=#447700>!*************************************************************************     	<a name='145'></font>
+      INTEGER, SAVE :: init = 1 <font color=#447700>! Initialization flag<a name='146'></font>
+      INTEGER       :: data_line_numS_1, data_line_numS_2<a name='147'>
+      INTEGER, SAVE :: data_line_num_1,  data_line_num_2      <a name='148'>
+      INTEGER, SAVE :: iCurrentLine = 0<a name='149'>
+      INTEGER       :: iline      <a name='150'>
+      INTEGER       :: iSecS_1, iSecS_2    <a name='151'>
+      INTEGER       :: iMinS_1, iMinS_2   <a name='152'>
+      INTEGER       :: iHrS_1 , iHrS_2 <a name='153'>
+      INTEGER       :: iDayS_1, iDayS_2 <a name='154'>
+      INTEGER       :: iMonS_1, iMonS_2 <a name='155'>
+      INTEGER       :: iYrS_1 , iYrS_2  <a name='156'>
+      <a name='157'>
+      INTEGER, SAVE :: iSec_1, iSec_2    <a name='158'>
+      INTEGER, SAVE :: iMin_1, iMin_2   <a name='159'>
+      INTEGER, SAVE :: iHr_1 , iHr_2 <a name='160'>
+      INTEGER, SAVE :: iDay_1, iDay_2 <a name='161'>
+      INTEGER, SAVE :: iMon_1, iMon_2 <a name='162'>
+      INTEGER, SAVE :: iYr_1 , iYr_2                                   <a name='163'>
+<a name='164'>
+      INTEGER       :: k     <a name='165'>
+<a name='166'>
+      INTEGER       :: l<a name='167'>
+      INTEGER       :: line <a name='168'>
+                 <a name='169'>
+      INTEGER       :: num_wwtrv_errs            <a name='170'>
+<a name='171'>
+      INTEGER       :: iirv(nr)   <a name='172'>
+    <a name='173'>
+      INTEGER       :: jjrv(nr)   <a name='174'>
+    <a name='175'>
+      INTEGER, SAVE :: num_days_in_month_iMon(12,2002:2011)     <a name='176'>
+      INTEGER, SAVE :: num_days_prev_month(12, 2002:2011)  <a name='177'>
+    <a name='178'>
+      INTEGER       :: Riv_num(nr)   <a name='179'>
+<a name='180'>
+      REAL, PARAMETER :: epstest = 1.0E-7<a name='181'>
+<a name='182'>
+      REAL         :: OneMR_new <a name='183'>
+     <a name='184'>
+      REAL(KIND=8) :: OneMR_new_8                       <a name='185'>
+      REAL         :: OneMRS  <a name='186'>
+      REAL(KIND=8) :: OneMRS_8  <a name='187'>
+      <a name='188'>
+      <a name='189'>
+      REAL         :: R_new      <a name='190'>
+      REAL(KIND=8) :: R_new_8               <a name='191'>
+      REAL         :: RS  <a name='192'>
+      REAL(KIND=8) :: RS_8               <a name='193'>
+          <a name='194'>
+      REAL(8):: DTC_8 <font color=#447700>! TC_8 converted to fractional days.<a name='195'></font>
+      REAL(8):: SECONDS<a name='196'>
+      REAL(KIND=8)       :: DTCS_8<a name='197'>
+      REAL(KIND=8), SAVE :: DTC_1_8, DTC_2_8   <a name='198'>
+      <a name='199'>
+<font color=#447700>!-----------------------------<a name='200'></font>
+<font color=#447700>! Declare local REAL array variables <a name='201'></font>
+<font color=#447700>!-----------------------------   <a name='202'></font>
+<a name='203'>
+      REAL         :: celldepth(nr)      <a name='204'>
+      <a name='205'>
+      REAL         :: percent_src(nr)    <a name='206'>
+         <a name='207'>
+      REAL         :: Riv_lat(nr)        <a name='208'>
+      REAL         :: Riv_lon(nr)        <a name='209'>
+      <a name='210'>
+      REAL         :: wwtrv(nsl,nr)     <a name='211'>
+				         <font color=#447700>! wwrtrv(k,l) is flow weight factor <a name='212'></font>
+					 <font color=#447700>! for river variables for layer k of<a name='213'></font>
+				         <font color=#447700>! river l. Should be the same ele-<a name='214'></font>
+				         <font color=#447700>! by-ele as wtrv array input thru <a name='215'></font>
+					 <font color=#447700>! interface<a name='216'></font>
+<font color=#447700>!----------------------------------<a name='217'></font>
+<font color=#447700>! Declare local character variables <a name='218'></font>
+<font color=#447700>!----------------------------------<a name='219'></font>
+<a name='220'>
+      CHARACTER(LEN=16)         :: date_time0   , date_time_1 , date_time_2<a name='221'>
+      CHARACTER(LEN=16)         :: date_time_1A, date_time_2A      <a name='222'>
+      CHARACTER(LEN=500)        :: hold1<a name='223'>
+      CHARACTER(LEN=500)        :: hold2      <a name='224'>
+      CHARACTER(LEN=500)        :: hold3<a name='225'>
+      <a name='226'>
+      CHARACTER(LEN=150), SAVE  :: fileRiv_nutr <a name='227'>
+      CHARACTER(LEN=150), SAVE  :: fileRiv_disb <a name='228'>
+ <a name='229'>
+      CHARACTER(LEN=80)         :: Riv_name(nr)    <a name='230'>
+      CHARACTER(LEN=80)         :: Riv_src_name(nr)<a name='231'>
+      <a name='232'>
+<font color=#447700>! ---------------------------------------------------------------------<a name='233'></font>
+<a name='234'>
+       DTC_8 = TC_8<a name='235'>
+       DTC_8 = DTC_8 / SECONDS_PER_DAY<a name='236'>
+<a name='237'>
+IF (init.eq.1) THEN<a name='238'>
+<a name='239'>
+   <font color=#447700>! Code to be executed first time this subroutine is executed.<a name='240'></font>
+   <font color=#447700>! at initial computation time-level, istep = 0<a name='241'></font>
+   <a name='242'>
+   <font color=#447700>! Open files(s) to be read or written<a name='243'></font>
+<font color=#447700>!       fileRiv_nutr = NONHYDRODIR//'MR_forGEM_20140612_reformatted.prn'<a name='244'></font>
+       fileRiv_nutr = NONHYDRODIR//'MR_forGEM_20150928.txt'<a name='245'>
+       fileRiv_disb = NONHYDRODIR//'River_20layers_new.disb' <a name='246'>
+<a name='247'>
+     OPEN(200, FILE=TRIM(fileRiv_nutr), STATUS="OLD")     <a name='248'>
+     OPEN(250, FILE=TRIM(fileRiv_disb), STATUS="OLD"  )     	     <a name='249'>
+<a name='250'>
+    <font color=#447700>!-------------------------------------------------------------	 <a name='251'></font>
+    <font color=#447700>! Calc num_days_prev_month(iMon,iYr)== <a name='252'></font>
+    <font color=#447700>!                                  number odata_line_num_1f days in previous<a name='253'></font>
+    <font color=#447700>!                                  month iMon-1 of year iYr<a name='254'></font>
+    <font color=#447700>! <a name='255'></font>
+    <font color=#447700>! Calc num_days_in_month_iMon(iMon,iYr) ==<a name='256'></font>
+    <font color=#447700>!                                  number of days in month<a name='257'></font>
+    <font color=#447700>!                                  iMon of year iYr<a name='258'></font>
+    <font color=#447700>!-------------------------------------------------------------	 <a name='259'></font>
+      <a name='260'>
+    CALL <A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH'>calc_num_days_in_month_and_prev_month</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH_1">(num_days_in_month_iMon, &amp;<a name='261'>
+    &amp; num_days_prev_month                                             )	 <a name='262'>
+        	  <a name='263'>
+    <font color=#447700>!--------------------------------------------------------------------- <a name='264'></font>
+    <font color=#447700>! REMEMBER!! date-times on unit 200 are GMT!! <a name='265'></font>
+    <font color=#447700>!<a name='266'></font>
+    <font color=#447700>! Determine data_line_num_1S and data_line_num_2S associated with the<a name='267'></font>
+    <font color=#447700>! initial date-time of river data for the run. Also determine the<a name='268'></font>
+    <font color=#447700>! value of weights RS and OneMRS == 1 - RS for the time interp needed<a name='269'></font>
+    <font color=#447700>! to calc river bio-geo-chem values at the initial date-time. This<a name='270'></font>
+    <font color=#447700>! time will be referred to as date_timeS and is given by (in GMT):<a name='271'></font>
+    <font color=#447700>!<a name='272'></font>
+    <font color=#447700>!   date_timeS = iYrS, iMonS, iDayS, iHrS, iMinS, iSecS    <a name='273'></font>
+    <font color=#447700>!<a name='274'></font>
+    <font color=#447700>!--------------------------------------------------------------------<a name='275'></font>
+    	<a name='276'>
+<font color=#447700>!-------------------------------------------------------------------------------<a name='277'></font>
+<font color=#447700>! Calc TCS_8, which is TC_8 at the initial date_time0 WRT GMT<a name='278'></font>
+<a name='279'>
+   SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_22">( iYr0, iYrS, iMonS, iDayS, iHrS, iMinS, iSecS )<a name='280'>
+   DTCS_8 = SECONDS<a name='281'>
+   DTCS_8 = DTCS_8 / SECONDS_PER_DAY<a name='282'>
+<a name='283'>
+#ifdef DEBUG   <a name='284'>
+   WRITE(6, "()")<a name='285'>
+   WRITE(6, "('In subroutine get_river_nutrients')") <a name='286'>
+   WRITE(6, "('the first time')")       <a name='287'>
+   WRITE(6, "('iYrS   = ', I4    )")  iYrS<a name='288'>
+   WRITE(6, "('iMonS  = ', I2    )")  iMonS<a name='289'>
+   WRITE(6, "('iDayS  = ', I2    )")  iDayS  <a name='290'>
+   WRITE(6, "('iHrS   = ', I2    )")  iHrS    <a name='291'>
+   WRITE(6, "('iMins  = ', I2    )")  iMinS<a name='292'>
+   WRITE(6, "('iSecS  = ', I2    )")  iSecS  <a name='293'>
+   WRITE(6, "('DTCS_8  = ', F35.15)")  DTCS_8  <a name='294'>
+   WRITE(6, "()")  <a name='295'>
+#endif               <a name='296'>
+<a name='297'>
+<font color=#447700>! Calc line numbers of data in unit 200 that bracket the date-time<a name='298'></font>
+<font color=#447700>! associated with initial date_time0 <a name='299'></font>
+<a name='300'>
+   CALL <A href='../../html_code/CGEM_2.0/get_line_nums_and_date_times_and_R_OneMR.f.html#GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR'>get_line_nums_and_date_times_and_R_OneMR</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="GET_LINE_NUMS_AND_DATE_TIMES_AND_R_ONEMR_1">(                         &amp;<a name='301'>
+   &amp;  iSecS           , iMinS           , iHrS         ,                  &amp;<a name='302'>
+   &amp;  iDayS           , iMonS           , iYrS         , DTCS_8  ,         &amp;   <a name='303'>
+   &amp;  num_days_in_month_iMon, num_days_prev_month      ,                  &amp;<a name='304'>
+   &amp;  iSecS_1         , iMinS_1         , iHrS_1       ,                  &amp;<a name='305'>
+   &amp;  iDayS_1         , iMonS_1         , iYrS_1       , DTC_1_8,         &amp;<a name='306'>
+   &amp;  iSecS_2         , iMinS_2         , iHrS_2       ,                  &amp;<a name='307'>
+   &amp;  iDayS_2         , iMonS_2         , iYrS_2       , DTC_2_8,         &amp;<a name='308'>
+   &amp;  data_line_numS_1, data_line_numS_2, RS           , OneMRS ,         &amp;<a name='309'>
+   &amp;  RS_8            , OneMRS_8                                         )<a name='310'>
+<a name='311'>
+#if defined(DEBUG) || defined(LCO_DEBUG)<a name='312'>
+      WRITE(6,"('After calling get_line_nums_and_date_times_and_R_OneMR' &amp;<a name='313'>
+     &amp;  )")<a name='314'>
+      WRITE(6, "('iYrS_1  = ',I4,', iYrS_2  = ',I4)") iYrS_1, iYrS_2<a name='315'>
+      WRITE(6, "('iMonS_1 = ',I2,', iMonS_2 = ',I2)") iMonS_1, iMonS_2<a name='316'>
+      WRITE(6, "('iDayS_1 = ',I2,', iDayS_2 = ',I2)") iDayS_1, iDayS_2<a name='317'>
+      WRITE(6, "('iHrS_1  = ',I2,', iHrS_2  = ',I2)") iHrS_1, iHrS_2<a name='318'>
+      WRITE(6, "('iMinS_1 = ',I2,', iMinS_2 = ',I2)") iMinS_1, iMinS_2<a name='319'>
+      WRITE(6, "('iSecS_1 = ',I2,', iSecS_2 = ',I2)") iSecS_1, iSecS_2<a name='320'>
+      WRITE(6, "('DTC_1_8  = ',F30.15,', DTC_2_8= ',F30.15)") DTC_1_8, DTC_2_8<a name='321'>
+      WRITE(6, "(' ')")<a name='322'>
+      WRITE(6, "('data_line_numS_1 = ', I6)") data_line_numS_1<a name='323'>
+      WRITE(6, "('data_line_numS_2 = ', I6)") data_line_numS_2<a name='324'>
+      WRITE(6, "(' ')")<a name='325'>
+      WRITE(6, "('RS               = ', F35.15)") RS<a name='326'>
+      WRITE(6, "('OneMRS           = ', F35.15)") OneMRS<a name='327'>
+      WRITE(6, "('RS_8             = ', F35.15)") RS_8<a name='328'>
+      WRITE(6, "('OneMRS_8         = ', F35.15)") OneMRS_8<a name='329'>
+      WRITE(6, "(' ')")<a name='330'>
+#endif<a name='331'>
+<a name='332'>
+<font color=#447700>!     Save the initial row dates for the next time step<a name='333'></font>
+      iYr_1 = iYrS_1<a name='334'>
+      iMon_1 = iMonS_1<a name='335'>
+      iDay_1 = iDayS_1<a name='336'>
+      iHr_1 = iHrS_1<a name='337'>
+      iMin_1 = iMinS_1<a name='338'>
+      iSec_1 = iSecS_1<a name='339'>
+      iYr_2 = iYrS_2<a name='340'>
+      iMon_2 = iMonS_2<a name='341'>
+      iDay_2 = iDayS_2<a name='342'>
+      iHr_2 = iHrS_2<a name='343'>
+      iMin_2 = iMinS_2<a name='344'>
+      iSec_2 = iSecS_2<a name='345'>
+<a name='346'>
+<font color=#447700>! Read first line of data on unit 200, the river nutrient file from<a name='347'></font>
+<font color=#447700>! John Lehrter.  This line is line number 4. Make sure that <a name='348'></font>
+<font color=#447700>! first part of date_time0 = 2002-01-01-00.00. If not true,abort run<a name='349'></font>
+<a name='350'>
+   REWIND 200<a name='351'>
+   <a name='352'>
+   READ(200,*) hold1, hold2, hold3   <font color=#447700>! See whats on first line of file<a name='353'></font>
+   <a name='354'>
+#ifdef DEBUG   <a name='355'>
+   WRITE(6, "()")<a name='356'>
+   WRITE(6, "('In subroutine get_river_nutrients')") <a name='357'>
+   WRITE(6, "('when init = ', I2 )") init     <a name='358'>
+   WRITE(6,"('The first line of river bio-geo-chem input file holds:')") <a name='359'>
+   WRITE(6, "()")<a name='360'>
+   WRITE(6, "('hold1 = ', A)") hold1<a name='361'>
+   WRITE(6, "('hold2 = ', A)") hold2<a name='362'>
+   WRITE(6, "('hold3 = ', A)") hold3      <a name='363'>
+   WRITE(6, "()") <a name='364'>
+#endif<a name='365'>
+                    <a name='366'>
+   READ(200,*)  hold1, hold2, hold3<a name='367'>
+      <a name='368'>
+#ifdef DEBUG   <a name='369'>
+   WRITE(6, "()")<a name='370'>
+   WRITE(6, "('In subroutine get_river_nutrients')") <a name='371'>
+   WRITE(6, "('when init = ', I2 )") init        <a name='372'>
+   WRITE(6, "('The second line of river bio-geo-chem input file holds:'&amp;<a name='373'>
+      &amp; )")<a name='374'>
+   WRITE(6, "()")<a name='375'>
+   WRITE(6, "('hold1 = ', A)") hold1<a name='376'>
+   WRITE(6, "('hold2 = ', A)") hold2<a name='377'>
+   WRITE(6, "('hold3 = ', A)") hold3<a name='378'>
+   WRITE(6, "()")<a name='379'>
+#endif   <a name='380'>
+<a name='381'>
+   READ(200,*)       <a name='382'>
+   READ(200,*) date_time0  <font color=#447700>! 4th line<a name='383'></font>
+<a name='384'>
+   REWIND 200<a name='385'>
+<a name='386'>
+<font color=#447700>! Skip down to line number (data_line_numS_1-1). Then go to next line and <a name='387'></font>
+<font color=#447700>! read data on this line--the line holding data for starting date-time<a name='388'></font>
+<a name='389'>
+#if defined(DEBUG) || defined(LCO_DEBUG)<a name='390'>
+      WRITE(6, "('In subroutine get_river_nutrients')")  <a name='391'>
+      WRITE(6, "('when init = ', I2 )") init   <a name='392'>
+      WRITE(6, "('got past the REWIND command')")<a name='393'>
+      WRITE(6, "('Skipping lines: (data_line_numS_1 - 1) = ', I6)")    &amp;<a name='394'>
+     &amp;     data_line_numS_1-1<a name='395'>
+#endif<a name='396'>
+<a name='397'>
+      iCurrentLine = data_line_numS_1 - 1<a name='398'>
+      DO iline = 1, iCurrentLine<a name='399'>
+         READ(200, *)<a name='400'>
+      ENDDO<a name='401'>
+<a name='402'>
+<font color=#447700>! Read data for date-time_1  on line data_line_numS_1<a name='403'></font>
+<a name='404'>
+      READ(200,*)  date_time_1  , MR_flow_1, MR_NO3_1 , MR_NH4_1,      &amp;<a name='405'>
+     &amp;     MR_Si_1   , MR_PO4_1  , MR_DIC_1 , MR_O2_1  , MR_POC_1,   &amp;<a name='406'>
+     &amp;     MR_DOC_1    , MR_DON_1  , MR_PN_1  , MR_DOP_1 , MR_PP_1 , MR_Chl_1,   &amp;<a name='407'>
+     &amp;     date_time_1A,                                               &amp;<a name='408'>
+     &amp;     AR_flow_1   , AR_NO3_1  , AR_NH4_1 , AR_Si_1, AR_PO4_1,   &amp;<a name='409'>
+     &amp;     AR_DIC_1    , AR_O2_1   , AR_POC_1 , AR_DOC_1 , AR_DON_1,   &amp; <a name='410'>
+     &amp;     AR_PN_1     , AR_DOP_1  , AR_PP_1, AR_Chl_1 <a name='411'>
+<a name='412'>
+      iCurrentLine = iCurrentLine + 1<a name='413'>
+<a name='414'>
+#ifdef DEBUG               <a name='415'>
+     WRITE(6, "(' ')")<a name='416'>
+     WRITE(6, "('In sub. get_river_nutrients, at istep = ',I6)") <font color=#447700>!istep<a name='417'></font>
+     WRITE(6, "(' ')")          <a name='418'>
+     WRITE(6, "('date_time_1  = ',A     )") TRIM(date_time_1)  <a name='419'>
+     WRITE(6, "('MR_flow_1    = ',F35.15)") MR_flow_1  <a name='420'>
+     WRITE(6, "('MR_Chl_1      = ',F35.15)") MR_Chl_1<a name='421'>
+     WRITE(6, "('MR_NO3_1     = ',F35.15)") MR_NO3_1   <a name='422'>
+     WRITE(6, "('MR_NH4_1     = ',F35.15)") MR_NH4_1<a name='423'>
+     WRITE(6, "('AR_Chl_1      = ',F35.15)") AR_Chl_1<a name='424'>
+     WRITE(6, "('date_time_1A = ', A)")  TRIM(date_time_1A)<a name='425'>
+<font color=#447700>!     WRITE(6, "('STOP')")       <a name='426'></font>
+   <font color=#447700>! STOP<a name='427'></font>
+#endif<a name='428'>
+        <a name='429'>
+<font color=#447700>! Read data for date-time_2  on line data_line_numS_2. This data line<a name='430'></font>
+<font color=#447700>! is the next line after data_line_numS_2<a name='431'></font>
+<a name='432'>
+     READ(200,*)  date_time_2  , MR_flow_2, MR_NO3_2 , MR_NH4_2,       &amp;<a name='433'>
+     &amp; MR_Si_2   , MR_PO4_2  , MR_DIC_2 , MR_O2_2  , MR_POC_2,       &amp;   <a name='434'>
+     &amp; MR_DOC_2    , MR_DON_2  , MR_PN_2  , MR_DOP_2 , MR_PP_2 , MR_Chl_2,      &amp;<a name='435'>
+     &amp; date_time_2A,                                                   &amp;<a name='436'>
+     &amp; AR_flow_2   , AR_NO3_2  , AR_NH4_2 , AR_Si_2, AR_PO4_2,       &amp;<a name='437'>
+     &amp; AR_DIC_2    , AR_O2_2   , AR_POC_2 , AR_DOC_2 , AR_DON_2,       &amp; <a name='438'>
+     &amp; AR_PN_2     , AR_DOP_2  , AR_PP_2, AR_Chl_2<a name='439'>
+<a name='440'>
+      iCurrentLine = iCurrentLine + 1<a name='441'>
+<a name='442'>
+#ifdef DEBUG       <a name='443'>
+     WRITE(6, "(' ')")<a name='444'>
+     WRITE(6, "('In sub. get_river_nutrients, at istep = ',I6)") <font color=#447700>!istep<a name='445'></font>
+     WRITE(6, "(' ')")               <a name='446'>
+     WRITE(6, "('date_time_2  = ',A     )") TRIM(date_time_2)  <a name='447'>
+     WRITE(6, "('MR_flow_2    = ',F35.15)") MR_flow_2  <a name='448'>
+     WRITE(6, "('MR_Chl_2      = ',F35.15)") MR_Chl_2<a name='449'>
+     WRITE(6, "('MR_NO3_2     = ',F35.15)") MR_NO3_2   <a name='450'>
+     WRITE(6, "('MR_NH4_2     = ',F35.15)") MR_NH4_2<a name='451'>
+     WRITE(6, "('AR_Chl_2      = ',F35.15)") AR_Chl_2<a name='452'>
+     WRITE(6, "('date_time_2A = ', A)")  TRIM(date_time_2A)<a name='453'>
+    <font color=#447700>!WRITE(6, "('STOP')")       <a name='454'></font>
+    <font color=#447700>!STOP     			  <a name='455'></font>
+#endif<a name='456'>
+<a name='457'>
+<a name='458'>
+<font color=#447700>!-------------------------------------------------------------------------------<a name='459'></font>
+<font color=#447700>! Time interpolation formulae for MR_NO3. Exactly analogous formulae<a name='460'></font>
+<font color=#447700>! are used for other variables. <a name='461'></font>
+<font color=#447700>!				<a name='462'></font>
+<font color=#447700>! MR_NO3 = MR_NO3_1 + (MR_NO3_2 - MR_NO3_1)*(DTC_8 - DTC_1_8)/(DTC_2_8-DTC_1_8))<a name='463'></font>
+<font color=#447700>!<a name='464'></font>
+<font color=#447700>! Letting:<a name='465'></font>
+<font color=#447700>!     R_new_8 == (DTC_8 - DTC_1_8)/(DTC_2_8 - DTC_1_8) )<a name='466'></font>
+<font color=#447700>!     R_new    = REAL(R_8,KIND=4)<a name='467'></font>
+<font color=#447700>! MR_NO3 = MR_NO3_1 + (MR_NO3_2 - MR_NO3_1)*R_new<a name='468'></font>
+<font color=#447700>!<a name='469'></font>
+<font color=#447700>! MR_NO3 = (1-R_new)*MR_NO3_1 + R_new*MR_NO3_2<a name='470'></font>
+<font color=#447700>!------------------------------------------------------------------------------<a name='471'></font>
+<a name='472'>
+<font color=#447700>! Calculate river variables for the initial time of the simulation<a name='473'></font>
+<font color=#447700>! iYrS, iMonS, iDayS, iHrS, iSecS<a name='474'></font>
+	      <a name='475'>
+   R_new       = RS<a name='476'>
+   OneMR_new   = OneMRS<a name='477'>
+   R_new_8     = RS_8<a name='478'>
+   OneMR_new_8 = OneMRS_8   <a name='479'>
+<a name='480'>
+<font color=#447700>!------------------------------------------------------------------<a name='481'></font>
+<font color=#447700>!  MR_flow needs no time interp since it has been time interpolated<a name='482'></font>
+<font color=#447700>!  before coming into this subroutine.<a name='483'></font>
+<font color=#447700>!<a name='484'></font>
+<font color=#447700>!  MR_flow     = (OneMR_new)*MR_flow_1     + R_new*MR_flow_2  <a name='485'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='486'></font>
+<a name='487'>
+   MR_NO3      = (OneMR_new)*MR_NO3_1      + R_new*MR_NO3_2<a name='488'>
+   MR_O2       = (OneMR_new)*MR_O2_1       + R_new*MR_O2_2 <a name='489'>
+<a name='490'>
+#ifdef DEBUG       <a name='491'>
+     WRITE(6, "(' ')")   <a name='492'>
+     WRITE(6, "('In sub. get_river_nutrients ')") <a name='493'>
+     WRITE(6, "('at first calc of MR_NO3 ')")        	 <a name='494'>
+     WRITE(6, "('OneMR_new_8           = ',F35.15)") OneMR_new_8    <a name='495'>
+     WRITE(6, "('R_new_8               = ',F35.15)") R_new_8   <a name='496'>
+     WRITE(6, "('REAL(MR_NO3_1,KIND=8) = ',F35.15)") REAL(MR_NO3_1,KIND=8) <a name='497'>
+     WRITE(6, "('REAL(MR_NO3_2,KIND=8) = ',F35.15)") REAL(MR_NO3_2,KIND=8) <a name='498'>
+     WRITE(6, "('MR_NO3                = ',F35.15)") MR_NO3       <a name='499'>
+     WRITE(6, "('MR_O2=(OneMR_new)*MR_O2_1 + R_new*MR_O2_2 = ',F35.15)") MR_O2<a name='500'>
+     WRITE(6, "(' ')")       <a name='501'>
+#endif  <a name='502'>
+ <a name='503'>
+   MR_NH4      = (OneMR_new)*MR_NH4_1      + R_new*MR_NH4_2<a name='504'>
+   MR_Si       = (OneMR_new)*MR_Si_1       + R_new*MR_Si_2   <a name='505'>
+   MR_PO4      = (OneMR_new)*MR_PO4_1      + R_new*MR_PO4_2  <a name='506'>
+   MR_DIC      = (OneMR_new)*MR_DIC_1      + R_new*MR_DIC_2	   <a name='507'>
+   MR_POC      = (OneMR_new)*MR_POC_1      + R_new*MR_POC_2	   <a name='508'>
+   MR_DOC      = (OneMR_new)*MR_DOC_1      + R_new*MR_DOC_2  <a name='509'>
+   MR_DON      = (OneMR_new)*MR_DON_1      + R_new*MR_DON_2   <a name='510'>
+   MR_PN       = (OneMR_new)*MR_PN_1       + R_new*MR_PN_2   <a name='511'>
+   MR_DOP      = (OneMR_new)*MR_DOP_1      + R_new*MR_DOP_2   <a name='512'>
+   MR_PP       = (OneMR_new)*MR_PP_1       + R_new*MR_PP_2   <a name='513'>
+   MR_Chl      = (OneMR_new)*MR_Chl_1      + R_new*MR_Chl_2<a name='514'>
+      <a name='515'>
+   AR_NO3      = (OneMR_new)*AR_NO3_1      + R_new*AR_NO3_2<a name='516'>
+   AR_NH4      = (OneMR_new)*AR_NH4_1      + R_new*AR_NH4_2<a name='517'>
+   AR_Si       = (OneMR_new)*AR_Si_1       + R_new*AR_Si_2   <a name='518'>
+   AR_PO4      = (OneMR_new)*AR_PO4_1      + R_new*AR_PO4_2  <a name='519'>
+   AR_DIC      = (OneMR_new)*AR_DIC_1      + R_new*AR_DIC_2	   <a name='520'>
+   AR_O2       = (OneMR_new)*AR_O2_1       + R_new*AR_O2_2 <a name='521'>
+   AR_POC      = (OneMR_new)*AR_POC_1      + R_new*AR_POC_2	   <a name='522'>
+   AR_DOC      = (OneMR_new)*AR_DOC_1      + R_new*AR_DOC_2  <a name='523'>
+   AR_DON      = (OneMR_new)*AR_DON_1      + R_new*AR_DON_2   <a name='524'>
+   AR_PN       = (OneMR_new)*AR_PN_1       + R_new*AR_PN_2   <a name='525'>
+   AR_DOP      = (OneMR_new)*AR_DOP_1      + R_new*AR_DOP_2   <a name='526'>
+   AR_PP       = (OneMR_new)*AR_PP_1       + R_new*AR_PP_2   <a name='527'>
+   AR_Chl      = (OneMR_new)*AR_Chl_1      + R_new*AR_Chl_2<a name='528'>
+      <a name='529'>
+<font color=#447700>! update "old" values in anticipation of sub. call for next comp<a name='530'></font>
+<font color=#447700>! time-level<a name='531'></font>
+   <a name='532'>
+   data_line_num_1 = data_line_numS_1	<a name='533'>
+   data_line_num_2 = data_line_numS_2	<a name='534'>
+<a name='535'>
+#ifdef DEBUG  <a name='536'>
+      WRITE(6, "(' ')")<a name='537'>
+      WRITE(6, "('In sub. get_river_nutrients, at istep = ',I6)") <font color=#447700>!istep<a name='538'></font>
+      WRITE(6, "('in the initialization section, ')")        <a name='539'>
+      WRITE(6, "('MR_O2_1  = MR_O2_1  = ',F35.15)")  MR_O2_1<a name='540'>
+      WRITE(6, "('MR_NO3_1 = MR_NO3_1 = ',F35.15)")  MR_NO3_1   <a name='541'>
+      WRITE(6, "('MR_O2_2  = MR_O2_2  = ',F35.15)")  MR_O2_2<a name='542'>
+      WRITE(6, "('MR_NO3_2 = MR_NO3_2 = ',F35.15)")  MR_NO3_2   <a name='543'>
+      WRITE(6, "(' ')")     <a name='544'>
+#endif    	 <a name='545'>
+    <a name='546'>
+<font color=#447700>! Calc:<a name='547'></font>
+<font color=#447700>!  Riv_NO3(l)    corresponds to iNO3    = 29--_NO3  <a name='548'></font>
+<font color=#447700>!  Riv_NH4(l)    corresponds to iNH4    = 30--_NH4  <a name='549'></font>
+<font color=#447700>!  Riv_PO4(l)    corresponds to iPO4    = 32--_PO4  <a name='550'></font>
+<font color=#447700>!  Riv_DIC(l)    corresponds to iDIC    = 33--_O2   <a name='551'></font>
+<font color=#447700>!  Riv_O2(l)     corresponds to iO2     = 34--_DIC  <a name='552'></font>
+<font color=#447700>!<a name='553'></font>
+<font color=#447700>!  Riv_OM1_R(l) corresponds to iOM2_R = 39--POC<a name='554'></font>
+<font color=#447700>!  Riv_OM2_R(l) corresponds to iOM2_R = 40--DOC<a name='555'></font>
+<font color=#447700>!--------------------------------------------------------<a name='556'></font>
+<font color=#447700>! Calc above noted array elements using info in the file:<a name='557'></font>
+<font color=#447700>!<a name='558'></font>
+<font color=#447700>!    River_20layers_new.disb<a name='559'></font>
+<font color=#447700>!<a name='560'></font>
+<font color=#447700>! on unit 250<a name='561'></font>
+<font color=#447700>!--------------------------------------------------------<a name='562'></font>
+<a name='563'>
+<font color=#447700>! Skip to one line right above first river flow data line <a name='564'></font>
+<font color=#447700>! on unit 250 which hold the ...disb file<a name='565'></font>
+<a name='566'>
+   DO line = 1, 14<a name='567'>
+      READ(250,*)<a name='568'>
+   ENDDO<a name='569'>
+   <a name='570'>
+ <font color=#447700>! Read time-independent river data for each l = 1, nr rivers for initial time.<a name='571'></font>
+<a name='572'>
+ <font color=#447700>! Riv_name(l) is char array of LEN = 40 <a name='573'></font>
+ <font color=#447700>! Riv_src_name(l) is the name of the source river for the river Riv_name(l) <a name='574'></font>
+ <a name='575'>
+   num_wwtrv_errs = 0 <a name='576'>
+   <a name='577'>
+   DO l = 1, nr<a name='578'>
+   <a name='579'>
+#ifdef DEBUG   <a name='580'>
+      WRITE(6, "('l = ', I2)")  l <a name='581'>
+#endif      <a name='582'>
+      <a name='583'>
+      READ(250,"(I2,T5,I3,T11,I3,T17,A35,T59,F7.3,T68,F6.3,T79,F4.1)") &amp; <a name='584'>
+      &amp; Riv_num(l), iirv(l), jjrv(l), Riv_name(l), Riv_lon(l),         &amp;<a name='585'>
+      &amp; Riv_lat(l), celldepth(l)<a name='586'>
+      <a name='587'>
+      READ(250, *) Riv_src_name(l), percent_src(l)  <a name='588'>
+          <a name='589'>
+#ifdef DEBUG <a name='590'>
+      WRITE(6, "(' ')")     <a name='591'>
+      WRITE(6, "('In sub. get_river_nutrients when init = ',I1)") init      <a name='592'>
+      WRITE(6, "('Riv_num(l)      = ',I2     )") Riv_num(l)     <a name='593'>
+      WRITE(6, "('iirv(l)         = ', I3    )") iirv(l) <a name='594'>
+      WRITE(6, "('jjrv(l)         = ', I3    )") jjrv(l) <a name='595'>
+      WRITE(6, "('Riv_name(l)     = ', A     )")   TRIM(Riv_name(l)) <a name='596'>
+      WRITE(6, "('Riv_lon(l)      = ', F35.15)") Riv_lon(l) <a name='597'>
+      WRITE(6, "('Riv_lat(l)      = ', F35.15)") Riv_lat(l)      <a name='598'>
+      WRITE(6, "('celldepth(l)    = ', F35.15)") celldepth(l) <a name='599'>
+      WRITE(6, "('Riv_src_name(l) = ', A     )") TRIM(Riv_src_name(l)) <a name='600'>
+      WRITE(6, "('percent_src(l)  = ', F35.15)") percent_src(l)               <a name='601'>
+#endif     <a name='602'>
+           <a name='603'>
+   <font color=#447700>!---------------------------------------------------------------   <a name='604'></font>
+   <font color=#447700>! Read next two data lines for wwtrv, local name for the <a name='605'></font>
+   <font color=#447700>! layer_flow_weights for each layer. <a name='606'></font>
+   <font color=#447700>!---------------------------------------------------------------     <a name='607'></font>
+      READ(250,"(10(1X,F7.5))") wwtrv(1,l),wwtrv(2,l),wwtrv(3,l),      &amp;<a name='608'>
+      &amp;   wwtrv(4,l),wwtrv(5,l),wwtrv(6,l),wwtrv(7,l),wwtrv(8,l),      &amp;<a name='609'>
+      &amp;   wwtrv(9,l),wwtrv(10,l)<a name='610'>
+      <a name='611'>
+      READ(250,"(10(1X,F7.5))")   wwtrv(11,l),wwtrv(12,l),wwtrv(13,l), &amp;<a name='612'>
+      &amp;   wwtrv(14,l),wwtrv(15,l),wwtrv(16,l),wwtrv(17,l),wwtrv(18,l), &amp;<a name='613'>
+      &amp;   wwtrv(19,l),wwtrv(20,l) <a name='614'>
+      <a name='615'>
+      wwtrv(21,l) = 0.0   <font color=#447700>! for pseudo sediment layer--failsafe<a name='616'></font>
+      <a name='617'>
+   <a name='618'>
+   <font color=#447700>!-------------------------------------------------------------------   <a name='619'></font>
+   <font color=#447700>!   Test and make sure that wwtrv(k,l) = wtrv(k,l), k = 1,nsl<a name='620'></font>
+   <font color=#447700>!   for present value of l. If they arent same, print error message<a name='621'></font>
+   <font color=#447700>!   and abort run. <a name='622'></font>
+   <font color=#447700>!-------------------------------------------------------------------  <a name='623'></font>
+   <a name='624'>
+      DO k = 1,nsl      <a name='625'>
+         IF( ABS(wwtrv(k,l) - wtrv(k,l)) &gt; epstest ) THEN<a name='626'>
+             num_wwtrv_errs = num_wwtrv_errs + 1<a name='627'>
+         ENDIF<a name='628'>
+      ENDDO <a name='629'>
+      IF( num_wwtrv_errs &gt; 0 ) THEN <a name='630'>
+	  WRITE(6, "(' ')" )      <a name='631'>
+	  WRITE(6, "('In sub. get_river_nutrients_new_iD, ')" )  <a name='632'>
+	  WRITE(6, "('num_wwtrv_errs &gt; 0 for l = ', I2)" )  l<a name='633'>
+	  WRITE(6, "('Find problem and fix')" ) <a name='634'>
+	  WRITE(6, "('Abort run ')" ) <a name='635'>
+	  WRITE(6, "(' ')" )<a name='636'>
+	  STOP<a name='637'>
+       ENDIF	      	  	  	                   <a name='638'>
+      <a name='639'>
+   <font color=#447700>! Calc bio-ge-chem variables at mouth for each river at present<a name='640'></font>
+   <font color=#447700>! computation time-level<a name='641'></font>
+   <a name='642'>
+   <font color=#447700>! Also, calculate bio_geo_chem_Weight(l) to be used in<a name='643'></font>
+   <font color=#447700>! calculating bio-ge-chem data using Riv_XXX<a name='644'></font>
+   <font color=#447700>! values <a name='645'></font>
+      <a name='646'>
+      SELECT CASE(TRIM(Riv_src_name(l)))   <a name='647'>
+      <a name='648'>
+      CASE ("Mississippi")<a name='649'>
+         Riv_Chl(l)     = MR_Chl<a name='650'>
+	 Riv_OM1_R(l)   = MR_POC<a name='651'>
+	 Riv_OM2_R(l)   = MR_DOC<a name='652'>
+         Riv_O2(l)       = MR_O2<a name='653'>
+	 Riv_NO3(l)      = MR_NO3 <a name='654'>
+	 Riv_NH4(l)      = MR_NH4<a name='655'>
+         Riv_Si(l)      = MR_Si<a name='656'>
+	 Riv_PO4(l)      = MR_PO4<a name='657'>
+	 Riv_DIC(l)      = MR_DIC <a name='658'>
+<a name='659'>
+      CASE ("Atchafalaya")<a name='660'>
+         Riv_Chl(l)     = AR_Chl <a name='661'>
+	 Riv_OM1_R(l)   = AR_POC<a name='662'>
+	 Riv_OM2_R(l)   = AR_DOC    <a name='663'>
+	 Riv_NO3(l)      = AR_NO3<a name='664'>
+	 Riv_NH4(l)      = AR_NH4<a name='665'>
+         Riv_Si(l)      = AR_Si<a name='666'>
+	 Riv_PO4(l)      = AR_PO4<a name='667'>
+	 Riv_DIC(l)      = AR_DIC<a name='668'>
+         Riv_O2(l)       = AR_O2<a name='669'>
+<a name='670'>
+      CASE DEFAULT <font color=#447700>! for all source river other than MR and AR<a name='671'></font>
+         Riv_Chl(l)      = 0.5*(MR_Chl + AR_Chl)<a name='672'>
+	 Riv_OM1_R(l)	 = 0.5*(MR_POC + AR_POC)<a name='673'>
+	 Riv_OM2_R(l)	 = 0.5*(MR_DOC + AR_DOC) <a name='674'>
+	 Riv_NO3(l)      = 0.5*(MR_NO3 + AR_NO3)<a name='675'>
+	 Riv_NH4(l)      = 0.5*(MR_NH4 + AR_NH4)  <a name='676'>
+         Riv_Si(l)       = 0.5*(MR_Si  + AR_Si)<a name='677'>
+	 Riv_PO4(l)      = 0.5*(MR_PO4 + AR_PO4) <a name='678'>
+	 Riv_DIC(l)      = 0.5*(MR_DIC + AR_DIC) <a name='679'>
+         Riv_O2(l)       = 0.5*(MR_O2  + AR_O2) 	 <a name='680'>
+	 <a name='681'>
+      END SELECT <a name='682'>
+             <a name='683'>
+   ENDDO   <font color=#447700>! end of "DO l = 1, nr" block DO<a name='684'></font>
+   <a name='685'>
+<font color=#447700>! The source rivers are:<a name='686'></font>
+<font color=#447700>!<a name='687'></font>
+<font color=#447700>!  Mississippi -- abbreviated as MR<a name='688'></font>
+<font color=#447700>!  Atchafalaya -- abbreviated as AR<a name='689'></font>
+<font color=#447700>!  Lafourche   --<a name='690'></font>
+<font color=#447700>!  Vermilion   -- <a name='691'></font>
+<font color=#447700>!  LAtchafalay --  <a name='692'></font>
+<font color=#447700>!  WaxLake     -- <a name='693'></font>
+<font color=#447700>!  Mermentau   --<a name='694'></font>
+<font color=#447700>!  Sabine      --<a name='695'></font>
+<font color=#447700>!  Calcasieu   --<a name='696'></font>
+<font color=#447700>!  Pearl       --<a name='697'></font>
+<font color=#447700>!  Tangipahoa  --<a name='698'></font>
+<font color=#447700>!  Tchefuncta  --<a name='699'></font>
+<font color=#447700>!  Biloxi      --<a name='700'></font>
+<font color=#447700>!  Pascagoula  --  <a name='701'></font>
+<a name='702'>
+   init = 0<a name='703'>
+#if defined(DEBUG) || defined(LCO_DEBUG)<a name='704'>
+      WRITE(6, "('Exiting subroutine get_river_nutrients()')")           <a name='705'>
+      WRITE(6, "(' initialization at istep=0 is complete')")<a name='706'>
+      WRITE(6, "(' init flag has been cleared: ', I2)") init<a name='707'>
+      WRITE(6, "(' ')")   <a name='708'>
+#endif                      <a name='709'>
+   return<a name='710'>
+   ENDIF  <font color=#447700>! End of "IF (init.eq.1)" block if	<a name='711'></font>
+<a name='712'>
+<font color=#447700>!-------------------------------------------------------------------	<a name='713'></font>
+<a name='714'>
+<font color=#447700>! If we get here, time level istep is &gt; 0, with 0 being the initial <a name='715'></font>
+<font color=#447700>! time-level<a name='716'></font>
+	      	<a name='717'>
+<font color=#447700>! Read pointer for file data_file_path is sitting a beginning of<a name='718'></font>
+<font color=#447700>! line data_line_numS_2+1, the first data line after the last data <a name='719'></font>
+<font color=#447700>! line, line_2, for the river data for the initial time level.<a name='720'></font>
+    <a name='721'>
+<font color=#447700>!------------------------------------------------------------------------------<a name='722'></font>
+<font color=#447700>! For present date-time of run, <a name='723'></font>
+<font color=#447700>!    &amp; iYr			 , iMon 		     ,         &amp;<a name='724'></font>
+<font color=#447700>!    &amp; iDay			 , iHr  		     ,         &amp;<a name='725'></font>
+<font color=#447700>!    &amp; iMin			 , iSec 		     ,         &amp;     <a name='726'></font>
+<font color=#447700>!    &amp; DTC_8						     ,         &amp; <a name='727'></font>
+<font color=#447700>!<a name='728'></font>
+<font color=#447700>! calculate date_time_1 and date_timeS_2, the date-time points with <a name='729'></font>
+<font color=#447700>! data that bracket date_timeS, with<a name='730'></font>
+<font color=#447700>!<a name='731'></font>
+<font color=#447700>!     date_time_1 &lt;= date_time0 &lt; date_time_2<a name='732'></font>
+<font color=#447700>!<a name='733'></font>
+<a name='734'>
+#if defined(DEBUG) || defined(LCO_DEBUG)<a name='735'>
+      WRITE(6, "('Saved values from previous time step:')")     <a name='736'>
+      WRITE(6, "('iYr_1  = ',I4,', iYr_2  = ',I4)") iYr_1, iYr_2<a name='737'>
+      WRITE(6, "('iMon_1 = ',I2,', iMon_2 = ',I2)") iMon_1, iMon_2<a name='738'>
+      WRITE(6, "('iDay_1 = ',I2,', iDay_2 = ',I2)") iDay_1, iDay_2<a name='739'>
+      WRITE(6, "('iHr_1  = ',I2,', iHr_2  = ',I2)") iHr_1, iHr_2<a name='740'>
+      WRITE(6, "('iMin_1 = ',I2,', iMin_2 = ',I2)") iMin_1, iMin_2<a name='741'>
+      WRITE(6, "('data_line_num_1 = ',I6)") data_line_num_1<a name='742'>
+      WRITE(6, "('data_line_num_2 = ',I6)") data_line_num_2<a name='743'>
+      WRITE(6, "('iCurrentLine        = ',I6)") iCurrentLine<a name='744'>
+      WRITE(6, "(' ')") <a name='745'>
+#endif <a name='746'>
+<a name='747'>
+<font color=#447700>!     Check whether iStep date has moved past previous range<a name='748'></font>
+<font color=#447700>!     If so, move to the next one.<a name='749'></font>
+      if (DTC_8 &gt; DTC_2_8) then<a name='750'>
+<a name='751'>
+         data_line_num_1 = iCurrentLine<a name='752'>
+         data_line_num_2 = iCurrentLine + 1<a name='753'>
+<a name='754'>
+<font color=#447700>!     Move line2 data to line1 variables then get next line<a name='755'></font>
+<font color=#447700>!     Also, stash values for next iteration<a name='756'></font>
+         iYr_1 = iYr_2<a name='757'>
+         iMon_1 = iMon_2<a name='758'>
+         iDay_1 = iDay_2<a name='759'>
+         iHr_1 = iHr_2<a name='760'>
+         iMin_1 = iMin_2<a name='761'>
+         iSec_1 = iSec_2<a name='762'>
+         date_time_1 = date_time_2<a name='763'>
+         MR_flow_1 = MR_flow_2<a name='764'>
+         MR_NO3_1 = MR_NO3_2<a name='765'>
+         MR_NH4_1 = MR_NH4_2<a name='766'>
+         MR_Si_1 = MR_Si_2<a name='767'>
+         MR_PO4_1 = MR_PO4_2<a name='768'>
+         MR_DIC_1 = MR_DIC_2<a name='769'>
+         MR_O2_1 = MR_O2_2<a name='770'>
+         MR_POC_1 = MR_POC_2<a name='771'>
+         MR_DOC_1 = MR_DOC_2<a name='772'>
+         MR_DON_1 = MR_DON_2<a name='773'>
+         MR_PN_1 = MR_PN_2<a name='774'>
+         MR_DOP_1 = MR_DOP_2<a name='775'>
+         MR_PP_1 = MR_PP_2<a name='776'>
+         MR_Chl_1 = MR_Chl_2<a name='777'>
+         AR_flow_1 = AR_flow_2<a name='778'>
+         AR_NO3_1 = AR_NO3_2<a name='779'>
+         AR_NH4_1 = AR_NH4_2<a name='780'>
+         AR_Si_1 = AR_Si_2<a name='781'>
+         AR_PO4_1 = AR_PO4_2<a name='782'>
+         AR_DIC_1 = AR_DIC_2<a name='783'>
+         AR_O2_1 = AR_O2_2<a name='784'>
+         AR_POC_1 = AR_POC_2<a name='785'>
+         AR_DOC_1 = AR_DOC_2<a name='786'>
+         AR_DON_1 = AR_DON_2<a name='787'>
+         AR_PN_1 = AR_PN_2<a name='788'>
+         AR_DOP_1 = AR_DOP_2<a name='789'>
+         AR_PP_1 = AR_PP_2<a name='790'>
+         AR_Chl_1 = AR_Chl_2<a name='791'>
+<a name='792'>
+<font color=#447700>! Read next data line for date-time_2 on line data_line_num_2<a name='793'></font>
+<a name='794'>
+         READ(200,*)  date_time_2, MR_flow_2, MR_NO3_2 , MR_NH4_2,     &amp;<a name='795'>
+     &amp;        MR_Si_2, MR_PO4_2   , MR_DIC_2 , MR_O2_2  , MR_POC_2,  &amp;<a name='796'>
+     &amp;        MR_DOC_2 , MR_DON_2   , MR_PN_2  , MR_DOP_2 , MR_PP_2 , MR_Chl_2,  &amp;<a name='797'>
+     &amp;        date_time_2A,                                            &amp;<a name='798'>
+     &amp;        AR_flow_2, AR_NO3_2   , AR_NH4_2 , AR_Si_2, AR_PO4_2,  &amp;<a name='799'>
+     &amp;        AR_DIC_2 , AR_O2_2    , AR_POC_2 , AR_DOC_2 , AR_DON_2,   &amp;<a name='800'>
+     &amp;        AR_PN_2  , AR_DOP_2   , AR_PP_2 , AR_Chl_2<a name='801'>
+<a name='802'>
+         iCurrentLine = iCurrentLine + 1<a name='803'>
+<a name='804'>
+#ifdef DEBUG<a name='805'>
+         WRITE(6, "('  After reading next line:')")<a name='806'>
+         WRITE(6, "('date_time_2  = ',A16   )") date_time_2<a name='807'>
+         WRITE(6, "('MR_flow_2    = ',F35.15)") MR_flow_2<a name='808'>
+         WRITE(6, "('MR_O2_2      = ',F35.15)") MR_O2_2<a name='809'>
+         WRITE(6, "('MR_NO3_2     = ',F35.15)") MR_NO3_2<a name='810'>
+         WRITE(6, "('MR_NH4_2     = ',F35.15)") MR_NH4_2<a name='811'>
+         WRITE(6, "('date_time_2A = ',A16   )") date_time_2A<a name='812'>
+         WRITE(6, "(' ')")<a name='813'>
+#endif<a name='814'>
+<a name='815'>
+<font color=#447700>!     Convert date-time string components from file to INTEGERs<a name='816'></font>
+         READ(date_time_2(1:4), '(I4)') iYr_2<a name='817'>
+         READ(date_time_2(6:7), '(I2)') iMon_2<a name='818'>
+         READ(date_time_2(9:10),'(I2)') iDay_2<a name='819'>
+         READ(date_time_2(12:13),'(I2)') iHr_2<a name='820'>
+         READ(date_time_2(15:16),'(I2)') iMin_2<a name='821'>
+         iSec_2 = 0<a name='822'>
+<a name='823'>
+#if defined(DEBUG) || defined(LCO_DEBUG)<a name='824'>
+         WRITE(6, "('Moving to next date range. New values:')")<a name='825'>
+         WRITE(6, "('iYr_1  = ',I4,', iYr_2  = ',I4)") iYr_1, iYr_2<a name='826'>
+         WRITE(6, "('iMon_1 = ',I2,', iMon_2 = ',I2)") iMon_1, iMon_2<a name='827'>
+         WRITE(6, "('iDay_1 = ',I2,', iDay_2 = ',I2)") iDay_1, iDay_2<a name='828'>
+         WRITE(6, "('iHr_1  = ',I2,', iHr_2  = ',I2)") iHr_1, iHr_2<a name='829'>
+         WRITE(6, "('iMin_1 = ',I2,', iMin_2 = ',I2)") iMin_1, iMin_2<a name='830'>
+         WRITE(6, "('data_line_num_1 = ',I6)") data_line_num_1<a name='831'>
+         WRITE(6, "('data_line_num_2 = ',I6)") data_line_num_2<a name='832'>
+         WRITE(6, "('iCurrentLine        = ',I6)") iCurrentLine<a name='833'>
+         WRITE(6, "('date_time_1 = ',A16)") date_time_1<a name='834'>
+         WRITE(6, "('date_time_2 = ',A16)") date_time_2<a name='835'>
+#endif<a name='836'>
+<a name='837'>
+         SECONDS = &amp;<a name='838'>
+           <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_23">( iYr0, iYr_1, iMon_1, iDay_1, iHr_1, iMin_1, iSec_1 )<a name='839'>
+         DTC_1_8 = SECONDS<a name='840'>
+         DTC_1_8 = DTC_1_8 / SECONDS_PER_DAY<a name='841'>
+<a name='842'>
+         SECONDS = &amp;<a name='843'>
+           <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#GET_RIVER_NUTRIENTS' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_24">( iYr0, iYr_2, iMon_2, iDay_2, iHr_2, iMin_2, iSec_2 )<a name='844'>
+         DTC_2_8 = SECONDS<a name='845'>
+         DTC_2_8 = DTC_2_8 / SECONDS_PER_DAY<a name='846'>
+<a name='847'>
+      endif <font color=#447700>! matches: if (iYr&gt;iYr_prev.OR.iMon&gt;iMon_prev<a name='848'></font>
+            <font color=#447700>!              .OR.iHr&gt;iHr_prev.OR.iMin&gt;iMin_prev)<a name='849'></font>
+<a name='850'>
+<font color=#447700>!     Calculate values needed for time interpolation<a name='851'></font>
+         R_new_8 = (DTC_8 - DTC_1_8)/(DTC_2_8 - DTC_1_8)<a name='852'>
+         R_new  = REAL(R_new_8,KIND=4)<a name='853'>
+         OneMR_new_8 = 1_8 - R_new_8<a name='854'>
+         OneMR_new  = REAL(OneMR_new_8,KIND=4)<a name='855'>
+<a name='856'>
+#ifdef LCO_DEBUG  <a name='857'>
+         WRITE(6, "('Calculated values for interpolation:')") <a name='858'>
+         WRITE(6, "(' DTC_8    = ',F30.15)") DTC_8<a name='859'>
+         WRITE(6, "(' DTC_1_8  = ',F30.15)") DTC_1_8<a name='860'>
+         WRITE(6, "(' DTC_2_8  = ',F30.15)") DTC_2_8<a name='861'>
+         WRITE(6, "(' R_new_8      = ', F30.15)") R_new_8<a name='862'>
+         WRITE(6, "(' R_new        = ', F30.15)") R_new<a name='863'>
+         WRITE(6, "(' OneMR_new_8  = ', F30.15)") OneMR_new_8    <a name='864'>
+         WRITE(6, "(' OneMR_new    = ', F30.15)") OneMR_new<a name='865'>
+#endif	 <a name='866'>
+<a name='867'>
+<font color=#447700>!<a name='868'></font>
+<font color=#447700>!     Calculate river nutrient values<a name='869'></font>
+<font color=#447700>!<a name='870'></font>
+   MR_NO3      = (OneMR_new)*MR_NO3_1      + R_new*MR_NO3_2 <a name='871'>
+   MR_NH4      = (OneMR_new)*MR_NH4_1      + R_new*MR_NH4_2<a name='872'>
+   MR_Si       = (OneMR_new)*MR_Si_1       + R_new*MR_Si_2<a name='873'>
+   MR_PO4      = (OneMR_new)*MR_PO4_1      + R_new*MR_PO4_2<a name='874'>
+   MR_DIC      = (OneMR_new)*MR_DIC_1      + R_new*MR_DIC_2<a name='875'>
+   MR_O2       = (OneMR_new)*MR_O2_1       + R_new*MR_O2_2<a name='876'>
+   MR_POC      = (OneMR_new)*MR_POC_1      + R_new*MR_POC_2<a name='877'>
+   MR_DOC      = (OneMR_new)*MR_DOC_1      + R_new*MR_DOC_2<a name='878'>
+   MR_DON      = (OneMR_new)*MR_DON_1      + R_new*MR_DON_2<a name='879'>
+   MR_PN       = (OneMR_new)*MR_PN_1       + R_new*MR_PN_2<a name='880'>
+   MR_DOP      = (OneMR_new)*MR_DOP_1      + R_new*MR_DOP_2<a name='881'>
+   MR_PP       = (OneMR_new)*MR_PP_1       + R_new*MR_PP_2<a name='882'>
+   MR_Chl      = (OneMR_new)*MR_Chl_1       + R_new*MR_Chl_2<a name='883'>
+<font color=#447700>!------------------------------------------------------------------<a name='884'></font>
+<font color=#447700>!  AR_flow needs no time interp since it has been time interpolated<a name='885'></font>
+<font color=#447700>!  before coming into this subroutine.<a name='886'></font>
+<font color=#447700>!<a name='887'></font>
+<font color=#447700>!  AR_flow     = (OneMR_new)*AR_flow_1     + R_new*AR_flow_2<a name='888'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='889'></font>
+<a name='890'>
+   AR_NO3      = (OneMR_new)*AR_NO3_1      + R_new*AR_NO3_2<a name='891'>
+   AR_NH4      = (OneMR_new)*AR_NH4_1      + R_new*AR_NH4_2<a name='892'>
+   AR_Si       = (OneMR_new)*AR_Si_1       + R_new*AR_Si_2<a name='893'>
+   AR_PO4      = (OneMR_new)*AR_PO4_1      + R_new*AR_PO4_2<a name='894'>
+   AR_DIC      = (OneMR_new)*AR_DIC_1      + R_new*AR_DIC_2<a name='895'>
+   AR_O2       = (OneMR_new)*AR_O2_1       + R_new*AR_O2_2<a name='896'>
+   AR_POC      = (OneMR_new)*AR_POC_1      + R_new*AR_POC_2<a name='897'>
+   AR_DOC      = (OneMR_new)*AR_DOC_1      + R_new*AR_DOC_2<a name='898'>
+   AR_DON      = (OneMR_new)*AR_DON_1      + R_new*AR_DON_2<a name='899'>
+   AR_PN       = (OneMR_new)*AR_PN_1       + R_new*AR_PN_2<a name='900'>
+   AR_DOP      = (OneMR_new)*AR_DOP_1      + R_new*AR_DOP_2<a name='901'>
+   AR_PP       = (OneMR_new)*AR_PP_1       + R_new*AR_PP_2<a name='902'>
+   AR_Chl      = (OneMR_new)*AR_Chl_1      + R_new*AR_Chl_2<a name='903'>
+<a name='904'>
+   <font color=#447700>! Calc bio-ge-chem variables at mouth for each river at present<a name='905'></font>
+   <font color=#447700>! computation time-level<a name='906'></font>
+   <a name='907'>
+   <font color=#447700>! Also, calculate bio_geo_chem_Weight(l) to be used in<a name='908'></font>
+   <font color=#447700>! calculating bio-ge-chem data using MR_XXX and AR_XXX<a name='909'></font>
+   <font color=#447700>! values <a name='910'></font>
+<a name='911'>
+   <font color=#447700>! LOC = 1   <a name='912'></font>
+#ifdef DEBUG       <a name='913'>
+     WRITE(6, "(' ')")   <a name='914'>
+     WRITE(6, "('In sub. get_river_nutrients ')") <a name='915'>
+     WRITE(6, "('Got to LOC = 1, Line# = ', I5)")  __LINE__<a name='916'>
+     WRITE(6, "(' ')")                    <a name='917'>
+#endif     <a name='918'>
+   <a name='919'>
+   DO l = 1, nr   <a name='920'>
+           <a name='921'>
+      SELECT CASE(TRIM(Riv_src_name(l)))<a name='922'>
+      <a name='923'>
+      CASE ("Mississippi")<a name='924'>
+         Riv_Chl(l)     = MR_Chl<a name='925'>
+   	 Riv_OM1_R(l)   = MR_POC<a name='926'>
+	 Riv_OM2_R(l)   = MR_DOC<a name='927'>
+         Riv_O2(l)       = MR_O2<a name='928'>
+	 Riv_NO3(l)      = MR_NO3<a name='929'>
+	 Riv_NH4(l)      = MR_NH4<a name='930'>
+         Riv_Si(l)       = MR_Si<a name='931'>
+	 Riv_PO4(l)      = MR_PO4<a name='932'>
+	 Riv_DIC(l)      = MR_DIC<a name='933'>
+      <a name='934'>
+      CASE ("Atchafalaya")     <a name='935'>
+         Riv_Chl(l)     = AR_Chl <a name='936'>
+	 Riv_OM1_R(l)   = AR_POC<a name='937'>
+	 Riv_OM2_R(l)   = AR_DOC    <a name='938'>
+         Riv_O2(l)       = AR_O2<a name='939'>
+	 Riv_NO3(l)      = AR_NO3<a name='940'>
+	 Riv_NH4(l)      = AR_NH4<a name='941'>
+         Riv_Si(l)       = AR_Si<a name='942'>
+	 Riv_PO4(l)      = AR_PO4<a name='943'>
+	 Riv_DIC(l)      = AR_DIC<a name='944'>
+<a name='945'>
+      CASE DEFAULT<font color=#447700>! for all source river other than MR and AR<a name='946'></font>
+         Riv_Chl(l)      = 0.5*(MR_Chl + AR_Chl)<a name='947'>
+	 Riv_OM1_R(l)	 = 0.5*(MR_POC + AR_POC)<a name='948'>
+	 Riv_OM2_R(l)	 = 0.5*(MR_DOC + AR_DOC) <a name='949'>
+	 Riv_NO3(l)      = 0.5*(MR_NO3  + AR_NO3 )<a name='950'>
+	 Riv_NH4(l)      = 0.5*(MR_NH4  + AR_NH4 )  <a name='951'>
+         Riv_Si(l)       = 0.5*(MR_Si   + AR_Si  )<a name='952'>
+	 Riv_PO4(l)      = 0.5*(MR_PO4  + AR_PO4 ) <a name='953'>
+	 Riv_DIC(l)      = 0.5*(MR_DIC  + AR_DIC ) <a name='954'>
+         Riv_O2(l)       = 0.5*(MR_O2   + AR_O2  ) 	 <a name='955'>
+          <a name='956'>
+      END SELECT <a name='957'>
+             <a name='958'>
+   ENDDO   <font color=#447700>! end of "DO l = 1, nr" block DO<a name='959'></font>
+   <a name='960'>
+#ifdef DEBUG       <a name='961'>
+     WRITE(6, "(' ')")   <a name='962'>
+     WRITE(6, "('In sub. get_river_nutrients ')") <a name='963'>
+     WRITE(6, "('Got to LOC = 2, Line# = ', I5)") __LINE__<a name='964'>
+     WRITE(6, "(' ')")                    <a name='965'>
+#endif        <a name='966'>
+   <a name='967'>
+<font color=#447700>! The source rivers are:<a name='968'></font>
+<font color=#447700>!<a name='969'></font>
+<font color=#447700>!  Mississippi -- abbreviated as MR<a name='970'></font>
+<font color=#447700>!  Atchafalaya -- abbreviated as AR<a name='971'></font>
+<font color=#447700>!  Lafourche   --<a name='972'></font>
+<font color=#447700>!  Vermilion   -- <a name='973'></font>
+<font color=#447700>!  LAtchafalay --  <a name='974'></font>
+<font color=#447700>!  WaxLake     -- <a name='975'></font>
+<font color=#447700>!  Mermentau   --<a name='976'></font>
+<font color=#447700>!  Sabine      --<a name='977'></font>
+<font color=#447700>!  Calcasieu   --<a name='978'></font>
+<font color=#447700>!  Pearl       --<a name='979'></font>
+<font color=#447700>!  Tangipahoa  --<a name='980'></font>
+<font color=#447700>!  Tchefuncta  --<a name='981'></font>
+<font color=#447700>!  Biloxi      --<a name='982'></font>
+<font color=#447700>!  Pascagoula  --  <a name='983'></font>
+<a name='984'>
+<font color=#447700>! time-level istep &gt; 0 is done.           <a name='985'></font>
+<a name='986'>
+#if defined(DEBUG) || defined(LCO_DEBUG)<a name='987'>
+      WRITE(6, "('Exiting subroutine get_river_nutrients()')")           <a name='988'>
+#endif<a name='989'>
+<a name='990'>
+      RETURN<a name='991'>
+      <a name='992'>
+CONTAINS  <a name='993'>
+   <a name='994'>
+<A NAME='CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH'><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='995'>
+    <font color=#993300>SUBROUTINE </font><font color=#cc0000>calc_num_days_in_month_and_prev_month</font>(                  &amp; <A href='../../call_to/CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH.html' TARGET='index'>1</A>,<A href='../../call_from/CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH.html' TARGET='index'>3</A><a name='996'>
+    &amp; num_days_in_month_iMon, num_days_prev_month                     )<a name='997'>
+<a name='998'>
+    IMPLICIT NONE<a name='999'>
+    <a name='1000'>
+    INTEGER,      INTENT(OUT) :: num_days_prev_month(12, 2002:2011)<a name='1001'>
+    INTEGER,      INTENT(OUT) :: num_days_in_month_iMon (12, 2002:2011)  <a name='1002'>
+    <a name='1003'>
+  <font color=#447700>! Local variables<a name='1004'></font>
+  <a name='1005'>
+    INTEGER :: iMon<a name='1006'>
+    INTEGER :: iYr<a name='1007'>
+    <a name='1008'>
+    LOGICAL :: LEAP<a name='1009'>
+    <a name='1010'>
+<a name='1011'>
+    DO iYr = 2002, 2011<a name='1012'>
+       DO iMon = 1,12<a name='1013'>
+          SELECT CASE (iMon)<a name='1014'>
+	  CASE(1)<a name='1015'>
+	     num_days_in_month_iMon(iMon,iYr) = 31	     	     <a name='1016'>
+	  CASE(2)<a name='1017'>
+	     num_days_prev_month(iMon,iYr) = 31<a name='1018'>
+	     IF(<A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_4">(iYr) == 2) THEN<a name='1019'>
+	     <font color=#447700>! Leap year<a name='1020'></font>
+	       LEAP = .TRUE.<a name='1021'>
+	     ELSE<a name='1022'>
+	     <font color=#447700>! Not Leap year<a name='1023'></font>
+	       LEAP = .FALSE.<a name='1024'>
+	     ENDIF<a name='1025'>
+	     IF (LEAP==.FALSE.) THEN<a name='1026'>
+	        num_days_in_month_iMon(iMon,iYr) = 28	     <a name='1027'>
+	     ELSE<a name='1028'>
+	        num_days_in_month_iMon(iMon,iYr) = 29<a name='1029'>
+	     ENDIF<a name='1030'>
+	     	     <a name='1031'>
+	  CASE(3)<a name='1032'>
+	     IF(<A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_5">(iYr) ==2) THEN<a name='1033'>
+	     <font color=#447700>! Leap year<a name='1034'></font>
+	       LEAP = .TRUE.<a name='1035'>
+	     ELSE<a name='1036'>
+	     <font color=#447700>! Not Leap year<a name='1037'></font>
+	       LEAP = .FALSE.<a name='1038'>
+	     ENDIF<a name='1039'>
+	     IF (LEAP==.FALSE.) THEN<a name='1040'>
+	        num_days_prev_month(iMon,iYr) = 28	     <a name='1041'>
+	     ELSE<a name='1042'>
+	        num_days_prev_month(iMon,iYr) = 29		     <a name='1043'>
+	     ENDIF<a name='1044'>
+	     num_days_in_month_iMon(iMon,iYr)   = 31	 <a name='1045'>
+	         	  <a name='1046'>
+	  CASE(4)<a name='1047'>
+	     num_days_prev_month(iMon,iYr) = 31	<a name='1048'>
+	     num_days_in_month_iMon(iMon,iYr)   = 30	     		       <a name='1049'>
+	  CASE(5)<a name='1050'>
+	     num_days_prev_month(iMon,iYr) = 30	<a name='1051'>
+	     num_days_in_month_iMon(iMon,iYr)   = 31		       	  <a name='1052'>
+	  CASE(6)<a name='1053'>
+	     num_days_prev_month(iMon,iYr) = 31	<a name='1054'>
+	     num_days_in_month_iMon(iMon,iYr)   = 30		       	  <a name='1055'>
+	  CASE(7)<a name='1056'>
+	     num_days_prev_month(iMon,iYr) = 30	<a name='1057'>
+	     num_days_in_month_iMon(iMon,iYr)   = 31		       <a name='1058'>
+	  CASE(8)<a name='1059'>
+	     num_days_prev_month(iMon,iYr) = 31	<a name='1060'>
+	     num_days_in_month_iMon(iMon,iYr)   = 31		    <a name='1061'>
+	  CASE(9)<a name='1062'>
+	     num_days_prev_month(iMon,iYr) = 31	<a name='1063'>
+	     num_days_in_month_iMon(iMon,iYr)   = 30	  <a name='1064'>
+	  CASE(10)<a name='1065'>
+	     num_days_prev_month(iMon,iYr) = 30<a name='1066'>
+	     num_days_in_month_iMon(iMon,iYr)   = 31	     	   <a name='1067'>
+	  CASE(11)<a name='1068'>
+	     num_days_prev_month(iMon,iYr) = 31	  <a name='1069'>
+	     num_days_in_month_iMon(iMon,iYr)   = 30	     		  <a name='1070'>
+	  CASE(12)<a name='1071'>
+	     num_days_prev_month(iMon,iYr) = 30	<a name='1072'>
+	     num_days_in_month_iMon(iMon,iYr)   = 31		       	  <a name='1073'>
+	  END SELECT          <a name='1074'>
+       ENDDO<a name='1075'>
+    ENDDO   <a name='1076'>
+    END SUBROUTINE calc_num_days_in_month_and_prev_month <a name='1077'>
+    <a name='1078'>
+<font color=#447700>! ----------------------------------------------------------------<a name='1079'></font>
+<A NAME='JY'><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#JY' TARGET='top_target'><IMG SRC="../../gif/bar_green.gif" border=0></A><a name='1080'>
+   function  <A href='../../html_code/CGEM_2.0/JY.f.html#JY'>JY</A><A href='../../html_code/CGEM_2.0/get_river_nutrients.f.html#CALC_NUM_DAYS_IN_MONTH_AND_PREV_MONTH' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="JY_6">(iYr)     RESULT(JJY)<a name='1081'>
+<a name='1082'>
+<font color=#447700>!-----------------------------------------------------------------<a name='1083'></font>
+<font color=#447700>!      Written  by ::    D.S.Ko<a name='1084'></font>
+<font color=#447700>!      Modified by ::    Barry Herchenroder/EMVL, April 2010<a name='1085'></font>
+<font color=#447700>!                                                 May 2011<a name='1086'></font>
+<font color=#447700>!-----------------------------------------------------------------<a name='1087'></font>
+<font color=#447700>!   PuRose of function: find leap year. If iYr is a leap year,<a name='1088'></font>
+<font color=#447700>!                                            JY = 2<a name='1089'></font>
+<font color=#447700>!                                        IF iYr is not a leap year,<a name='1090'></font>
+<font color=#447700>!                                            JY = 1<a name='1091'></font>
+<font color=#447700>!-----------------------------------------------------------------<a name='1092'></font>
+     IMPLICIT NONE<a name='1093'>
+<a name='1094'>
+<font color=#447700>!-----------------<a name='1095'></font>
+<font color=#447700>! Input and Output<a name='1096'></font>
+<font color=#447700>!-----------------<a name='1097'></font>
+<a name='1098'>
+   INTEGER, INTENT(IN) :: iYr <font color=#447700>! year (e.g. 2005)<a name='1099'></font>
+<a name='1100'>
+   INTEGER             :: JJY<a name='1101'>
+<a name='1102'>
+   if (mod(iYr,4).eq.0) then<a name='1103'>
+       JJY = 2<a name='1104'>
+       if (mod(iYr,100).eq.0) then<a name='1105'>
+           JJY = 1<a name='1106'>
+           if (mod(iYr,400).eq.0) then<a name='1107'>
+               JJY = 2<a name='1108'>
+                end if<a name='1109'>
+            end if<a name='1110'>
+   else<a name='1111'>
+       JJY = 1<a name='1112'>
+   end if<a name='1113'>
+<a name='1114'>
+   return<a name='1115'>
+   END FUNCTION JY     <a name='1116'>
+    <a name='1117'>
+      END SUBROUTINE get_river_nutrients <a name='1118'>
+<font color=#447700>!----------------------------------------------------------------------     <a name='1119'></font>
+</pre></body></html>

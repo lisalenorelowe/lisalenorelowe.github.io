@@ -1,0 +1,540 @@
+<HTML> <BODY BGCOLOR=#eeeeee LINK=#0000aa VLINK=#0000ff ALINK=#ff0000 ><BASE TARGET="bottom_target"><PRE><a name='1'>
+<font color=#447700>!#define DEBUG<a name='2'></font>
+<a name='3'>
+<font color=#447700>! file: Read_CMAQ_NH4_SVflux_bin.F90<a name='4'></font>
+<a name='5'>
+<A NAME='READ_CMAQ_NH4_SVFLUX_BIN'><A href='../../html_code/CGEM_2.0/Read_CMAQ_NH4_SVflux_bin.f.html#READ_CMAQ_NH4_SVFLUX_BIN' TARGET='top_target'><IMG SRC="../../gif/bar_red.gif" border=0></A><a name='6'>
+      <font color=#993300>Subroutine </font><font color=#cc0000>Read_CMAQ_NH4_SVflux_bin</font>(TC_8,NH4_SVflux)       <A href='../../call_to/READ_CMAQ_NH4_SVFLUX_BIN.html' TARGET='index'>1</A>,<A href='../../call_from/READ_CMAQ_NH4_SVFLUX_BIN.html' TARGET='index'>5</A><a name='7'>
+      <a name='8'>
+<font color=#447700>!----------------------------------------------------------------------      <a name='9'></font>
+<font color=#447700>! Read CMAQ NH4 dry + wet deposition vertical flux and time interpolate<a name='10'></font>
+<a name='11'>
+<font color=#447700>! Original Version for wind, based on code from Ko, written by Lisa <a name='12'></font>
+<font color=#447700>! Lowe: Jan 2014<a name='13'></font>
+<font color=#447700>! <a name='14'></font>
+<font color=#447700>! Modifications by Barry Herchenroder: Feb 2014 and May-July 2014<a name='15'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='16'></font>
+<a name='17'>
+       USE <A href='../../html_code/CGEM_2.0/Model_dim.f.html#MODEL_DIM'>Model_dim</A><A href='../../html_code/CGEM_2.0/Read_CMAQ_NH4_SVflux_bin.f.html#READ_CMAQ_NH4_SVFLUX_BIN' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="MODEL_DIM_46"> <font color=#447700>! For iYr0, etc.<a name='18'></font>
+       USE <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#DATE_TIME'>DATE_TIME</A><A href='../../html_code/CGEM_2.0/Read_CMAQ_NH4_SVflux_bin.f.html#READ_CMAQ_NH4_SVFLUX_BIN' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="DATE_TIME_17"> <font color=#447700>! For SECONDS_PER_DAY, TOTAL_SECONDS, DATE_TIMESTAMP<a name='19'></font>
+<a name='20'>
+       IMPLICIT NONE<a name='21'>
+       <a name='22'>
+     <font color=#447700>!--------------------------  <a name='23'></font>
+     <font color=#447700>! Declare/define parameters<a name='24'></font>
+     <font color=#447700>!--------------------------           <a name='25'></font>
+       <a name='26'>
+       INTEGER, PARAMETER :: Num_sfc_cells = no <font color=#447700>!42898 ! sfc cells with sea-water<a name='27'></font>
+                                                   <font color=#447700>! on them   <a name='28'></font>
+						   <a name='29'>
+       CHARACTER(LEN=48), parameter :: headNH4 =                       &amp;<a name='30'>
+       &amp;           'Dry_NH4_+_Wet_NH4_deposition(mmole-NH4/m**2/sec)' <a name='31'>
+<a name='32'>
+     <font color=#447700>!---------------------------------------       <a name='33'></font>
+     <font color=#447700>! Declare subroutine interface variables <a name='34'></font>
+     <font color=#447700>!--------------------------------------- <a name='35'></font>
+     <a name='36'>
+       integer*8, intent(in)  :: TC_8    <font color=#447700>! Model time (in seconds after<a name='37'></font>
+                                         <font color=#447700>! Jan 1, 2002, 00:00:00 GMT)<a name='38'></font>
+					 <font color=#447700>! at center of timestep istep. <a name='39'></font>
+					 <a name='40'>
+       real, intent(out)   :: NH4_SVflux(im,jm) <a name='41'>
+                                         <font color=#447700>! Vertical flux of NH4 at the <a name='42'></font>
+					 <font color=#447700>! sea surface at middle of timestep   <a name='43'></font>
+					 <font color=#447700>! istep. Units of NH4_SVflux are: <a name='44'></font>
+					 <font color=#447700>!    mmol-NO3/m**2/sec <a name='45'></font>
+					 <a name='46'>
+<font color=#447700>!    Specify the title from the data file header<a name='47'></font>
+       character(LEN=48), SAVE :: srTitle       <a name='48'>
+<a name='49'>
+<font color=#447700>!    Specify variables for dates and times<a name='50'></font>
+       integer       :: iYr , iMon, iDay, iHour <a name='51'>
+       integer, SAVE :: iMin, iSec        <a name='52'>
+<a name='53'>
+<font color=#447700>!    Looping variables<a name='54'></font>
+       integer i, j, ij, istat, noc, step<a name='55'>
+       <a name='56'>
+       INTEGER  :: iter<a name='57'>
+<a name='58'>
+<font color=#447700>!    Time<a name='59'></font>
+       INTEGER(8):: SECONDS<a name='60'>
+       real*8 DTC_8 <font color=#447700>! TC_8 converted to fractional days.  					  	    <a name='61'></font>
+       real*8, save       :: DTC_max_8     <font color=#447700>! maximum value of DTC_8 that is<a name='62'></font>
+                                           <font color=#447700>! correct at the present time.<a name='63'></font>
+					   <font color=#447700>! DTC_8 must be &lt; DTC_max_8 DTC_max_8<a name='64'></font>
+					   <font color=#447700>! corresponds to beginning of <a name='65'></font>
+					   <font color=#447700>! Jan 1 2008.<a name='66'></font>
+          					   <a name='67'>
+       real*8, save       :: Day1_8,Day2_8 <font color=#447700>! Read in File date in decimal days<a name='68'></font>
+       real*8, save       :: DayDif_fact_8       <a name='69'>
+       <a name='70'>
+<font color=#447700>!    Specify NH4 and NH4 vertical flux variables <a name='71'></font>
+<a name='72'>
+       REAL(KIND=8)          :: NH4_SVflux_dum(no)                              <a name='73'>
+       REAL(KIND=8)   , SAVE :: NH4_1_a_dum(no)  <a name='74'>
+       REAL(KIND=8)   , SAVE :: NH4_2_a_dum(no) <a name='75'>
+                                                                                 <a name='76'>
+       INTEGER, SAVE :: init=1<a name='77'>
+              <a name='78'>
+       INTEGER       :: iYr_max<a name='79'>
+       INTEGER       :: iMon_max  <a name='80'>
+       INTEGER       :: iDay_max <a name='81'>
+       INTEGER       :: iHr_max <a name='82'>
+       INTEGER       :: iMin_max <a name='83'>
+       INTEGER       :: iSec_max <a name='84'>
+       <a name='85'>
+       INTEGER       :: LOC       <a name='86'>
+       <a name='87'>
+       INTEGER, SAVE :: unit9<a name='88'>
+       <a name='89'>
+<font color=#447700>!---------------------<a name='90'></font>
+<font color=#447700>! Character variables <a name='91'></font>
+<font color=#447700>!---------------------<a name='92'></font>
+<a name='93'>
+      CHARACTER blank1_dum_1*1<a name='94'>
+      CHARACTER blank1_dum_2*1   <a name='95'>
+      CHARACTER blank1_dum_3*1        <a name='96'>
+      <a name='97'>
+      CHARACTER blank3_dum_1*3<a name='98'>
+      <a name='99'>
+      CHARACTER blank22_dum_1*22 <a name='100'>
+<a name='101'>
+<font color=#447700>!---------------------------------------------------------------------<a name='102'></font>
+<font color=#447700>!----------------       <a name='103'></font>
+<font color=#447700>! Begin main code<a name='104'></font>
+<font color=#447700>!---------------- <a name='105'></font>
+<a name='106'>
+       DTC_8 = TC_8<a name='107'>
+       DTC_8 = DTC_8 / SECONDS_PER_DAY<a name='108'>
+       unit9 = 9000<a name='109'>
+       	    <a name='110'>
+IF(init .eq. 0 ) THEN<a name='111'>
+<a name='112'>
+<font color=#447700>!---------------------------------------------------------------------------<a name='113'></font>
+<font color=#447700>! If we get here, this is not the first time the present subroutine has been<a name='114'></font>
+<font color=#447700>! called. DTC_max_8 has already been calculated <a name='115'></font>
+<font color=#447700>!---------------------------------------------------------------------------<a name='116'></font>
+<a name='117'>
+      IF(DTC_8 &gt;= DTC_max_8 ) THEN<a name='118'>
+         <font color=#447700>! If we get here, DTC_8 is too large. Abort run.<a name='119'></font>
+         WRITE(6, "(' ')")<a name='120'>
+         WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")    <a name='121'>
+         WRITE(6, "('DTC_8 = ',F35.20,' is &gt;= DTC_max_8 = ',F35.20)")    &amp; <a name='122'>
+	 &amp;           DTC_8,                   DTC_max_8<a name='123'>
+         WRITE(6, "('Abort  ')")<a name='124'>
+	 STOP	   <a name='125'>
+      ENDIF<a name='126'>
+<a name='127'>
+ELSE<a name='128'>
+<a name='129'>
+<font color=#447700>!------------------------------------------------------------------------<a name='130'></font>
+<font color=#447700>! If we get here, this is the first time the present subroutine has been<a name='131'></font>
+<font color=#447700>! called<a name='132'></font>
+<font color=#447700>!------------------------------------------------------------------------<a name='133'></font>
+<a name='134'>
+<a name='135'>
+iMin = 0<a name='136'>
+iSec = 0<a name='137'>
+<a name='138'>
+<font color=#447700>!---------------------------------------------------------------------- <a name='139'></font>
+<font color=#447700>!    Calculate DTC_max_8, max value of DTC_8--DTC_8 must be &lt; DTC_max_8<a name='140'></font>
+<font color=#447700>!    DTC_max_8--corresponds to 12:00 midnight at beginning of 1 Jan 2008<a name='141'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='142'></font>
+<a name='143'>
+      iYr_max  = 2008<a name='144'>
+      iMon_max = 1<a name='145'>
+      iDay_max = 1<a name='146'>
+      iHr_max  = 0<a name='147'>
+      iMin_max = 0<a name='148'>
+      iSec_max = 0 <a name='149'>
+<a name='150'>
+      SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/Read_CMAQ_NH4_SVflux_bin.f.html#READ_CMAQ_NH4_SVFLUX_BIN' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_28">( iYr0, iYr_max, iMon_max, iDay_max, &amp;<a name='151'>
+                               iHr_max, iMin_max, iSec_max )<a name='152'>
+      DTC_max_8 = SECONDS<a name='153'>
+      DTC_max_8 = DTC_max_8 / SECONDS_PER_DAY<a name='154'>
+<a name='155'>
+#ifdef DEBUG<a name='156'>
+      WRITE(6, "(' ')")<a name='157'>
+      WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")<a name='158'>
+      WRITE(6, "(' ')")      <a name='159'>
+      WRITE(6, "('   DTC_max_8 = ', F35.20)")  DTC_max_8 <a name='160'>
+      WRITE(6, "(' ')")         <a name='161'>
+      WRITE(6, "('which corresponds to 12:00 midnight at the beginning')")<a name='162'>
+      WRITE(6, "('of 1 Jan 2008 ')")       <a name='163'>
+      WRITE(6, "(' ')")            <a name='164'>
+#endif      <a name='165'>
+<a name='166'>
+<font color=#447700>!    Open the CMAQ NH4 deposition file with binary data in it<a name='167'></font>
+        <font color=#447700>!---------------------------------------------------------------<a name='168'></font>
+        <font color=#447700>! Replace RHS of file below with the actual path to combined<a name='169'></font>
+        <font color=#447700>! years (2001-2008) NH4 file.The data for 2004 is dummy data for<a name='170'></font>
+        <font color=#447700>! a leap year since 2004 was a leap year. Robin Dennis CMAQ<a name='171'></font>
+        <font color=#447700>! generated NH4 data for 2004 is not available yet....<a name='172'></font>
+        <font color=#447700>! Note years 2001, 2004, and 2008 have fake data<a name='173'></font>
+        <font color=#447700>!---------------------------------------------------------------<a name='174'></font>
+<a name='175'>
+       open (unit9, file=NONHYDRODIR//"NH4_sfc_vertflx_bin_some_fake.2001-2008",&amp;<a name='176'>
+       &amp; status='old', form='UNFORMATTED')       <a name='177'>
+      <a name='178'>
+      rewind unit9<a name='179'>
+<a name='180'>
+<font color=#447700>!----------------------------------------------------------------<a name='181'></font>
+<font color=#447700>!   Read the header - number of surface cells(noc), title srTitle<a name='182'></font>
+<font color=#447700>!----------------------------------------------------------------<a name='183'></font>
+<a name='184'>
+      <font color=#447700>!  header of file for iYr at beginning of file for NH4 in iYr<a name='185'></font>
+         READ(unit9) blank3_dum_1, noc, blank22_dum_1, srTitle       <a name='186'>
+ <a name='187'>
+       if(noc .ne. Num_sfc_cells) then<a name='188'>
+	 WRITE(6, "(' ')")  <a name='189'>
+	 WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")	      <a name='190'>
+         write(6,*) "noc is .ne. Num_sfc_cells"<a name='191'>
+	 WRITE(6,*) "Abort Run."<a name='192'>
+	 WRITE(6, "(' ')") <a name='193'>
+         STOP<a name='194'>
+        endif<a name='195'>
+	<a name='196'>
+       if(srTitle /= headNH4) THEN<a name='197'>
+	 WRITE(6, "(' ')")  <a name='198'>
+	 WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")	      <a name='199'>
+         write(6,*) "srTitle is .ne. headNH4 the header title"<a name='200'>
+	 WRITE(6,*) "Abort Run."<a name='201'>
+	 WRITE(6, "(' ')") <a name='202'>
+         STOP<a name='203'>
+        endif       <a name='204'>
+       <a name='205'>
+       step = 0<a name='206'>
+       iter = 0<a name='207'>
+<font color=#447700>!-----------------------------------------------------------------------       <a name='208'></font>
+<font color=#447700>! Read in dates and NH4 dry + NH4 wet deposition data . NH4 deposition <a name='209'></font>
+<font color=#447700>! data is for each month of 2002,2003,2004,2005,2006,2007. Fake data <a name='210'></font>
+<font color=#447700>! for Dec 2001 and Jan 2008. <a name='211'></font>
+<font color=#447700>!-----------------------------------------------------------------------<a name='212'></font>
+<a name='213'>
+<font color=#447700>!----------------------------------------------------------------------- <a name='214'></font>
+<font color=#447700>! At present, only the CMAQ vertical NH4 flux input data for 2002,<a name='215'></font>
+<font color=#447700>! 2003, 2004,2005, 2006,2007 have been generated for the present <a name='216'></font>
+<font color=#447700>! subroutine. There is also fake data for 2001,<a name='217'></font>
+<font color=#447700>! and 2008. 2001 is the same as 2002 and 2008 is the same<a name='218'></font>
+<font color=#447700>! as 2007. Only Dec of 2001 and Jan of 2008 are used<a name='219'></font>
+<font color=#447700>!----------------------------------------------------------------------- <a name='220'></font>
+       DO<a name='221'>
+       <a name='222'>
+       iter = iter + 1<a name='223'>
+<font color=#447700>!-------------------------------------------------------------------------    <a name='224'></font>
+<font color=#447700>!   Read in dates &amp; times of data--first one is on line 2 of file attached<a name='225'></font>
+<font color=#447700>!   to Fortran unit unit9 = 9000. <a name='226'></font>
+<font color=#447700>!-------------------------------------------------------------------------<a name='227'></font>
+<a name='228'>
+#ifdef DEBUG<a name='229'>
+       <font color=#447700>! Read to end of line<a name='230'></font>
+	   WRITE(6, "(' ')")  <a name='231'>
+	   WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")	<a name='232'>
+	   WRITE(6, "('at beginning of outer block DO loop')")  	   <a name='233'>
+	   WRITE(6, "('for iter = ', I6)") iter<a name='234'>
+	   WRITE(6, "(' ')")  	      	    	 <a name='235'>
+#endif       <a name='236'>
+              <a name='237'>
+       <font color=#447700>! line with date/time for Dec of iYr = 2001<a name='238'></font>
+	 READ(unit9, IOSTAT = istat) iYr, blank1_dum_1, iMon,          &amp;<a name='239'>
+	 &amp; blank1_dum_2, iDay, blank1_dum_3, iHour<a name='240'>
+        <font color=#447700>! write(6,*) iYr, iMon, iDay, iHour <a name='241'></font>
+<a name='242'>
+         if(iHour.ge.24) then<a name='243'>
+             iHour = iHour - 24 <a name='244'>
+             iDay = iDay + 1<a name='245'>
+         endif<a name='246'>
+<a name='247'>
+<font color=#447700>!------------------------<a name='248'></font>
+<font color=#447700>!   Test for end of file.<a name='249'></font>
+<font color=#447700>!------------------------<a name='250'></font>
+<a name='251'>
+         if (ISTAT &lt; 0) then<a name='252'>
+	   LOC = 1<a name='253'>
+	   WRITE(6, "(' ')")  <a name='254'>
+	   WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin,')")<a name='255'>
+	   WRITE(6, "('at LOC = ', I2, ' an EOF encountered   ')") LOC	   <a name='256'>
+           write(6, "('in NH4 vertical flux input data.       ')")        <a name='257'>
+	   WRITE(6, "('Exit sub. Read_CMAQ_NH4_SVflux_bin.    ')")<a name='258'>
+	   WRITE(6, "(' ')") 	   <a name='259'>
+           EXIT<a name='260'>
+         endif<a name='261'>
+	 <a name='262'>
+<font color=#447700>! Print iYr, iMon, iDay, iHour just read.<a name='263'></font>
+<a name='264'>
+#ifdef DEBUG<a name='265'>
+   WRITE(6, "(' ')")  <a name='266'>
+   WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")	<a name='267'>
+   WRITE(6, "('Data read from line 2 of unit=unit9=9000 is:')") <a name='268'>
+   WRITE(6, "(' ')") <a name='269'>
+   WRITE(6, "('iYr  = ',I4,' iMon = ',I2,' iDay = ',I2,' iHour = ',I2 )")  &amp;<a name='270'>
+   &amp;           iYr,          iMon,         iDay,         iHour<a name='271'>
+   WRITE(6, "('init = ',I2,' iter = ', I6)") init, iter	<a name='272'>
+   WRITE(6, "(' ')")<a name='273'>
+#endif	           	 <a name='274'>
+<a name='275'>
+<font color=#447700>!------------------------------------------------------------------<a name='276'></font>
+<font color=#447700>!   If we get here, an eof has not been encountered. Therefore read <a name='277'></font>
+<font color=#447700>!   CMAQ NH4 deposition data.<a name='278'></font>
+<font color=#447700>!------------------------------------------------------------------<a name='279'></font>
+<a name='280'>
+#ifdef DEBUG<a name='281'>
+   WRITE(6, "(' ')")  <a name='282'>
+   WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")	<a name='283'>
+   WRITE(6, "('begin read of CMAQ NH4 vertical flux deposition data ')")<a name='284'>
+   WRITE(6, "(' ')")  <a name='285'>
+   WRITE(6, "('At this point,  ')") <a name='286'>
+   WRITE(6, "('iYr  = ',I4,' iMon = ',I2,' iDay = ',I2,' iHour = ',I2 )")  &amp;<a name='287'>
+   &amp;           iYr,          iMon,         iDay,         iHour<a name='288'>
+   WRITE(6, "('init = ',I2,' iter = ', I6)") init, iter<a name='289'>
+   WRITE(6, "(' ')")<a name='290'>
+#endif 	   	<a name='291'>
+<a name='292'>
+      <font color=#447700>!-----------Read in data to NH4_2_a SVflux array------------------- <a name='293'></font>
+      <a name='294'>
+                  <font color=#447700>! Note Well:  NH4_2_a_dum should be KIND=8           <a name='295'></font>
+<a name='296'>
+                    read (unit9,IOSTAT = ISTAT)  NH4_2_a_dum <a name='297'>
+                   <font color=#447700>! write(6,*) NH4_2_a_dum(1), NH4_2_a_dum(no)<a name='298'></font>
+<a name='299'>
+<font color=#447700>!------------------------<a name='300'></font>
+<font color=#447700>!   Test for end of file.<a name='301'></font>
+<font color=#447700>!------------------------<a name='302'></font>
+<a name='303'>
+         IF (ISTAT &lt; 0) THEN<a name='304'>
+	   LOC = 2<a name='305'>
+	   WRITE(6, "(' ')")  <a name='306'>
+	   WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin,')")<a name='307'>
+	   WRITE(6, "('at LOC = ', I2, ' an EOF encountered   ')") LOC	   <a name='308'>
+           write(6, "('in NH4 vertical flux input data.       ')")        <a name='309'>
+	   WRITE(6, "('Exit sub. Read_CMAQ_NH4_SVflux_bin.    ')")<a name='310'>
+	   WRITE(6, "(' ')") 	   <a name='311'>
+           EXIT<a name='312'>
+         ENDIF		    <a name='313'>
+		    		    <a name='314'>
+#ifdef DEBUG		     <a name='315'>
+   WRITE(6, "(' ')") <a name='316'>
+   WRITE(6, "('NH4_2_a_dum values just read for ij = 1,no are: ')")<a name='317'>
+   DO ij = 1, no		 <a name='318'>
+      WRITE(6,"('ij = ',I6,' NH4_2_a_dum(ij) = ',F35.20)")  &amp;<a name='319'>
+      &amp;          ij,         NH4_2_a_dum(ij)<a name='320'>
+   ENDDO<a name='321'>
+   WRITE(6, "(' ')")<a name='322'>
+#endif		    <a name='323'>
+<a name='324'>
+#ifdef DEBUG<a name='325'>
+   WRITE(6,"(' ')")  <a name='326'>
+   WRITE(6,"('In subroutine Read_CMAQ_NH4_SVflux_bin,      ')")	<a name='327'>
+   WRITE(6,"('end read of CMAQ NH4 surface flux input data.')")<a name='328'>
+   WRITE(6,"('for, at this point,  ')") <a name='329'>
+   WRITE(6,"('iYr  = ',I4,' iMon = ',I2,' iDay = ',I2,' iHour = ',I2 )") &amp;<a name='330'>
+   &amp;           iYr,         iMon,         iDay,         iHour<a name='331'>
+   WRITE(6,"('init = ',I2,' iter = ', I6)") init, iter<a name='332'>
+   WRITE(6,"(' ')")<a name='333'>
+#endif 	   	   <a name='334'>
+      <font color=#447700>!--End Read in data to NH4_2_a_dum array------------------------<a name='335'></font>
+      <a name='336'>
+<font color=#447700>!---------------------------------------------------------------<a name='337'></font>
+<font color=#447700>!  For read in data associated with iYr,iMon, iDay, iHour, <a name='338'></font>
+<font color=#447700>!  get associated Model Time Day2_8 in decimal days.<a name='339'></font>
+<font color=#447700>!  IF iYr = 2001, set Day2_8 to<a name='340'></font>
+<font color=#447700>!  -15.5_8 (that is a minus sign)  where 15.5 is the # of decimal <a name='341'></font>
+<font color=#447700>!  days in last half of Dec 2001<a name='342'></font>
+<font color=#447700>!---------------------------------------------------------------<a name='343'></font>
+  <a name='344'>
+     IF( iYr &gt; 2001) THEN <a name='345'>
+        SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/Read_CMAQ_NH4_SVflux_bin.f.html#READ_CMAQ_NH4_SVFLUX_BIN' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_29">( iYr0, iYr, iMon, iDay, iHour, iMin, iSec )<a name='346'>
+        Day2_8 = SECONDS<a name='347'>
+        Day2_8 = Day2_8 / SECONDS_PER_DAY<a name='348'>
+	   ELSEIF ( iYr  == 2001) THEN  <a name='349'>
+	      Day2_8 = -15.5_8 <a name='350'>
+	   ELSE<a name='351'>
+	      WRITE(6, "(' ')")  <a name='352'>
+	      WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")<a name='353'>
+	      WRITE(6, "('for iYr &lt;= ', I4)") iYr<a name='354'>
+	      WRITE(6, "('Data for a date-time other than')")  <a name='355'>
+	      WRITE(6, "('iMon = 12--iDay = 15--iHour=12 ')") <a name='356'>
+	      WRITE(6, "('was encountered when it should ')")  <a name='357'>
+	      WRITE(6, "('not have been. Abort Run ')") <a name='358'>
+	      WRITE(6, "(' ')") <a name='359'>
+	      STOP 	         	   	      <a name='360'>
+	   ENDIF <a name='361'>
+	  <a name='362'>
+           if(step.eq.0) then<a name='363'>
+              Day1_8 = Day2_8<a name='364'>
+           else<a name='365'>
+              if(DTC_8.ge.Day1_8.and.DTC_8.le.Day2_8) exit<a name='366'>
+           endif<a name='367'>
+ <a name='368'>
+           Day1_8  = Day2_8<a name='369'>
+           NH4_1_a_dum = NH4_2_a_dum   <font color=#447700>! array op<a name='370'></font>
+           step    = 1 <a name='371'>
+<a name='372'>
+#ifdef DEBUG<a name='373'>
+	  WRITE(6, "(' ')")  <a name='374'>
+	  WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")<a name='375'>
+	  WRITE(6, "('at end of outer block DO loop ')") <a name='376'>
+	  WRITE(6, "('for iter = ', I6)")  iter 		  <a name='377'>
+	  WRITE(6, "(' ')")		  <a name='378'>
+#endif<a name='379'>
+       enddo   <font color=#447700>! End of "DO" block DO<a name='380'></font>
+       <a name='381'>
+       init=0<a name='382'>
+<a name='383'>
+ENDIF  <font color=#447700>! End section executed only on initial subroutine call<a name='384'></font>
+<a name='385'>
+<a name='386'>
+      if(DTC_8.le.Day2_8) then  <font color=#447700>! Date-Time DTC_8 is between or at input <a name='387'></font>
+                               <font color=#447700>! data dates/times Day1_8 and Day2_8<a name='388'></font>
+			       <a name='389'>
+        NH4_SVflux    = 0.0  <font color=#447700>! array op<a name='390'></font>
+	DayDif_fact_8 = (DTC_8 - Day1_8)/(Day2_8-Day1_8)<a name='391'>
+	 DO ij = 1, no<a name='392'>
+            NH4_SVflux_dum(ij)  = NH4_1_a_dum(ij) +                    &amp;<a name='393'>
+	    &amp;  (NH4_2_a_dum(ij) - NH4_1_a_dum(ij))*DayDif_fact_8<a name='394'>
+	    i                   = io(ij)<a name='395'>
+	    j                   = jo(ij)	 <a name='396'>
+	    NH4_SVflux(i,j)     = REAL(NH4_SVflux_dum(ij),KIND=4)	    	 <a name='397'>
+	 ENDDO<a name='398'>
+		 <a name='399'>
+      else  <font color=#447700>! else part of if(DTC_8.le.Day2_8) then-else<a name='400'></font>
+<a name='401'>
+<font color=#447700>!------------------------------------------------------------------------      <a name='402'></font>
+<font color=#447700>!Reset Time and NH4 using array ops and look at next input data date-time:<a name='403'></font>
+<font color=#447700>!------------------------------------------------------------------------ <a name='404'></font>
+        Day1_8       = Day2_8<a name='405'>
+        NH4_1_a_dum  = NH4_2_a_dum    <font color=#447700>! both of these are KIND=8<a name='406'></font>
+<a name='407'>
+<font color=#447700>!---------------------------------------<a name='408'></font>
+<font color=#447700>!Read in new CMAQ NH4 deposition Data:<a name='409'></font>
+<font color=#447700>!   Read in next input data date-times .<a name='410'></font>
+<font color=#447700>!---------------------------------------<a name='411'></font>
+<a name='412'>
+       <font color=#447700>! read (unit9,IOSTAT = istat) iYr, iMon, iDay, iHour<a name='413'></font>
+	 READ(unit9, IOSTAT = istat) iYr, blank1_dum_1, iMon,          &amp;<a name='414'>
+	 &amp; blank1_dum_2, iDay, blank1_dum_3, iHour <a name='415'>
+         <font color=#447700>!write(6,*) iYr, iMon, iDay, iHour<a name='416'></font>
+<a name='417'>
+         if(iHour.ge.24) then<a name='418'>
+             iHour = iHour - 24<a name='419'>
+             iDay = iDay + 1<a name='420'>
+         endif<a name='421'>
+<a name='422'>
+<font color=#447700>!------------------------<a name='423'></font>
+<font color=#447700>!   Test for end of file.<a name='424'></font>
+<font color=#447700>!------------------------<a name='425'></font>
+<a name='426'>
+         if (ISTAT &lt; 0) then<a name='427'>
+	   LOC = 3<a name='428'>
+           WRITE(6, "(' ')")	<a name='429'>
+           WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin,    ')")<a name='430'>
+           WRITE(6, "('at LOC = ', I2                              )") <a name='431'>
+           write(6, "('NH4 surface flux input data EOF encountered')")<a name='432'>
+           WRITE(6, "('unexpectedly. Find problem and fix it.     ')")	   <a name='433'>
+	   WRITE(6, "('Abort Run.                                 ')")<a name='434'>
+           WRITE(6, "(' ')")	<a name='435'>
+	   STOP  <a name='436'>
+         endif<a name='437'>
+<a name='438'>
+<font color=#447700>!----------------------------------------------------------------------	  <a name='439'></font>
+<font color=#447700>!   If not end of data file, read CMAQ NH4 deposition surface flux data<a name='440'></font>
+<font color=#447700>!----------------------------------------------------------------------<a name='441'></font>
+<a name='442'>
+      <font color=#447700>!-----------Read in CMAQ NH4 deposition data to NH4_2_a_dum array--------<a name='443'></font>
+	   <a name='444'>
+	  read (unit9, IOSTAT = ISTAT) NH4_2_a_dum<a name='445'>
+          <font color=#447700>!write(6,*) NH4_2_a_dum(1),NH4_2_a_dum(no)<a name='446'></font>
+<font color=#447700>!------------------------<a name='447'></font>
+<font color=#447700>!   Test for end of file.<a name='448'></font>
+<font color=#447700>!------------------------<a name='449'></font>
+<a name='450'>
+         if (ISTAT &lt; 0) then<a name='451'>
+	   LOC = 4<a name='452'>
+	   WRITE(6, "(' ')")  <a name='453'>
+	   WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")<a name='454'>
+	   WRITE(6, "('at LOC = ', I2, ' an EOF was encountered')") LOC	   <a name='455'>
+           write(6, "('in NH4 vertical flux input data.        ')")  <a name='456'>
+	   WRITE(6, "('on unit9=9000.                          ')")  	       <a name='457'>
+	   WRITE(6, "('Exit sub. Read_CMAQ_NH4_SVflux_bin.     ')")<a name='458'>
+	   WRITE(6, "('and abort run ')") 	   <a name='459'>
+	   WRITE(6, "(' ')") 	   <a name='460'>
+           STOP<a name='461'>
+         endif		    	  <a name='462'>
+	  <a name='463'>
+	   	   <a name='464'>
+      <font color=#447700>!--End Read in data to NH4_2_a_dum array------------------------<a name='465'></font>
+<a name='466'>
+<font color=#447700>!---------------------------------------------------------------<a name='467'></font>
+<font color=#447700>!  For read in data associated with iYr,iMon, iDay, iHour, <a name='468'></font>
+<font color=#447700>!  get associated Model Time Day2_8 in decimal days.<a name='469'></font>
+<font color=#447700>!---------------------------------------------------------------<a name='470'></font>
+<a name='471'>
+        SECONDS = <A href='../../html_code/CGEM_2.0/DATE_TIME.f.html#TOTAL_SECONDS'>TOTAL_SECONDS</A><A href='../../html_code/CGEM_2.0/Read_CMAQ_NH4_SVflux_bin.f.html#READ_CMAQ_NH4_SVFLUX_BIN' TARGET='bottom_target'><IMG SRC="../../gif/cyan.gif" border=0></a><A NAME="TOTAL_SECONDS_30">( iYr0, iYr, iMon, iDay, iHour, iMin, iSec )<a name='472'>
+        Day2_8 = SECONDS<a name='473'>
+        Day2_8 = Day2_8 / SECONDS_PER_DAY<a name='474'>
+<a name='475'>
+<font color=#447700>!----------------------------	<a name='476'></font>
+<font color=#447700>!-----------end read new data<a name='477'></font>
+<font color=#447700>!----------------------------<a name='478'></font>
+	<a name='479'>
+<font color=#447700>! Note Bene: NH4_SVflux(i,j) is KIND=4 and NH4_SVflux_dum(ij),<a name='480'></font>
+<font color=#447700>!            NH4_2_a_dum, and NH4_1_a_dum are KIND=8.	<a name='481'></font>
+<a name='482'>
+        NH4_SVflux    = 0.0  <font color=#447700>! array op<a name='483'></font>
+	DayDif_fact_8 = (DTC_8 - Day1_8)/(Day2_8-Day1_8)<a name='484'>
+	 DO ij = 1, no<a name='485'>
+            NH4_SVflux_dum(ij)  = NH4_1_a_dum(ij) +                    &amp;<a name='486'>
+	    &amp;  (NH4_2_a_dum(ij) - NH4_1_a_dum(ij))*DayDif_fact_8<a name='487'>
+	    i                   = io(ij)<a name='488'>
+	    j                   = jo(ij)	 <a name='489'>
+	    NH4_SVflux(i,j)     = REAL(NH4_SVflux_dum(ij),KIND=4)	    	 <a name='490'>
+	 ENDDO<a name='491'>
+	 <a name='492'>
+     endif <font color=#447700>! End of if(DTC_8.le.Day2_8) block IF-THEN-ELSE<a name='493'></font>
+<a name='494'>
+<a name='495'>
+#ifdef DEBUG<a name='496'>
+      WRITE(6, "(' ')")	 <a name='497'>
+      WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")	            <a name='498'>
+      write(6, "('For NH4 vertical flux a sea surface:')")<a name='499'>
+      write(6, "('Day1_8          = ', F35.15)") Day1_8      <a name='500'>
+      write(6, "('DTC_8            = ', F35.15)") DTC_8<a name='501'>
+      write(6, "('Day2_8          = ', F35.15)") Day2_8   <a name='502'>
+      WRITE(6, "(' ')")	<a name='503'>
+      WRITE(6, "('Examples of raw and time-interpolated values ')")<a name='504'>
+      WRITE(6, "('around the grid are the sea and land sfce are: ')") <a name='505'>
+      WRITE(6, "(' ')")	              <a name='506'>
+      WRITE(6, "('NH4_1_a_dum(no/2)             = ', F35.15)")         &amp;<a name='507'>
+      &amp;           NH4_1_a_dum(no/2)      <a name='508'>
+      WRITE(6, "('io(no/2)                      = ', I3)") io(no/2)  <a name='509'>
+      WRITE(6, "('jo(no/2)                      = ', I3)") jo(no/2)          <a name='510'>
+      WRITE(6, "('NH4_SVflux(io(no/2),jo(no/2)) = ', F35.15)")         &amp;<a name='511'>
+      &amp;           NH4_SVflux(io(no/2),jo(no/2))         <a name='512'>
+      WRITE(6, "('NH4_2_a_dum(no/2)             = ', F35.15)")         &amp;<a name='513'>
+      &amp;           NH4_2_a_dum(no/2)  <a name='514'>
+      WRITE(6, "(' ')") <a name='515'>
+      WRITE(6, "(' ')") <a name='516'>
+      WRITE(6, "('In subroutine Read_CMAQ_NH4_SVflux_bin, ')")  <a name='517'>
+      write(6, "('For NH4 vertical flux at sea surface:')") <a name='518'>
+      WRITE(6, "(' ')")              <a name='519'>
+<a name='520'>
+    DO ij = 1, no, no/10<a name='521'>
+      WRITE(6, "('NH4_1_a_dum(ij)      = ', F35.15)") NH4_1_a_dum(ij) <a name='522'>
+      WRITE(6, "('NH4_SVflux_dum(ij)   = ', F35.15)") NH4_SVflux_dum(ij)   <a name='523'>
+      WRITE(6, "('NH4_2_a_dum(ij)      = ', F35.15)") NH4_2_a_dum(ij)<a name='524'>
+      WRITE(6, "(' ')")  	  	    <a name='525'>
+    ENDDO<a name='526'>
+ <a name='527'>
+    DO j = 1, JM, JM/4  <a name='528'>
+       DO i = 1, IM, IM/8  <a name='529'>
+          WRITE(6, "('NH4_SVflux(i,j)   = ', F35.15)") NH4_SVflux(i,j)   <a name='530'>
+          WRITE(6, "(' ')")           <a name='531'>
+       ENDDO   <a name='532'>
+    ENDDO            <a name='533'>
+#endif<a name='534'>
+<a name='535'>
+       RETURN<a name='536'>
+<a name='537'>
+       END SUBROUTINE Read_CMAQ_NH4_SVflux_bin  <a name='538'>
+<a name='539'>
+</pre></body></html>
